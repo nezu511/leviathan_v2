@@ -8,7 +8,12 @@ pub trait Xi {
 }
 
 pub trait Gfunction {
-    //引数は消費ガス量
+    //返り値は消費ガス量
     fn gas(&mut self, opcode:u8, execution_environment: ExecutionEnvironment) -> U256 ;
 }
 
+
+pub trait Zfunction {
+    //Z関数による安全性を確認
+    fn is_safe(&mut self, opcode:u8, execution_environment: ExecutionEnvironment) -> bool ;
+}
