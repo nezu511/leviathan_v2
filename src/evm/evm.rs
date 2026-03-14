@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use primitive_types::U256; 
-use crate::my_trait::evm_trait::Xi;
+use crate::my_trait::evm_trait::{Xi, Gfunction};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
 
@@ -25,9 +25,6 @@ impl EVM {
             return_back: Vec::new()
         }
     }
-
-
-
 }
 
 
@@ -39,7 +36,7 @@ impl Xi for EVM {
 
         loop {
             //==============Opcode を取り出す================
-            if code.len() > self.pc {
+            if code.len() <= self.pc {
                 opcode = 0x00   //STOP
             }
             opcode = code[self.pc];
