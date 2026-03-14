@@ -195,7 +195,7 @@ impl Gfunction for EVM {
                     }
             },
 
-            0x37 | 0x39 | 0x3c => {   //CALLDATACOPY, CODECOPY, EXTCODECOPY
+            0x37 | 0x39 | 0x3e => {   //CALLDATACOPY, CODECOPY, EXTCODECOPY
                 let offset = self.stack[0].as_usize();
                 let size = self.stack[2].as_usize();
                 let ext_cost = self.extension_cost(offset, size);
