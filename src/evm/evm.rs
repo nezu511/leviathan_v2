@@ -31,7 +31,19 @@ impl EVM {
 impl Xi for EVM {
     fn evm_run(&mut self, state: WorldState, substate: SubState, execution_environment: ExecutionEnvironment) -> Result<(WorldState, SubState, ExecutionEnvironment, Vec<u8>), (WorldState, SubState, ExecutionEnvironment, Vec<u8>)>  {
 
-        return Ok((state, substate, execution_environment, Vec::new()))
+        let code = execution_environment.i_byte.clone();
+        let mut opcode = 0u8;
+
+        loop {
+            //==============Opcode を取り出す================
+            if code.len() > self.pc {
+                opcode = 0x00   //STOP
+            }
+            opcode = code[self.pc];
+
+
+            return Ok((state, substate, execution_environment, Vec::new()))
+        }
     }
 
 }
