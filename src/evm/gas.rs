@@ -125,9 +125,23 @@ static GAS_TABLE: [u8; 256] = {
     table   //ブロックの最後は原則返り値
 };
 
-
-
 impl Gfunction for EVM {
+    fn extension_cost(&mut self, offset:usize, size:usize) -> usize {
+        if size != 0 {
+            let required_size = offset + size;
+            let pre_words = self.active_words;
+            let post_words = (required_size + 31) / 32;
+            if post_words > pre_words {
+                let pre_cost = 3 * pre_words + ((pre_words.pow(2)) / 512);
+                let post_cost = 3 * post_words + ((post_words.pow(2)) / 512);
+                let result = post_cost - pre_cost;
+                return result;
+            }
+        }
+        return 0;
+    }
+
+
     fn gas(&mut self, opcode:u8, execution_environment: ExecutionEnvironment) -> U256 {
         let used_gas = GAS_TABLE[opcode as usize];
         if used_gas != u8::MAX {
@@ -135,7 +149,7 @@ impl Gfunction for EVM {
         }
 
         let used_gas = match opcode {
-            0x0a => {
+            0x0a => {   //EXP
                 let mut exponent = self.stack[1];
 
                 if exponent == U256::from(0) {
@@ -151,6 +165,37 @@ impl Gfunction for EVM {
                     U256::from(result)
                 }
             },
+            0x20 => {   //KECCAK256
+                //メモリ拡張コスト
+                let offset = self.stack[0].as_usize();
+                let size = self.stack[1].as_usize();
+                let ext_cost = self.extension_cost(offset, size);
+                //計算の動的コスト
+                let dynamic_cost = if (size % 32) == 0 {
+                    (size / 32)  * 6
+                }else{
+                    ((size / 32) + 1) * 6
+                };
+
+                let total = 30 + dynamic_cost + ext_cost;
+                return U256::from(total);
+            },
+
+            0x37 => {   //CALLDATACOPY
+                let offset = self.stack[0].as_usize();
+                let size = self.stack[2].as_usize();
+                let ext_cost = self.extension_cost(offset, size);
+                //計算の動的コスト
+                let dynamic_cost = if (size % 32) == 0 {
+                    (size / 32)  * 3
+                }else{
+                    ((size / 32) + 1) * 3
+                };
+                let total = 3 + dynamic_cost + ext_cost;
+                return U256::from(total);
+            },
+
+
             _ => U256::from(0),
         };
         return used_gas;
