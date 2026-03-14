@@ -142,7 +142,7 @@ impl Gfunction for EVM {
     }
 
 
-    fn gas(&mut self, opcode:u8, execution_environment: ExecutionEnvironment) -> U256 {
+    fn gas(&mut self, opcode:u8, substate: &SubState, execution_environment: &ExecutionEnvironment) -> U256 {
         let used_gas = GAS_TABLE[opcode as usize];
         if used_gas != u8::MAX {
             return U256::from(used_gas);
@@ -179,6 +179,20 @@ impl Gfunction for EVM {
 
                 let total = 30 + dynamic_cost + ext_cost;
                 return U256::from(total);
+            },
+
+            0x31 => {   //BALANCE
+                    //Address型に変換
+                    let data = self.stack[0];
+                    let buffer = &data.to_big_endian()[12..32];
+                    let mut tmp = [0u8;20];
+                    tmp[0..20].copy_from_slice(&buffer[0..20]);
+                    let address = Address::new(tmp);
+                    if substate.a_access.contains(&address) {
+                        return U256::from(100);
+                    }else{
+                        return U256::from(2600);
+                    }
             },
 
             0x37 => {   //CALLDATACOPY

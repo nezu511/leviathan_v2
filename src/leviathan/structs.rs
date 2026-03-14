@@ -5,12 +5,12 @@ use primitive_types::U256;
 use std::time::SystemTime;
 
 pub struct SubState {
-    a_des: Vec<Address>,
-    a_log: Vec<Log>,
-    a_touch: Vec<Address>, 
-    a_reimburse: U256,
-    a_access: Vec<Address>,
-    a_access_storage: Vec<(Address,U256)>,
+    pub a_des: Vec<Address>,    //破棄されるアカウント集合
+    pub a_log: Vec<Log>,        //ログリスト
+    pub a_touch: Vec<Address>,  //さわられたアカウントリスト：最後にEmptyのアカウントは消す
+    pub a_reimburse: U256,      //ガスの払い戻し
+    pub a_access: Vec<Address>, //アクセスされたアカウントリスト：２回目移行のアクセスはガス代割引
+    pub a_access_storage: Vec<(Address,U256)>,  //一度アクセスしたストレージのスロット
 }
 
 pub struct Log {
