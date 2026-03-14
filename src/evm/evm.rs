@@ -6,12 +6,12 @@ use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
 
 pub struct EVM {
-    gas: U256,
-    pc: usize,
-    memory: Vec<u8>,
-    active_words: usize,
-    stack: Vec<U256>,
-    return_back: Vec<u8>
+    pub gas: U256,
+    pub pc: usize,
+    pub memory: Vec<u8>,
+    pub active_words: usize,
+    pub stack: Vec<U256>,
+    pub return_back: Vec<u8>
 }
 
 

@@ -73,6 +73,7 @@ static GAS_TABLE: [u8; 256] = {
     table[0x48] = 20;        // BASEFEE
 
     // Stack, Memory, Storage and Flow Operations
+    table[0x50] = 2;   // POP
     table[0x51] = u8::MAX;   // MLOAD
     table[0x52] = u8::MAX;   // MSTORE
     table[0x53] = u8::MAX;   // MSTORE8
@@ -86,6 +87,7 @@ static GAS_TABLE: [u8; 256] = {
     table[0x5b] = 1;         // JUMPDEST
 
     // push Operations
+    table[0x5f] = 2;         // PUSH0
     let mut i = 0x60;
     while i <= 0x7f {
         table[i] = 3;
@@ -127,6 +129,31 @@ static GAS_TABLE: [u8; 256] = {
 
 impl Gfunction for EVM {
     fn gas(&mut self, opcode:u8, execution_environment: ExecutionEnvironment) -> U256 {
-        todo!()
+        let used_gas = GAS_TABLE[opcode as usize];
+        if used_gas != u8::MAX {
+            return U256::from(used_gas);
+        }
+
+        let used_gas = match opcode {
+            0x0a => {
+                let mut exponent = self.stack[1];
+
+                if exponent == U256::from(0) {
+                    U256::from(10)
+                }else{
+                    let bit = exponent.bits();
+                    let byte = if (bit % 8) == 0 {
+                        bit / 8
+                    }else{
+                        (bit / 8) + 1
+                    };
+                    let result = 10 + (byte * 50);
+                    U256::from(result)
+                }
+            },
+            _ => U256::from(0),
+        };
+        return used_gas;
+
     }
 }
