@@ -417,7 +417,7 @@ impl Gfunction for EVM {
             },
 
 
-            0xf4 => {       //DELEGATECALL
+            0xf4 | 0xfa => {       //DELEGATECALL, STATICCALL
                 let child_gas_limit = self.stack[0];
                 let address = self.stack[1];
                 let args_offset = self.stack[2].as_usize();
@@ -448,6 +448,19 @@ impl Gfunction for EVM {
 
             },
 
+            0xf5 => {           //CREATE2
+                let offset = self.stack[1].as_usize();
+                let size = self.stack[2].as_usize();
+                //拡張コスト
+                let ext_cost = self.extension_cost(offset, size);
+                let dynamic_cost = if (size % 32) == 0 {
+                    (size / 32)  * 8
+                }else{
+                    ((size / 32) + 1) * 8
+                };
+                let total = dynamic_cost + ext_cost + 32000;
+                return U256::from(total);
+            },
 
             _ => U256::from(0),
         };
