@@ -332,7 +332,7 @@ impl Gfunction for EVM {
                 return U256::from(total);
             },
 
-            0xf1 => {
+            0xf1 => {       //CALL
                 let child_gas_limit = self.stack[0];
                 let address = self.stack[1];
                 let value = self.stack[2];
@@ -371,6 +371,51 @@ impl Gfunction for EVM {
                 return result;
 
             },
+            
+            0xf2 => {       //CALLCODE
+                let child_gas_limit = self.stack[0];
+                let address = self.stack[1];
+                let value = self.stack[2];
+                let args_offset = self.stack[3].as_usize();
+                let args_size = self.stack[4].as_usize();
+                let ret_offset = self.stack[5].as_usize();
+                let ret_size = self.stack[6].as_usize();
+                //メモリ拡張コスト
+                let args_cost = self.extension_cost(args_offset, args_size);
+                let ret_cost = self.extension_cost(ret_offset, ret_size);
+                let ext_cost = if args_cost > ret_cost {
+                    args_cost
+                }else{
+                    ret_cost
+                };
+                //アドレスのアクセス状態
+                let acc_cost = self.is_account_access(address, substate);
+                //送金とアカウント作成の追加コスト
+                let address = Address::from_u256(address);
+                let mut create_cost = 0usize;
+                if !value.is_zero() {
+                    create_cost += 9000;
+                }
+                let base_cost = ext_cost + acc_cost + create_cost;
+                //サブコールへのガス割当
+                let gr = self.gas - U256::from(base_cost);
+                let gr = gr - ( gr / 64);
+                let mut result = if gr > child_gas_limit {
+                    child_gas_limit
+                }else{
+                    gr};
+                result += U256::from(base_cost);
+                return result;
+
+            },
+
+            0xf3 => {       //RETURN
+                let offset = self.stack[0].as_usize();
+                let size = self.stack[1].as_usize();
+                let ext_cost = self.extension_cost(offset, size);
+                return U256::from(ext_cost);
+            },
+
 
             _ => U256::from(0),
         };
