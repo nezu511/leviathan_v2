@@ -155,7 +155,7 @@ impl Gfunction for EVM {
 
 
 
-    fn gas(&mut self, opcode:u8, substate: &SubState, execution_environment: &ExecutionEnvironment) -> U256 {
+    fn gas(&mut self, opcode:u8, substate: &SubState, state: &WorldState, execution_environment: &ExecutionEnvironment) -> U256 {
         let used_gas = GAS_TABLE[opcode as usize];
         if used_gas != u8::MAX {
             return U256::from(used_gas);
@@ -254,7 +254,6 @@ impl Gfunction for EVM {
                 if key_case.is_none() {
                     U256::from(2100)
                 }else{
-
                     if key_case.unwrap().contains_key(&key) {
                         U256::from(100)
                     }else{
@@ -263,11 +262,48 @@ impl Gfunction for EVM {
                 }
             },
 
-
-
-
-
-
+            0x55 => {       //SSTORE
+                let address = &execution_environment.i_address;
+                let key = self.stack[0];
+                let new_value = self.stack[1];
+                //今現在，スロットに入ってる値
+                let accout = state.0.get(&address);
+                let storage = &accout.unwrap().storage;      //アカウントはevmを動かしてる時点で絶対にある！（addressがi_addressの場合)
+                let value = storage.get(&key);
+                let current_value = value.cloned().unwrap_or(U256::from(0));
+                //トランザクションが始まる前に，入っていた値
+                let mut called_cost = 0usize;
+                let key_case = substate.a_access_storage.get(address);
+                let original_value = if key_case.is_none() {
+                    called_cost = 2100;    //called_cost2100を付加
+                    current_value   
+                }else{
+                    let val1 = key_case.unwrap().get(&key);
+                    if val1.is_none() {
+                        called_cost = 2100;    //called_cost2100を付加
+                        current_value
+                    }else{
+                        val1.unwrap().clone()
+                    }
+                };
+                //Update Costを算出
+                let update_cost = if current_value == new_value {
+                    100
+                }else{
+                    if current_value == original_value{
+                        if original_value == U256::from(0) {
+                            20000
+                        }else{
+                            2900
+                        }
+                    }else{
+                        100
+                    }
+                };
+                //トータルcostを算出
+                let total = update_cost + called_cost;
+                return U256::from(total);
+            },
 
 
             _ => U256::from(0),

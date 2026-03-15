@@ -9,7 +9,7 @@ pub trait Xi {
 
 pub trait Gfunction {
     //返り値は消費ガス量
-    fn gas(&mut self, opcode:u8, substate: &SubState, execution_environment: &ExecutionEnvironment) -> U256 ;
+    fn gas(&mut self, opcode:u8, substate: &SubState, state: &WorldState, execution_environment: &ExecutionEnvironment) -> U256 ;
 
     fn extension_cost(&mut self, offset:usize, size:usize) -> usize ;
 
