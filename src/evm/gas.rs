@@ -233,9 +233,16 @@ impl Gfunction for EVM {
                 return U256::from(total);
             },
 
-            0x51 => {   //MLOAD
+            0x51, 0x52 => {   //MLOAD, MSTORE
                 let offset = self.stack[0].as_usize();
                 let ext_cost = self.extension_cost(offset, 32);
+                let total = 3 + ext_cost;
+                return U256::from(total);
+            },
+
+            0x53 => {        //MSTORE8
+                let offset = self.stack[0].as_usize();
+                let ext_cost = self.extension_cost(offset, 1);
                 let total = 3 + ext_cost;
                 return U256::from(total);
             },
