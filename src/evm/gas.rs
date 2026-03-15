@@ -409,7 +409,7 @@ impl Gfunction for EVM {
 
             },
 
-            0xf3 => {       //RETURN
+            0xf3 | 0xfd => {       //RETURN
                 let offset = self.stack[0].as_usize();
                 let size = self.stack[1].as_usize();
                 let ext_cost = self.extension_cost(offset, size);
@@ -461,6 +461,29 @@ impl Gfunction for EVM {
                 let total = dynamic_cost + ext_cost + 32000;
                 return U256::from(total);
             },
+
+            0xff => {
+                let data = self.stack[0];
+                //送り先のアドレスのアクセス状態
+                let address = Address::from_u256(data);
+                let access_state_cost = if substate.a_access.contains(&address) {
+                    0usize
+                }else{
+                    2600
+                };
+
+                //新規アカウント作成のペナルティ
+                let my_address = &execution_environment.i_address;
+                let accout = state.0.get(my_address);
+                let create_cost = if accout.unwrap().balance > U256::from(0) && state.is_empty(&address) {
+                    25000
+                }else {
+                    0
+                };
+                let total = create_cost + access_state_cost + 5000;
+                return U256::from(total);
+            },
+                
 
             _ => U256::from(0),
         };
