@@ -417,6 +417,38 @@ impl Gfunction for EVM {
             },
 
 
+            0xf4 => {       //DELEGATECALL
+                let child_gas_limit = self.stack[0];
+                let address = self.stack[1];
+                let args_offset = self.stack[2].as_usize();
+                let args_size = self.stack[3].as_usize();
+                let ret_offset = self.stack[4].as_usize();
+                let ret_size = self.stack[5].as_usize();
+                //メモリ拡張コスト
+                let args_cost = self.extension_cost(args_offset, args_size);
+                let ret_cost = self.extension_cost(ret_offset, ret_size);
+                let ext_cost = if args_cost > ret_cost {
+                    args_cost
+                }else{
+                    ret_cost
+                };
+                //アドレスのアクセス状態
+                let acc_cost = self.is_account_access(address, substate);
+
+                let base_cost = ext_cost + acc_cost;
+                //サブコールへのガス割当
+                let gr = self.gas - U256::from(base_cost);
+                let gr = gr - ( gr / 64);
+                let mut result = if gr > child_gas_limit {
+                    child_gas_limit
+                }else{
+                    gr};
+                result += U256::from(base_cost);
+                return result;
+
+            },
+
+
             _ => U256::from(0),
         };
         return used_gas;
