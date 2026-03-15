@@ -3,6 +3,7 @@
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use primitive_types::U256;
 use std::time::SystemTime;
+use std::collections::HashMap;
 
 pub struct SubState {
     pub a_des: Vec<Address>,    //破棄されるアカウント集合
@@ -10,7 +11,7 @@ pub struct SubState {
     pub a_touch: Vec<Address>,  //さわられたアカウントリスト：最後にEmptyのアカウントは消す
     pub a_reimburse: U256,      //ガスの払い戻し
     pub a_access: Vec<Address>, //アクセスされたアカウントリスト：２回目移行のアクセスはガス代割引
-    pub a_access_storage: Vec<(Address,U256)>,  //一度アクセスしたストレージのスロット
+    pub a_access_storage: HashMap<Address, HashMap<U256, U256>>  //一度アクセスしたストレージのスロット
 }
 
 pub struct Log {

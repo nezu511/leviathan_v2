@@ -233,7 +233,7 @@ impl Gfunction for EVM {
                 return U256::from(total);
             },
 
-            0x51, 0x52 => {   //MLOAD, MSTORE
+            0x51 | 0x52 => {   //MLOAD, MSTORE
                 let offset = self.stack[0].as_usize();
                 let ext_cost = self.extension_cost(offset, 32);
                 let total = 3 + ext_cost;
@@ -246,6 +246,24 @@ impl Gfunction for EVM {
                 let total = 3 + ext_cost;
                 return U256::from(total);
             },
+
+            0x54 => {       //SLOAD
+                let address = &execution_environment.i_address;
+                let key = self.stack[0];
+                let key_case = substate.a_access_storage.get(address);
+                if key_case.is_none() {
+                    U256::from(2100)
+                }else{
+
+                    if key_case.unwrap().contains_key(&key) {
+                        U256::from(100)
+                    }else{
+                        U256::from(2100)
+                    }
+                }
+            },
+
+
 
 
 
