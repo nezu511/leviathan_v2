@@ -141,12 +141,16 @@ impl Gfunction for EVM {
         return 0;
     }
 
-    fn is_accout_access(&mut self, data: U256, substate: &SubState) -> bool {
+    fn is_account_access(&mut self, data: U256, substate: &SubState) -> usize {
         let buffer = &data.to_big_endian()[12..32];
         let mut tmp = [0u8;20];
         tmp[0..20].copy_from_slice(&buffer[0..20]);
         let address = Address::new(tmp);
-        substate.a_access.contains(&address) 
+        if substate.a_access.contains(&address) {
+            return 100;
+        }else{
+            return 2600;
+        }
     }
 
 
@@ -193,11 +197,8 @@ impl Gfunction for EVM {
             0x31 => {   //BALANCE
                     //Address型に変換
                     let data = self.stack[0];
-                    if self.is_accout_access(data, substate) {
-                        return U256::from(100);
-                    }else{
-                        return U256::from(2600);
-                    }
+                    let cost = self.is_account_access(data, substate);
+                    return U256::from(cost);
             },
 
             0x37 | 0x39 | 0x3e => {   //CALLDATACOPY, CODECOPY, EXTCODECOPY
@@ -213,6 +214,27 @@ impl Gfunction for EVM {
                 let total = 3 + dynamic_cost + ext_cost;
                 return U256::from(total);
             },
+
+            0x3c => {   //EXTCODECOPY
+                let address = self.stack[0];
+                let offset = self.stack[1].as_usize();
+                let size = self.stack[3].as_usize();
+                //アドレスのアクセス状態
+                let acc_cost = self.is_account_access(address, substate);
+                //メモリの拡張コスト
+                let ext_cost = self.extension_cost(offset, size);
+                //動的コスト
+                let dynamic_cost = if (size % 32) == 0 {
+                    (size / 32)  * 3
+                }else{
+                    ((size / 32) + 1) * 3
+                };
+                let total = acc_cost + ext_cost + dynamic_cost;
+                return U256::from(total);
+            },
+
+
+
 
 
             _ => U256::from(0),
