@@ -194,7 +194,7 @@ impl Gfunction for EVM {
                 return U256::from(total);
             },
 
-            0x31 => {   //BALANCE
+            0x31 | 0x3b | 0x3f => {   //BALANCE
                     //Address型に変換
                     let data = self.stack[0];
                     let cost = self.is_account_access(data, substate);
