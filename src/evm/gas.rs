@@ -362,11 +362,12 @@ impl Gfunction for EVM {
                 let base_cost = ext_cost + acc_cost + create_cost;
                 //サブコールへのガス割当
                 let gr = self.gas - U256::from(base_cost);
-                let gr = gr - ( gr / 63);
-                let result = if gr > child_gas_limit {
+                let gr = gr - ( gr / 64);
+                let mut result = if gr > child_gas_limit {
                     child_gas_limit
                 }else{
                     gr};
+                result += U256::from(base_cost);
                 return result;
 
             },
