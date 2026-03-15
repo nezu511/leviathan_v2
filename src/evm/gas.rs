@@ -305,6 +305,71 @@ impl Gfunction for EVM {
                 return U256::from(total);
             },
 
+            0xa0 ..=0xa4 => {       //LOG0 ~ LOG4
+                let offset = self.stack[0].as_usize();
+                let size = self.stack[1].as_usize();
+                let ext_cost = self.extension_cost(offset, size);
+                //topic cost
+                let topic = opcode - 0xa4;
+                let topic_cost = (topic as usize) * 375;
+                //dynamic_cost
+                let dynamic_cost = size * 8;
+                let total = ext_cost + topic_cost + dynamic_cost + 375;
+                return U256::from(total);
+            },
+
+            0xf0 => {           //CREATE
+                let offset = self.stack[1].as_usize();
+                let size = self.stack[2].as_usize();
+                //拡張コスト
+                let ext_cost = self.extension_cost(offset, size);
+                let dynamic_cost = if (size % 32) == 0 {
+                    (size / 32)  * 2
+                }else{
+                    ((size / 32) + 1) * 2
+                };
+                let total = dynamic_cost + ext_cost + 32000;
+                return U256::from(total);
+            },
+
+            0xf1 => {
+                let child_gas_limit = self.stack[0];
+                let address = self.stack[1];
+                let value = self.stack[2];
+                let args_offset = self.stack[3].as_usize();
+                let args_size = self.stack[4].as_usize();
+                let ret_offset = self.stack[5].as_usize();
+                let ret_size = self.stack[6].as_usize();
+                //メモリ拡張コスト
+                let args_cost = self.extension_cost(args_offset, args_size);
+                let ret_cost = self.extension_cost(ret_offset, ret_size);
+                let ext_cost = if args_cost > ret_cost {
+                    args_cost
+                }else{
+                    ret_cost
+                };
+                //アドレスのアクセス状態
+                let acc_cost = self.is_account_access(address, substate);
+                //送金とアカウント作成の追加コスト
+                let address = Address::from_u256(address);
+                let mut create_cost = 0usize;
+                if !value.is_zero() {
+                    create_cost += 9000;
+                    if state.is_empty(&address){
+                        create_cost += 25000
+                    }
+                }
+                let base_cost = ext_cost + acc_cost + create_cost;
+                //サブコールへのガス割当
+                let gr = self.gas - U256::from(base_cost);
+                let gr = gr - ( gr / 63);
+                let result = if gr > child_gas_limit {
+                    child_gas_limit
+                }else{
+                    gr};
+                return result;
+
+            },
 
             _ => U256::from(0),
         };
