@@ -141,6 +141,15 @@ impl Gfunction for EVM {
         return 0;
     }
 
+    fn is_accout_access(&mut self, data: U256, substate: &SubState) -> bool {
+        let buffer = &data.to_big_endian()[12..32];
+        let mut tmp = [0u8;20];
+        tmp[0..20].copy_from_slice(&buffer[0..20]);
+        let address = Address::new(tmp);
+        substate.a_access.contains(&address) 
+    }
+
+
 
     fn gas(&mut self, opcode:u8, substate: &SubState, execution_environment: &ExecutionEnvironment) -> U256 {
         let used_gas = GAS_TABLE[opcode as usize];
@@ -184,11 +193,7 @@ impl Gfunction for EVM {
             0x31 => {   //BALANCE
                     //Address型に変換
                     let data = self.stack[0];
-                    let buffer = &data.to_big_endian()[12..32];
-                    let mut tmp = [0u8;20];
-                    tmp[0..20].copy_from_slice(&buffer[0..20]);
-                    let address = Address::new(tmp);
-                    if substate.a_access.contains(&address) {
+                    if self.is_accout_access(data, substate) {
                         return U256::from(100);
                     }else{
                         return U256::from(2600);
