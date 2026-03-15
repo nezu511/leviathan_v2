@@ -19,5 +19,5 @@ pub trait Gfunction {
 
 pub trait Zfunction {
     //Z関数による安全性を確認
-    fn is_safe(&mut self, opcode:u8, execution_environment: ExecutionEnvironment) -> bool ;
+    fn is_safe(&mut self, opcode:u8, substate: &SubState, state: &WorldState, execution_environment: ExecutionEnvironment) -> bool ;
 }
