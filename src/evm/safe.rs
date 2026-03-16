@@ -10,7 +10,7 @@ use crate::evm::evm::EVM;
 //push_pop表
 static SAFE_TABLE: [[u8;2];256] = {
     //[pop, push]
-    let mut table = [[0u8;2];256];
+    let mut table = [[u8::MAX;2];256];
 
     // Stop and Arithmetic Operations
     table[0x00] = [0,0];        // STOP
@@ -147,6 +147,22 @@ impl Zfunction for EVM {
         if  self.gas < gas_cost {
             return false;
         }
+
+        //不正な命令の実行確認
+        //SAFE_TABLEの値がu8::MAXは不正
+        let op_info = SAFE_TABLE[opcode as usize];
+        if op_info[0] == u8::MAX {
+            return false;
+        }
+
+        //現在の命令が要求する要素数に対して，スタックの中身は足りるか？
+        let pop_number = op_info[0];
+        if self.stack.len() < pop_number as usize {
+            return false;
+        }
+
+
+
         return true;
     }
 }
