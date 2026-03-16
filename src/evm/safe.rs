@@ -156,23 +156,33 @@ impl Zfunction for EVM {
         }
 
         //現在の命令が要求する要素数に対して，スタックの中身は足りるか？
-        let pop_number = op_info[0];
-        if self.stack.len() < pop_number as usize {
+        let pop_number = op_info[0] as usize;
+        if self.stack.len() < pop_number{
             return false;
         }
 
         //現在の命令を実行すると，スタックサイズが1024を超える
-        let push_number = op_info[1];
-        let stack_size = self.stack.len() + push_number as usize;
+        let push_number = op_info[1] as usize;
+        let stack_size = self.stack.len() + push_number - pop_number;
         if stack_size > 1024 {
             return false;
         }
 
-        //スタックが指定する飛び先の位置が有効か
-        if opcode == 0x56 || opcode == 0x57 {
+        //スタックが指定する飛び先の位置が有効か(JUMP)
+        if opcode == 0x56{
             let distination = self.stack[0].as_usize();
-            if self.safe_jump[distination] != 1 {
+            if distination >= self.safe_jump.len() || self.safe_jump[distination] != 1 {
                 return false;
+            }
+        }
+        //スタックが指定する飛び先の位置が有効か(JUMPI)
+        if opcode == 0x57{
+            let flag = self.stack[1].as_usize();
+            if flag != 0 {
+                let distination = self.stack[0].as_usize();
+                if distination >= self.safe_jump.len() || self.safe_jump[distination] != 1 {
+                    return false;
+                }
             }
         }
 
@@ -182,13 +192,30 @@ impl Zfunction for EVM {
         }
 
         //RETURNDATACOPYに関するルール
-        if opcode == 0x3c {
-            let offset = self.stack[1].as_usize();
-            let size = self.stack[2].as_usize();
-            let required_size = offset + size;
-            if required_size > self.return_back.len() {
+        if opcode == 0x3e {
+            let offset = self.stack[1];
+            let size = self.stack[2];
+            let required_size = offset.saturating_add(size);
+            if required_size > U256::from(self.return_back.len()) {
                 return false;
             }
+        }
+        
+        // 権限の確認が必要か
+        if !execution_environment.i_permission {
+            if opcode == 0x55 ||    //SSTORE
+                opcode == 0xf0 ||   //CREATE
+                    opcode == 0xf5 ||   //CREATE2
+                    opcode == 0xff ||   //SELFDESTRUCT
+                    opcode == 0xa0 ||   //LOG
+                    opcode == 0xa1 ||   //LOG
+                    opcode == 0xa2 ||   //LOG
+                    opcode == 0xa3 ||   //LOG
+                    opcode == 0xa4  {
+                        return false;
+                    }else if  opcode == 0xf1 && !self.stack[2].is_zero() {
+                        return false;
+                    }
         }
 
         return true;
