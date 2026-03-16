@@ -141,9 +141,9 @@ static SAFE_TABLE: [[u8;2];256] = {
 
 impl Zfunction for EVM {
 
-    fn is_safe(&mut self, opcode:u8, substate: &SubState, state: &WorldState, execution_environment: ExecutionEnvironment) -> bool  {
+    fn is_safe(&mut self, opcode:u8, substate: &SubState, state: &WorldState, execution_environment: &ExecutionEnvironment) -> bool  {
         //命令のガスコストと現在の残ガスを比較
-        let gas_cost = self.gas(opcode, substate, state, &execution_environment);
+        let gas_cost = self.gas(opcode, substate, state, execution_environment);
         if  self.gas < gas_cost {
             return false;
         }
