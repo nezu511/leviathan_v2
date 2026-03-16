@@ -14,6 +14,26 @@ impl Ofunction for EVM {
         self.gas - gas_cost;
 
         //プログラムカウンターを進める
+        if opcode == 0x56 { //JUMP
+            self.pc = self.stack.pop().unwrap().as_usize();
+        }else if opcode == 0x57 {
+            let destination = self.stack.pop().unwrap().as_usize();
+            let flag = self.stack.pop().unwrap().as_usize();
+            if flag != 0 {
+                self.pc = destination;
+            }else{
+                self.pc += 1;
+            }
+        }else{
+            match opcode {
+                0x60 ..= 0x7F => { 
+                    self.pc = self.pc + opcode as usize - 0x5E;
+                },
+                _ => self.pc += 1,
+            }
+        }
+
+
     }
 }
 
