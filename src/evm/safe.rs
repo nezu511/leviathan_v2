@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use primitive_types::U256; 
-use crate::my_trait::evm_trait::{Xi, Gfunction};
+use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction};
 use crate::my_trait::leviathan_trait::State;
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
@@ -137,3 +137,17 @@ static SAFE_TABLE: [[u8;2];256] = {
 
     table
 };
+
+
+impl Zfunction for EVM {
+
+    fn is_safe(&mut self, opcode:u8, substate: &SubState, state: &WorldState, execution_environment: ExecutionEnvironment) -> bool  {
+        //命令のガスコストと現在の残ガスを比較
+        let gas_cost = self.gas(opcode, substate, state, &execution_environment);
+        if  self.gas < gas_cost {
+            return false;
+        }
+        return true;
+    }
+}
+
