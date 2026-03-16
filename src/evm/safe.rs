@@ -167,9 +167,29 @@ impl Zfunction for EVM {
         if stack_size > 1024 {
             return false;
         }
-            
 
+        //スタックが指定する飛び先の位置が有効か
+        if opcode == 0x56 || opcode == 0x57 {
+            let distination = self.stack[0].as_usize();
+            if self.safe_jump[distination] != 1 {
+                return false;
+            }
+        }
 
+        //命令がSSTOREで残ガスが2300以下
+        if opcode == 0x55 && self.gas <= U256::from(2300) {
+            return false;
+        }
+
+        //RETURNDATACOPYに関するルール
+        if opcode == 0x3c {
+            let offset = self.stack[1].as_usize();
+            let size = self.stack[2].as_usize();
+            let required_size = offset + size;
+            if required_size > self.return_back.len() {
+                return false;
+            }
+        }
 
         return true;
     }
