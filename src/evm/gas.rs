@@ -2,6 +2,7 @@
 
 use primitive_types::U256; 
 use crate::my_trait::evm_trait::{Xi, Gfunction};
+use crate::my_trait::leviathan_trait::State;
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
 use crate::evm::evm::EVM;
@@ -267,10 +268,7 @@ impl Gfunction for EVM {
                 let key = self.stack[0];
                 let new_value = self.stack[1];
                 //今現在，スロットに入ってる値
-                let accout = state.0.get(&address);
-                let storage = &accout.unwrap().storage;      //アカウントはevmを動かしてる時点で絶対にある！（addressがi_addressの場合)
-                let value = storage.get(&key);
-                let current_value = value.cloned().unwrap_or(U256::from(0));
+                let current_value = state.get_storage_value(&address, &key).unwrap_or(U256::from(0));
                 //トランザクションが始まる前に，入っていた値
                 let mut called_cost = 0usize;
                 let key_case = substate.a_access_storage.get(address);
@@ -474,8 +472,7 @@ impl Gfunction for EVM {
 
                 //新規アカウント作成のペナルティ
                 let my_address = &execution_environment.i_address;
-                let accout = state.0.get(my_address);
-                let create_cost = if accout.unwrap().balance > U256::from(0) && state.is_empty(&address) {
+                let create_cost = if state.get_balance(my_address).unwrap_or(U256::from(0)) > U256::from(0) && state.is_empty(&address) {
                     25000
                 }else {
                     0

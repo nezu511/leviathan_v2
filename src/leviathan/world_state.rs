@@ -6,18 +6,6 @@ use sha3::{Keccak256, Digest};
 
 pub struct WorldState(pub HashMap<Address, Account>);
 
-impl WorldState {
-    pub fn is_empty(&self,address: &Address) -> bool {  //空だとtrue
-        if self.0.contains_key(address) {
-            let account = self.0.get(address).unwrap();
-            if account.nonce != 0 ||  !account.balance.is_zero() || account.code.len() != 0 {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-            
 
 
 #[derive(Debug,Eq, Hash, PartialEq,Clone)]
