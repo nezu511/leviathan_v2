@@ -161,6 +161,14 @@ impl Zfunction for EVM {
             return false;
         }
 
+        //現在の命令を実行すると，スタックサイズが1024を超える
+        let push_number = op_info[1];
+        let stack_size = self.stack.len() + push_number as usize;
+        if stack_size > 1024 {
+            return false;
+        }
+            
+
 
 
         return true;
