@@ -25,10 +25,10 @@ impl Ofunction for EVM {
 
         //プログラムカウンターを進める
         if opcode == 0x56 { //JUMP
-            self.pc = self.stack.pop().unwrap().as_usize();
+            self.pc = self.pop().try_into().unwrap_or(usize::MAX);
         }else if opcode == 0x57 {
-            let destination = self.stack.pop().unwrap().as_usize();
-            let flag = self.stack.pop().unwrap().as_usize();
+            let destination = self.pop().try_into().unwrap_or(usize::MAX);
+            let flag = self.pop().try_into().unwrap_or(usize::MAX);
             if flag != 0 {
                 self.pc = destination;
             }else{
