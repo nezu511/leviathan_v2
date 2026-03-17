@@ -1,6 +1,6 @@
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
-use primitive_types::U256;
+use alloy_primitives::{I256, U256};
 
 
 pub trait Xi {
@@ -11,7 +11,7 @@ pub trait Gfunction {
     //返り値は消費ガス量
     fn gas(&mut self, opcode:u8, substate: &SubState, state: &WorldState, execution_environment: &ExecutionEnvironment) -> U256 ;
 
-    fn extension_cost(&mut self, offset:usize, size:usize) -> usize ;
+    fn extension_cost(&mut self, offset:U256, size:U256) -> U256;
 
     fn is_account_access(&mut self,data: U256, substate: &SubState) -> usize;
 }

@@ -1,6 +1,6 @@
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
-use primitive_types::U256;
+use alloy_primitives::{I256, U256};
 
 pub trait State {
     fn is_empty(&self,address: &Address) -> bool;   //空だとtrue;

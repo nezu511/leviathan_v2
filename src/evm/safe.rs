@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use primitive_types::U256; 
+use alloy_primitives::{I256, U256};
 use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction};
 use crate::my_trait::leviathan_trait::State;
 use crate::leviathan::world_state::{WorldState, Address, Account};

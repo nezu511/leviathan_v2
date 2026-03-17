@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use primitive_types::U256; 
+use alloy_primitives::{I256, U256};
 use crate::my_trait::evm_trait::{Xi, Gfunction};
 use crate::my_trait::leviathan_trait::State;
 use crate::leviathan::world_state::{WorldState, Address, Account};
@@ -127,25 +127,27 @@ static GAS_TABLE: [u8; 256] = {
 };
 
 impl Gfunction for EVM {
-    fn extension_cost(&mut self, offset:usize, size:usize) -> usize {
-        if size != 0 {
-            let required_size = offset + size;
-            let pre_words = self.active_words;
-            let post_words = (required_size + 31) / 32;
+    fn extension_cost(&mut self, offset:U256, size:U256) -> U256 {
+        if !size.is_zero() {
+            let required_size = offset.saturating_add(size);
+            let post_words = required_size.saturating_add(U256::from(31)) / U256::from(32);
+            let pre_words = U256::from(self.active_words);
             if post_words > pre_words {
-                let pre_cost = 3 * pre_words + ((pre_words.pow(2)) / 512);
-                let post_cost = 3 * post_words + ((post_words.pow(2)) / 512);
-                let result = post_cost - pre_cost;
+                let pre_cost = (pre_words * U256::from(3)) + ((pre_words * pre_words) / U256::from(512));
+
+                let post_sq = post_words.saturating_mul(post_words);
+                let post_cost = post_words.saturating_mul(U256::from(3)).saturating_add(post_sq / U256::from(512));
+                let result = post_cost.saturating_sub(pre_cost);
                 return result;
             }
         }
-        return 0;
+        return U256::ZERO;
     }
 
     fn is_account_access(&mut self, data: U256, substate: &SubState) -> usize {
-        let buffer = &data.to_big_endian()[12..32];
+        let buffer:[u8;20] = data.to_be_bytes();
         let mut tmp = [0u8;20];
-        tmp[0..20].copy_from_slice(&buffer[0..20]);
+        tmp.copy_from_slice(&buffer[12..32]);
         let address = Address::new(tmp);
         if substate.a_access.contains(&address) {
             return 100;
@@ -163,26 +165,19 @@ impl Gfunction for EVM {
         }
 
         let used_gas = match opcode {
-            0x0a => {   //EXP
-                let mut exponent = self.stack[1];
-
-                if exponent == U256::from(0) {
-                    U256::from(10)
-                }else{
-                    let bit = exponent.bits();
-                    let byte = if (bit % 8) == 0 {
-                        bit / 8
-                    }else{
-                        (bit / 8) + 1
-                    };
-                    let result = 10 + (byte * 50);
-                    U256::from(result)
-                }
+            0x0a => {   //EXP   OK対応!
+                let exponent = self.stack[1];
+                let bit = exponent.bit_len();
+                let byte = (bit + 7) /8;
+                let byte_u256 = U256::from(byte);
+                let result = byte_u256.saturating_mul(U256::from(50))
+                    .saturating_add(U256::from(10));
+                result
             },
             0x20 => {   //KECCAK256
                 //メモリ拡張コスト
-                let offset = self.stack[0].as_usize();
-                let size = self.stack[1].as_usize();
+                let offset = self.stack[0].try_into().unwrap_or(usize::MAX);
+                let size = self.stack[1].try_into().unwrap_or(usize::MAX);
                 let ext_cost = self.extension_cost(offset, size);
                 //計算の動的コスト
                 let dynamic_cost = if (size % 32) == 0 {

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::leviathan::world_state::{WorldState, Address, Account};
-use primitive_types::U256;
+use alloy_primitives::{I256, U256};
 use std::time::SystemTime;
 use std::collections::HashMap;
 

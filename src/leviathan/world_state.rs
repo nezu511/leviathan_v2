@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use primitive_types::U256;
+use alloy_primitives::{I256, U256};
 use std::collections::HashMap;
 use sha3::{Keccak256, Digest};
 
@@ -17,9 +17,9 @@ impl Address {
     }
 
     pub fn from_u256(data:U256) -> Self{
-        let buffer = &data.to_big_endian()[12..32];
+        let bytes:[u8;20] = data.to_be_bytes();
         let mut tmp = [0u8;20];
-        tmp[0..20].copy_from_slice(&buffer[0..20]);
+        tmp.copy_from_slice(&bytes[12..32]);
         Self (tmp)
     }
 
