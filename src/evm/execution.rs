@@ -8,6 +8,16 @@ use crate::leviathan::structs::{SubState, ExecutionEnvironment};
 use crate::evm::evm::EVM;
 
 impl Ofunction for EVM {
+    
+    fn pop(&mut self) -> U256 {
+        self.stack.pop().unwrap()
+    }
+
+    fn push(&mut self, val:U256) {
+        self.stack.push(val);
+    }
+
+
     fn execution(&mut self, opcode:u8, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment) {
         //ガスを消費
         let gas_cost = self.gas(opcode, substate, state, execution_environment);
@@ -32,6 +42,8 @@ impl Ofunction for EVM {
                 _ => self.pc += 1,
             }
         }
+
+        //Opcode実践
 
 
     }

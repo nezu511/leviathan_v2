@@ -25,5 +25,8 @@ pub trait Zfunction {
 pub trait Ofunction {
     //状態遷移
     fn execution(&mut self, opcode:u8, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment);
+
+    fn pop(&mut self) -> U256;
+    fn push(&mut self, val:U256);
 }
     
