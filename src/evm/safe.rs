@@ -170,16 +170,16 @@ impl Zfunction for EVM {
 
         //スタックが指定する飛び先の位置が有効か(JUMP)
         if opcode == 0x56{
-            let distination = self.stack[0].as_usize();
+            let distination = self.stack[0].try_into().unwrap_or(usize::MAX);
             if distination >= self.safe_jump.len() || self.safe_jump[distination] != 1 {
                 return false;
             }
         }
         //スタックが指定する飛び先の位置が有効か(JUMPI)
         if opcode == 0x57{
-            let flag = self.stack[1].as_usize();
+            let flag = self.stack[1].try_into().unwrap_or(usize::MAX);
             if flag != 0 {
-                let distination = self.stack[0].as_usize();
+                let distination = self.stack[0].try_into().unwrap_or(usize::MAX);
                 if distination >= self.safe_jump.len() || self.safe_jump[distination] != 1 {
                     return false;
                 }
