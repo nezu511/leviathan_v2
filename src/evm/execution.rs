@@ -44,6 +44,31 @@ impl Ofunction for EVM {
         }
 
         //Opcode実践
+        match opcode {
+            0x01 => {       //ADD
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let (result, _) = val1.overflowing_add(val2);
+                self.push(result);
+            },
+
+            0x02 => {       //MUL
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let (result, _) = val1.overflowing_mul(val2);
+                self.push(result);
+            },
+
+            0x03 => {       //SUB
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let (result, _) = val1.overflowing_sub(val2);
+                self.push(result);
+            },
+
+            _ => todo!(),
+        }
+
 
 
     }
