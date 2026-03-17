@@ -13,7 +13,7 @@ pub trait Gfunction {
 
     fn extension_cost(&mut self, offset:U256, size:U256) -> U256;
 
-    fn is_account_access(&mut self,data: U256, substate: &SubState) -> usize;
+    fn is_account_access(&mut self,data: U256, substate: &SubState) -> U256;
 }
 
 

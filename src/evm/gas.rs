@@ -144,15 +144,15 @@ impl Gfunction for EVM {
         return U256::ZERO;
     }
 
-    fn is_account_access(&mut self, data: U256, substate: &SubState) -> usize {
+    fn is_account_access(&mut self, data: U256, substate: &SubState) -> U256 {
         let buffer:[u8;20] = data.to_be_bytes();
         let mut tmp = [0u8;20];
         tmp.copy_from_slice(&buffer[12..32]);
         let address = Address::new(tmp);
         if substate.a_access.contains(&address) {
-            return 100;
+            return U256::from(100);
         }else{
-            return 2600;
+            return U256::from(2600);
         }
     }
 
@@ -176,18 +176,14 @@ impl Gfunction for EVM {
             },
             0x20 => {   //KECCAK256
                 //メモリ拡張コスト
-                let offset = self.stack[0].try_into().unwrap_or(usize::MAX);
-                let size = self.stack[1].try_into().unwrap_or(usize::MAX);
+                let offset = self.stack[0];
+                let size = self.stack[1];
                 let ext_cost = self.extension_cost(offset, size);
                 //計算の動的コスト
-                let dynamic_cost = if (size % 32) == 0 {
-                    (size / 32)  * 6
-                }else{
-                    ((size / 32) + 1) * 6
-                };
-
-                let total = 30 + dynamic_cost + ext_cost;
-                return U256::from(total);
+                let words = size.saturating_add(U256::from(31)) / U256::from(32);
+                let dynamic_cost = words.saturating_mul(U256::from(6));
+                let total = ext_cost.saturating_add(dynamic_cost).saturating_add(U256::from(30));
+                return total;
             },
 
             0x31 | 0x3b | 0x3f => {   //BALANCE
@@ -197,36 +193,29 @@ impl Gfunction for EVM {
                     return U256::from(cost);
             },
 
-            0x37 | 0x39 | 0x3e => {   //CALLDATACOPY, CODECOPY, EXTCODECOPY
-                let offset = self.stack[0].as_usize();
-                let size = self.stack[2].as_usize();
+            0x37 | 0x39 | 0x3e => {   //CALLDATACOPY, CODECOPY, RETURNDATACOPY
+                let offset = self.stack[0];
+                let size = self.stack[2];
                 let ext_cost = self.extension_cost(offset, size);
                 //計算の動的コスト
-                let dynamic_cost = if (size % 32) == 0 {
-                    (size / 32)  * 3
-                }else{
-                    ((size / 32) + 1) * 3
-                };
-                let total = 3 + dynamic_cost + ext_cost;
-                return U256::from(total);
+                let words = size.saturating_add(U256::from(31)) / U256::from(32);
+                let dynamic_cost = words.saturating_mul(U256::from(3));
+                let total = ext_cost.saturating_add(dynamic_cost).saturating_add(U256::from(3));
+                return total;
             },
 
             0x3c => {   //EXTCODECOPY
                 let address = self.stack[0];
-                let offset = self.stack[1].as_usize();
-                let size = self.stack[3].as_usize();
+                let offset = self.stack[1];
+                let size = self.stack[3];
                 //アドレスのアクセス状態
                 let acc_cost = self.is_account_access(address, substate);
                 //メモリの拡張コスト
                 let ext_cost = self.extension_cost(offset, size);
-                //動的コスト
-                let dynamic_cost = if (size % 32) == 0 {
-                    (size / 32)  * 3
-                }else{
-                    ((size / 32) + 1) * 3
-                };
-                let total = acc_cost + ext_cost + dynamic_cost;
-                return U256::from(total);
+                let words = size.saturating_add(U256::from(31)) / U256::from(32);
+                let dynamic_cost = words.saturating_mul(U256::from(3));
+                let total = acc_cost.saturating_add(ext_cost).saturating_add(dynamic_cost);
+                return total;
             },
 
             0x51 | 0x52 => {   //MLOAD, MSTORE
