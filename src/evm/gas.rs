@@ -288,69 +288,71 @@ impl Gfunction for EVM {
             },
 
             0xa0 ..=0xa4 => {       //LOG0 ~ LOG4
-                let offset = self.stack[0].as_usize();
-                let size = self.stack[1].as_usize();
+                let offset = self.stack[0];
+                let size = self.stack[1];
                 let ext_cost = self.extension_cost(offset, size);
                 //topic cost
-                let topic = opcode - 0xa4;
-                let topic_cost = (topic as usize) * 375;
+                let topic = opcode - 0xa0;
+                let topic_cost = U256::from(topic).saturating_mul(U256::from(375));
                 //dynamic_cost
-                let dynamic_cost = size * 8;
-                let total = ext_cost + topic_cost + dynamic_cost + 375;
-                return U256::from(total);
+                let dynamic_cost = size.saturating_mul(U256::from(8));
+                let total = ext_cost.saturating_add(topic_cost).saturating_add(dynamic_cost).saturating_add(U256::from(375));
+                return total;
             },
 
             0xf0 => {           //CREATE
-                let offset = self.stack[1].as_usize();
-                let size = self.stack[2].as_usize();
+                let offset = self.stack[1];
+                let size = self.stack[2];
                 //拡張コスト
                 let ext_cost = self.extension_cost(offset, size);
-                let dynamic_cost = if (size % 32) == 0 {
-                    (size / 32)  * 2
-                }else{
-                    ((size / 32) + 1) * 2
-                };
-                let total = dynamic_cost + ext_cost + 32000;
-                return U256::from(total);
+                let words = size.saturating_add(U256::from(31)) / U256::from(32);
+                let dynamic_cost = words.saturating_mul(U256::from(2));
+                let total = dynamic_cost.saturating_add(ext_cost).saturating_add(U256::from(32000));
+                return total;
             },
 
             0xf1 => {       //CALL
                 let child_gas_limit = self.stack[0];
                 let address = self.stack[1];
                 let value = self.stack[2];
-                let args_offset = self.stack[3].as_usize();
-                let args_size = self.stack[4].as_usize();
-                let ret_offset = self.stack[5].as_usize();
-                let ret_size = self.stack[6].as_usize();
+                let args_offset = self.stack[3];
+                let args_size = self.stack[4];
+                let ret_offset = self.stack[5];
+                let ret_size = self.stack[6];
                 //メモリ拡張コスト
-                let args_cost = self.extension_cost(args_offset, args_size);
-                let ret_cost = self.extension_cost(ret_offset, ret_size);
-                let ext_cost = if args_cost > ret_cost {
-                    args_cost
-                }else{
-                    ret_cost
+                let args_end = if args_size.is_zero() { 
+                    U256::ZERO 
+                } else { 
+                    args_offset.saturating_add(args_size) 
                 };
+
+                let ret_end = if ret_size.is_zero() { 
+                    U256::ZERO 
+                } else { 
+                    ret_offset.saturating_add(ret_size) 
+                };
+                let max_end = args_end.max(ret_end);
+                let ext_cost = self.extension_cost(U256::ZERO, max_end);
                 //アドレスのアクセス状態
                 let acc_cost = self.is_account_access(address, substate);
                 //送金とアカウント作成の追加コスト
                 let address = Address::from_u256(address);
-                let mut create_cost = 0usize;
+                let mut create_cost = U256::ZERO;
                 if !value.is_zero() {
-                    create_cost += 9000;
+                    create_cost = create_cost.saturating_add(U256::from(9000));
                     if state.is_empty(&address){
-                        create_cost += 25000
+                        create_cost = create_cost.saturating_add(U256::from(25000));
                     }
                 }
-                let base_cost = ext_cost + acc_cost + create_cost;
+                let base_cost = ext_cost.saturating_add(acc_cost).saturating_add(create_cost);
                 //サブコールへのガス割当
-                let gr = self.gas - U256::from(base_cost);
-                let gr = gr - ( gr / 64);
+                let gr = self.gas - base_cost;
+                let gr = gr - ( gr / U256::from(64));
                 let mut result = if gr > child_gas_limit {
                     child_gas_limit
                 }else{
                     gr};
-                result += U256::from(base_cost);
-                return result;
+                return result.saturating_add(base_cost);
 
             },
             
@@ -358,36 +360,41 @@ impl Gfunction for EVM {
                 let child_gas_limit = self.stack[0];
                 let address = self.stack[1];
                 let value = self.stack[2];
-                let args_offset = self.stack[3].as_usize();
-                let args_size = self.stack[4].as_usize();
-                let ret_offset = self.stack[5].as_usize();
-                let ret_size = self.stack[6].as_usize();
+                let args_offset = self.stack[3];
+                let args_size = self.stack[4];
+                let ret_offset = self.stack[5];
+                let ret_size = self.stack[6];
                 //メモリ拡張コスト
-                let args_cost = self.extension_cost(args_offset, args_size);
-                let ret_cost = self.extension_cost(ret_offset, ret_size);
-                let ext_cost = if args_cost > ret_cost {
-                    args_cost
-                }else{
-                    ret_cost
+                let args_end = if args_size.is_zero() { 
+                    U256::ZERO 
+                } else { 
+                    args_offset.saturating_add(args_size) 
                 };
+
+                let ret_end = if ret_size.is_zero() { 
+                    U256::ZERO 
+                } else { 
+                    ret_offset.saturating_add(ret_size) 
+                };
+                let max_end = args_end.max(ret_end);
+                let ext_cost = self.extension_cost(U256::ZERO, max_end);
                 //アドレスのアクセス状態
                 let acc_cost = self.is_account_access(address, substate);
                 //送金とアカウント作成の追加コスト
                 let address = Address::from_u256(address);
-                let mut create_cost = 0usize;
+                let mut create_cost = U256::from(0);
                 if !value.is_zero() {
-                    create_cost += 9000;
+                    create_cost = create_cost.saturating_add(U256::from(9000));
                 }
-                let base_cost = ext_cost + acc_cost + create_cost;
+                let base_cost = ext_cost.saturating_add(acc_cost).saturating_add(create_cost);
                 //サブコールへのガス割当
-                let gr = self.gas - U256::from(base_cost);
-                let gr = gr - ( gr / 64);
+                let gr = self.gas - base_cost;
+                let gr = gr - ( gr / U256::from(64));
                 let mut result = if gr > child_gas_limit {
                     child_gas_limit
                 }else{
                     gr};
-                result += U256::from(base_cost);
-                return result;
+                return result.saturating_add(base_cost);
 
             },
 
