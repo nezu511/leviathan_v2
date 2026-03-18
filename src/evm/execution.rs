@@ -349,24 +349,64 @@ impl Ofunction for EVM {
                 self.push(val);
             },
 
-            0x34 => {
+            0x34 => {       //CALLVALUE
                 let val = execution_environment.i_value;
                 self.push(val);
             },
+
+            0x35 => {       //CALLDATALOAD
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let data = &execution_environment.i_data;
+                let required_size = offset.saturating_add(32);
+                let mut buffer = [0u8; 32];
+                if offset >= data.len() {
+                    self.push(U256::ZERO)
+                }else if required_size > data.len() {
+                    buffer[..data.len() - offset].copy_from_slice(&data[offset .. data.len()]);
+                }else{
+                    buffer[..].copy_from_slice(&data[offset .. required_size]);
+                }
+                let val = U256::from_be_bytes(buffer);
+                self.push(val);
+            },
+
+            0x36 => {       //CALLDATASIZE
+                let data = &execution_environment.i_data;
+                self.push(U256::from(data.len()));
+            },
+
+            0x37 => {       //CALLDATACOPY
+                let data = &execution_environment.i_data;
+                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //メモリ拡張
+                if size != 0 {
+                    let required_size = dest_offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = (required_size.saturating_add(31))/32;
+                        self.memory.resize(words * 32, 0);
+                    }
+                    //メモリに値を書き込む
+                    let read_size = offset.saturating_add(size);
+                    if offset <= data.len() {
+                        if read_size > data.len() {
+                            let copy_len =  data.len() - offset;
+                            self.memory[dest_offset .. dest_offset + copy_len].copy_from_slice(&data[offset .. data.len()]);
+                        }else{
+                            self.memory[dest_offset .. required_size].copy_from_slice(&data[offset .. read_size]);
+                        }
+                    }
+                }
+            },
+
+
+
+
+
+
+
                 
-
-
-
-
-
-                    
-
-
-
-
-
-
-
 
 
 
