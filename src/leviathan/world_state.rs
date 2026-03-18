@@ -17,10 +17,17 @@ impl Address {
     }
 
     pub fn from_u256(data:U256) -> Self{
-        let bytes:[u8;20] = data.to_be_bytes();
+        let bytes:[u8;32] = data.to_be_bytes();
         let mut tmp = [0u8;20];
         tmp.copy_from_slice(&bytes[12..32]);
         Self (tmp)
+    }
+
+    pub fn to_u256(&self) -> U256 {
+        let mut tmp = [0u8; 32];
+        tmp[12..32].copy_from_slice(&self.0);
+        let val = U256::from_be_bytes(tmp);
+        return val
     }
 
 }

@@ -145,7 +145,7 @@ impl Gfunction for EVM {
     }
 
     fn is_account_access(&mut self, data: U256, substate: &SubState) -> U256 {
-        let buffer:[u8;20] = data.to_be_bytes();
+        let buffer:[u8;32] = data.to_be_bytes();
         let mut tmp = [0u8;20];
         tmp.copy_from_slice(&buffer[12..32]);
         let address = Address::new(tmp);

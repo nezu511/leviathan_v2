@@ -320,6 +320,14 @@ impl Ofunction for EVM {
                 let val = U256::from_be_bytes(result);
                 self.push(val);
             },
+
+            0x30 => {       //ADDRESS
+                let address = &execution_environment.i_address;
+                let val = address.to_u256();
+                self.push(val);
+            },
+
+
                     
 
 
