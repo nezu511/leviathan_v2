@@ -190,6 +190,39 @@ impl Ofunction for EVM {
                 self.push(result);
             }
 
+            0x13 => {       //SGT
+                let val1 = I256::from_raw(self.pop());
+                let val2 = I256::from_raw(self.pop());
+                let result = if val1 > val2 {
+                    U256::from(1)
+                }else{
+                    U256::ZERO
+                };
+                self.push(result);
+            },
+
+            0x14 => {       //EQ
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = if val1 == val2 {
+                    U256::from(1)
+                }else{
+                    U256::ZERO
+                };
+                self.push(result);
+            },
+
+            0x15 => {       //ISZERO
+                let val1 = self.pop();
+                let result = if val1 == U256::ZERO {
+                    U256::from(1)
+                }else{
+                    U256::ZERO
+                };
+                self.push(result);
+            },
+
+
 
 
 
