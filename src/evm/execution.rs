@@ -128,6 +128,40 @@ impl Ofunction for EVM {
                 self.push(result);
             },
 
+            0x0a => {   //EXP
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.wrapping_pow(val2);
+                self.push(result);
+            },
+
+            0x0b => {   
+                let b = self.pop();
+                let x = self.pop();
+                if b >= U256::from(31) {
+                    self.push(x);
+                }else{
+                    let b_usize:usize = b.try_into().unwrap();
+
+                    let sign_bit_index = (b_usize * 8) +7;
+                    let shift_amount = (b_usize + 1) * 8;
+                    let mask:U256 = U256::MAX << shift_amount;
+
+                    if x.bit(sign_bit_index) {
+                        let result = x | mask;
+                        self.push(result);
+                    }else{
+                        let result = x & !mask;
+                        self.push(result);
+                    }
+                }
+            },
+
+
+
+
+
+
 
 
 
