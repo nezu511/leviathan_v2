@@ -222,14 +222,31 @@ impl Ofunction for EVM {
                 self.push(result);
             },
 
+            0x16 => {       //AND
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.bitand(val2);
+                self.push(result);
+            },
 
+            0x17 => {       //OR
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.bitor(val2);
+                self.push(result);
+            },
 
+            0x18 => {       //XOR
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.bitxor(val2);
+                self.push(result);
+            },
 
-
-
-
-
-
+            0x19 => {       //NOT
+                let val1 = self.pop();
+                self.push(!val1);
+            },
 
 
 
