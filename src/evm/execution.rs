@@ -6,6 +6,7 @@ use crate::my_trait::leviathan_trait::State;
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
 use crate::evm::evm::EVM;
+use sha3::{Keccak256, Digest};
 
 impl Ofunction for EVM {
     
@@ -247,6 +248,87 @@ impl Ofunction for EVM {
                 let val1 = self.pop();
                 self.push(!val1);
             },
+
+            0x1a => {       //BYTE
+                let val1 = self.pop();
+                let val2 = self.pop();
+                if val1 >= U256::from(32) {
+                    self.push(U256::ZERO);
+                }else{
+                    let val1_usize:usize = val1.try_into().unwrap();
+                    let data:[u8;32] = val2.to_be_bytes();
+                    let result:u8 = data[val1_usize];
+                    self.push(U256::from(result));
+                }
+            },
+
+            0x1b => {       //SHL
+                let val1 = self.pop().try_into().unwrap_or(usize::MAX);
+                let val2 = self.pop();
+                if val1 >= 256 {
+                    self.push(U256::ZERO);
+                }else{
+                    let result = val2 << val1;
+                    self.push(result);
+                }
+            },
+
+            0x1c => {       //SHR
+                let val1 = self.pop().try_into().unwrap_or(usize::MAX);
+                let val2 = self.pop();
+                if val1 >= 256 {
+                    self.push(U256::ZERO);
+                }else{
+                    let result = val2 >> val1;
+                    self.push(result);
+                }
+            },
+
+            0x1d => {       //SAR
+                let val1 = self.pop().try_into().unwrap_or(usize::MAX);
+                let val2 = I256::from_raw(self.pop());
+                if val1 >= 256 {
+                    if val2 >= I256::ZERO {
+                        self.push(U256::ZERO);
+                    }else if val2 < I256::ZERO{
+                        self.push(I256::MINUS_ONE.into_raw());
+                    }
+                }else{
+                    let result = val2.asr(val1);
+                    self.push(result.into_raw());
+                }
+            },
+
+            0x20 => {       //KECCAK256
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+
+                let slice = if size == 0 {
+                    &[0u8;0]
+                }else{
+                    let required_size = offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = (required_size.saturating_add(31))/32;
+                        self.memory.resize(words * 32, 0);
+                    }
+                    &self.memory[offset .. required_size]
+                };
+                //keccak256準備
+                let mut hasher = Keccak256::new();
+                hasher.update(slice);
+                let result = hasher.finalize().try_into().unwrap();
+                let val = U256::from_be_bytes(result);
+                self.push(val);
+            },
+                    
+
+
+
+
+
+
+
+
 
 
 

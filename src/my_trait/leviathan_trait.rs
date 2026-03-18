@@ -12,3 +12,12 @@ pub trait State {
     fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256>;
 }
 
+pub trait TransactionExecution {
+    // fn execution() -> WorldState;
+    //
+    // fn contract_creation() -> Result<(WorldState), (WorldState)>;
+    //
+    // fn message_call() -> Result<(WorldState), (WorldState)>;      
+    //
+    // fn role_back();      contract_creationもしくはmessage_callの返り値が失敗なら発動！！
+}
