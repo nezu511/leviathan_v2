@@ -400,6 +400,41 @@ impl Ofunction for EVM {
                 }
             },
 
+            0x38 => {       //CODESIZE
+                let size = execution_environment.i_byte.len();
+                self.push(U256::from(size));
+            },
+
+            0x39 => {       //CODECOPY
+                let data = &execution_environment.i_byte;
+                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //メモリ拡張
+                if size != 0 {
+                    let required_size = dest_offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = (required_size.saturating_add(31))/32;
+                        self.memory.resize(words * 32, 0);
+                    }
+                    //メモリに値を書き込む
+                    let read_size = offset.saturating_add(size);
+                    if offset <= data.len() {
+                        if read_size > data.len() {
+                            let copy_len =  data.len() - offset;
+                            self.memory[dest_offset .. dest_offset + copy_len].copy_from_slice(&data[offset .. data.len()]);
+                        }else{
+                            self.memory[dest_offset .. required_size].copy_from_slice(&data[offset .. read_size]);
+                        }
+                    }
+                }
+            },
+
+            0x3a => {       //GASPRICE
+                let price = execution_environment.i_gas_price;
+                self.push(price);
+            },
+
 
 
 
