@@ -327,6 +327,37 @@ impl Ofunction for EVM {
                 self.push(val);
             },
 
+            0x31 => {       //BALANCE
+                let val1 = self.pop();
+                let address = Address::from_u256(val1);
+                let balance = state.get_balance(&address);
+                match balance {
+                    Some(x) => self.push(x),
+                    None => self.push(U256::ZERO),
+                }
+            },
+
+            0x32 => {       //ORIGIN
+                let address = &execution_environment.i_origin;
+                let val = address.to_u256();
+                self.push(val);
+            },
+
+            0x33 => {       //CALLER
+                let address = &execution_environment.i_sender;
+                let val = address.to_u256();
+                self.push(val);
+            },
+
+            0x34 => {
+                let val = execution_environment.i_value;
+                self.push(val);
+            },
+                
+
+
+
+
 
                     
 
