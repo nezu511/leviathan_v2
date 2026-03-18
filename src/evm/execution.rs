@@ -435,6 +435,57 @@ impl Ofunction for EVM {
                 self.push(price);
             },
 
+            0x3b => {       //EXTCODESIZE
+                let val1 = self.pop();
+                let address = Address::from_u256(val1);
+                let result = state.get_code(&address);
+                match result {
+                    Some(x) => self.push(U256::from(x.len())),
+                    None => self.push(U256::ZERO),
+                }
+            },
+
+            0x3c => {       //EXTCODECOPY
+                let val1 = self.pop();
+                let address = Address::from_u256(val1);
+                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);      //メモリ
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //コード取得
+                let result = state.get_code(&address);
+                let code = match result {
+                    Some(x) => x,
+                    None => Vec::<u8>::new(),
+                };
+                //メモリ拡張
+                if size != 0 {
+                    let required_size = dest_offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = (required_size.saturating_add(31))/32;
+                        self.memory.resize(words * 32, 0);
+                    }
+                    //メモリに値を書き込む
+                    let read_size = offset.saturating_add(size);
+                    if offset <= code.len() {
+                        if read_size > code.len() {
+                            let copy_len =  code.len() - offset;
+                            self.memory[dest_offset .. dest_offset + copy_len].copy_from_slice(&code[offset .. code.len()]);
+                        }else{
+                            self.memory[dest_offset .. required_size].copy_from_slice(&code[offset .. read_size]);
+                        }
+                    }
+                }
+            },
+
+            0x3d => {   //RETURNDATASIZE
+                let size = self.return_back.len();
+                self.push(U256::from(size));
+            },
+
+
+
+
+
 
 
 
