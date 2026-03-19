@@ -477,12 +477,12 @@ impl Ofunction for EVM {
                 }
             },
 
-            0x3d => {   //RETURNDATASIZE
+            0x3d => {       //RETURNDATASIZE
                 let size = self.return_back.len();
                 self.push(U256::from(size));
             },
 
-            0x3e => {
+            0x3e => {       //RETURNDATACOPY
                 let data = self.return_back.clone();
                 let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
                 let offset = self.pop().try_into().unwrap_or(usize::MAX);
@@ -500,18 +500,26 @@ impl Ofunction for EVM {
                 }
             },
 
+            0x3f => {       //EXTCODEHASH
+                let data = self.pop();
+                let address = Address::from_u256(data);
+                //コード取得
+                let result = state.get_code(&address);
+                match result {
+                    Some(x) => {
+                        let mut hasher = Keccak256::new();
+                        hasher.update(x);
+                        let result = hasher.finalize().try_into().unwrap();
+                        let val = U256::from_be_bytes(result);
+                        self.push(val);
+                    },
+                    None => self.push(U256::ZERO),
+                }
+            },
 
 
 
 
-
-
-
-
-
-
-
-                
 
 
 
