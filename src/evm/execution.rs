@@ -578,16 +578,45 @@ impl Ofunction for EVM {
                 self.push(val);
             },
 
+            0x51 => {   //MLOAD メモリから読み込む（32B)
+                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
+                let required_size = pointer.saturating_add(32);
+                if required_size > self.memory.len() {
+                    let words = required_size.saturating_add(31) / 32;
+                    self.memory.resize(words.saturating_mul(32), 0);
+                }
+                let slice = &self.memory[pointer .. required_size];
+                let mut tmp = [0u8; 32];
+                tmp[..].copy_from_slice(slice);
+                let val = U256::from_be_bytes(tmp);
+                self.push(val);
+            },
 
-                
+            0x52 => {   //MSTORE メモリに保存(32)
+                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
+                let data = self.pop();
+                let required_size = pointer.saturating_add(32);
+                if required_size > self.memory.len() {
+                    let words = required_size.saturating_add(31) / 32;
+                    self.memory.resize(words.saturating_mul(32), 0);
+                }
+                let slice = &mut self.memory[pointer .. required_size];
+                let bytes:[u8;32] = data.to_be_bytes();
+                slice.copy_from_slice(&bytes);
+            },
 
-
-
-
-
-
-
-
+            0x53 => {   //MSTORE8
+                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
+                let data = self.pop();
+                let required_size = pointer.saturating_add(1);
+                if required_size > self.memory.len() {
+                    let words = required_size.saturating_add(31) / 32;
+                    self.memory.resize(words.saturating_mul(32), 0);
+                }
+                let slice = &mut self.memory[pointer..required_size];
+                let bytes:[u8;32] = data.to_be_bytes();
+                slice.copy_from_slice(&bytes[31..32]);
+            },
 
 
 
