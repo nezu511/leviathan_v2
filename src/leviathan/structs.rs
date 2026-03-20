@@ -34,10 +34,10 @@ pub struct ExecutionEnvironment {
 }
 
 pub struct BlockHeader {
-    h_beneficiary: Address,     //ブロックの優先手数料を受け取るアドレス
-    h_timestamp: SystemTime,    //ブロック生成時の妥当なUnixスタンプ:
-    h_number: U256,             //ブロックnumber
-    h_prevrandao: U256,         //前のブロックbいー今ステートから提供される乱数生成用の値
-    h_gaslimit: U256,           //ブロック全体のガス上限
-    h_basefee: U256,            //消費されたガス１単位あたりにバーンされるお金
+    pub h_beneficiary: Address,     //ブロックの優先手数料を受け取るアドレス
+    pub h_timestamp: U256,          //ブロック生成時の妥当なUnixスタンプ:
+    pub h_number: U256,             //ブロックnumber
+    pub h_prevrandao: U256,         //前のブロックbいー今ステートから提供される乱数生成用の値
+    pub h_gaslimit: U256,           //ブロック全体のガス上限
+    pub h_basefee: U256,            //消費されたガス１単位あたりにバーンされるお金
 }

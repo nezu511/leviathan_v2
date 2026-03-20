@@ -517,6 +517,73 @@ impl Ofunction for EVM {
                 }
             },
 
+            0x40 => {       //BLOCKHASH
+                let header = &execution_environment.i_block_header;
+                let num = self.pop();
+                let my_num = header.h_number;
+                if num > my_num.saturating_sub(U256::from(256)) {
+                    //この場合はそのブロックのハッシュ値を返す
+                }else{
+                    self.push(U256::ZERO);
+                }
+            },
+
+            0x41 => {       //COINBASE
+                let header = &execution_environment.i_block_header;
+                let address = &header.h_beneficiary;
+                let val = address.to_u256();
+                self.push(val);
+            },
+
+            0x42 => {       //TIMESTAMP
+                let header = &execution_environment.i_block_header;
+                let val = header.h_timestamp;
+                self.push(val);
+            },
+
+            0x43 => {       //NUMBER
+                let header = &execution_environment.i_block_header;
+                let my_num = header.h_number;
+                self.push(my_num);
+            },
+
+            0x44 => {       //PREVRANDAO
+                let header = &execution_environment.i_block_header;
+                let val = header.h_prevrandao;
+                self.push(val);
+            }, 
+
+            0x45 => {       //GASLIMIT
+                let header = &execution_environment.i_block_header;
+                let val = header.h_gaslimit;
+                self.push(val);
+            },
+
+            0x46 => {       //CHAINID 未実装
+                self.push(U256::from(1));
+            },
+
+            0x47 => {       //SELFBALANSE
+                let address = &execution_environment.i_address;
+                let balance = state.get_balance(address);
+                match balance {
+                    Some(x) => self.push(x),
+                    None => self.push(U256::ZERO),
+                }
+            },
+
+            0x48 => {
+                let header = &execution_environment.i_block_header;
+                let val = header.h_basefee;
+                self.push(val);
+            },
+
+
+                
+
+
+
+
 
 
 
