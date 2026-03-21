@@ -733,7 +733,7 @@ impl Ofunction for EVM {
             }
 
             0x90 ..=0x9f =>{        //SWAP
-                let n = opcode as usize - 0x90;
+                let n = opcode as usize - 0x90 + 1;
                 let top = self.stack.len() - 1;
                 let target = self.stack.len() -1 -n;
                 self.stack.swap(top, target);
