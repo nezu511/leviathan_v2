@@ -335,6 +335,10 @@ impl Ofunction for EVM {
                     Some(x) => self.push(x),
                     None => self.push(U256::ZERO),
                 }
+                //SubStateの更新
+                if !substate.a_access.contains(&address) {
+                    substate.a_access.push(address.clone())
+                }
             },
 
             0x32 => {       //ORIGIN
@@ -443,6 +447,10 @@ impl Ofunction for EVM {
                     Some(x) => self.push(U256::from(x.len())),
                     None => self.push(U256::ZERO),
                 }
+                //SubStateの更新
+                if !substate.a_access.contains(&address) {
+                    substate.a_access.push(address.clone())
+                }
             },
 
             0x3c => {       //EXTCODECOPY
@@ -474,6 +482,10 @@ impl Ofunction for EVM {
                             self.memory[dest_offset .. required_size].copy_from_slice(&code[offset .. read_size]);
                         }
                     }
+                }
+                //SubStateの更新
+                if !substate.a_access.contains(&address) {
+                    substate.a_access.push(address.clone())
                 }
             },
 
@@ -514,6 +526,10 @@ impl Ofunction for EVM {
                         self.push(val);
                     },
                     None => self.push(U256::ZERO),
+                }
+               //SubStateの更新
+                if !substate.a_access.contains(&address) {
+                    substate.a_access.push(address.clone())
                 }
             },
 
@@ -572,13 +588,13 @@ impl Ofunction for EVM {
                 }
             },
 
-            0x48 => {
+            0x48 => {       //BASEFEE
                 let header = &execution_environment.i_block_header;
                 let val = header.h_basefee;
                 self.push(val);
             },
 
-            0x51 => {   //MLOAD メモリから読み込む（32B)
+            0x51 => {       //MLOAD メモリから読み込む（32B)
                 let pointer = self.pop().try_into().unwrap_or(usize::MAX);
                 let required_size = pointer.saturating_add(32);
                 if required_size > self.memory.len() {
@@ -592,7 +608,7 @@ impl Ofunction for EVM {
                 self.push(val);
             },
 
-            0x52 => {   //MSTORE メモリに保存(32)
+            0x52 => {       //MSTORE メモリに保存(32)
                 let pointer = self.pop().try_into().unwrap_or(usize::MAX);
                 let data = self.pop();
                 let required_size = pointer.saturating_add(32);
@@ -605,7 +621,7 @@ impl Ofunction for EVM {
                 slice.copy_from_slice(&bytes);
             },
 
-            0x53 => {   //MSTORE8
+            0x53 => {       //MSTORE8
                 let pointer = self.pop().try_into().unwrap_or(usize::MAX);
                 let data = self.pop();
                 let required_size = pointer.saturating_add(1);
@@ -617,6 +633,65 @@ impl Ofunction for EVM {
                 let bytes:[u8;32] = data.to_be_bytes();
                 slice.copy_from_slice(&bytes[31..32]);
             },
+
+            0x54 => {       //SLOAD
+                let key:U256 = self.pop();
+                let address = &execution_environment.i_address;
+                let value = state.get_storage_value(address, &key);
+                //アクセス済みストレージキーリストの追加
+                substate.a_access_storage.entry(address.clone()).or_default().entry(key).or_insert(value.unwrap_or(U256::ZERO));
+                match value {
+                    Some(x) => self.push(x),
+                    None => self.push(U256::ZERO),
+                }
+            },
+
+            0x55 => {       //SSTORE
+                let key = self.pop();
+                let value = self.pop();
+                let address = &execution_environment.i_address;
+                //トランザクションが始まったときの一番最初の値を記録する
+                let pre_value = state.get_storage_value(address, &key).unwrap_or(U256::ZERO);
+                substate.a_access_storage.entry(address.clone()).or_default().entry(key).or_insert(pre_value);
+                let val0 = substate.a_access_storage.get(&address).unwrap().get(&key).cloned().unwrap();
+
+                let pre_value = state.get_storage_value(address, &key).unwrap();
+                if pre_value.is_zero() {        //キーが見つかるか
+                    //新規書き込み
+                    state.set_storage(address, key, value);
+                }else{
+                    //既存の書き込み
+                    if value.is_zero() {
+                        //データを削除
+                        state.remove_storage(address, key);
+                        substate.a_reimburse += 4800;
+                    }else{
+                        if pre_value == value {
+                            //同じ値の書き込み
+
+                        }else{
+                            state.set_storage(address, key, value);
+                            //払い戻し
+                            if val0 == value {
+                                if val0.is_zero() {
+                                    substate.a_reimburse += 19900;
+                                }else{
+                                    if pre_value.is_zero() && !value.is_zero() {
+                                        substate.a_reimburse += -4800;
+                                    }else{
+                                        substate.a_reimburse += 2800;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                    
+            },
+
+
+
+
 
 
 

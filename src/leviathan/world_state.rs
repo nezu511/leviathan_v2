@@ -39,3 +39,10 @@ pub struct Account {
     pub code: Vec<u8>,
 }
 
+
+impl Account {
+    pub fn new() -> Self {
+        Self { nonce:0u32, balance:U256::ZERO, storage:HashMap::new(), code:Vec::new()}
+    }
+}
+

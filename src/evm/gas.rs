@@ -398,7 +398,7 @@ impl Gfunction for EVM {
 
             },
 
-            0xf3 | 0xfd => {       //RETURN
+           0xf3 | 0xfd => {       //RETURN
                 let offset = self.stack[0];
                 let size = self.stack[1];
                 let ext_cost = self.extension_cost(offset, size);

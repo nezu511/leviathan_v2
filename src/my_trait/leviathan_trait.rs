@@ -10,6 +10,20 @@ pub trait State {
     fn get_code(&self, address: &Address) -> Option<Vec<u8>>;
 
     fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256>;
+    
+    // 書き込み系
+    fn set_balance(&mut self, address: &Address, value:U256);
+
+    fn inc_nonce(&mut self, address: &Address);
+
+    fn set_storage(&mut self, address: &Address, key: U256, value: U256);
+
+    fn set_code(&mut self, address: &Address, code: Vec<u8>);
+    
+    fn remove_storage(&mut self, address: &Address, key:U256) ;
+
+    //fn delete_account(&mut self, address: &Address);
+
 }
 
 pub trait TransactionExecution {

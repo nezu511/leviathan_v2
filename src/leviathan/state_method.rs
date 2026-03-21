@@ -45,6 +45,56 @@ impl State for WorldState {
         let value = storage.get(&key);
         return Some(value.cloned().unwrap_or(U256::from(0)));
     }
+
+    fn set_balance(&mut self,address: &Address, value:U256) {
+        let account = self.0.get_mut(&address);
+        match account {
+            Some(x) => {
+                x.balance += value;
+            },
+            None => {
+                //アカウントを作成
+                self.0.insert(address.clone(), Account::new());
+                let account = self.0.get_mut(&address).unwrap();
+                account.balance = value;
+            },
+        }
+    }
+
+
+
+    fn inc_nonce(&mut self, address: &Address) {
+        let account = self.0.get_mut(&address);
+        match account {
+            Some(x) => {
+                x.nonce += 1;
+            },
+            None => {
+                //アカウントを作成
+                self.0.insert(address.clone(), Account::new());
+                let account = self.0.get_mut(&address).unwrap();
+                account.nonce = 1;
+            },
+        }
+    }
+
+
+    fn set_storage(&mut self, address: &Address, key: U256, value: U256) {
+        let account = self.0.get_mut(&address).unwrap();
+        account.storage.insert(key, value);
+    }
+
+    fn remove_storage(&mut self, address: &Address, key:U256) {
+        let account = self.0.get_mut(&address).unwrap();
+        account.storage.remove(&key);
+    }
+
+    fn set_code(&mut self, address: &Address, code: Vec<u8>) {
+        let account = self.0.get_mut(&address).unwrap();
+        account.code = code;
+    }
+
+
 }
 
 
