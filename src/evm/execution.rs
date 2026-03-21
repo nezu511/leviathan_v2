@@ -726,12 +726,20 @@ impl Ofunction for EVM {
 
             },
 
-            0x80 ..= 0x8f => {  //DUP
-                let n = opcode as usize - 0x80 + 1;
-                let index = self.stack.len() - n;
-                let data = self.stack.get(index).cloned().unwrap();
+            0x80 ..= 0x8f => {      //DUP
+                let n = opcode as usize - 0x80;
+                let data = self.peek(n);
                 self.push(data);
             }
+
+            0x90 ..=0x9f =>{        //SWAP
+                let n = opcode as usize - 0x90;
+                let top = self.stack.len() - 1;
+                let target = self.stack.len() -1 -n;
+                self.stack.swap(top, target);
+            }
+
+
 
 
 
