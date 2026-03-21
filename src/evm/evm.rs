@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use alloy_primitives::{I256, U256};
-use crate::my_trait::evm_trait::{Xi, Gfunction};
+use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction, Hfunction};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
 
@@ -57,17 +57,23 @@ impl EVM {
 
 
 impl Xi for EVM {
-    fn evm_run(&mut self, state: WorldState, substate: SubState, execution_environment: ExecutionEnvironment) -> Result<(WorldState, SubState, ExecutionEnvironment, Vec<u8>), (WorldState, SubState, ExecutionEnvironment, Vec<u8>)>  {
+    fn evm_run(&mut self, state: WorldState, substate: SubState, execution_environment: ExecutionEnvironment) -> Result<(WorldState, SubState, ExecutionEnvironment, Vec<u8>), (WorldState, SubState, ExecutionEnvironment, Option<Vec<u8>>)>  {
 
         let code = execution_environment.i_byte.clone();
         let mut opcode = 0u8;
 
         loop {
-            //==============Opcode を取り出す================
-            if code.len() <= self.pc {
-                opcode = 0x00   //STOP
+            // opcodeを取り出す
+            if code.len() < self.pc{
+                opcode = 0x00;      //opcodeをSTOPに
+            }else{
+                opcode = code[self.pc];
             }
-            opcode = code[self.pc];
+            
+            if !self.is_safe(opcode, &substate, &state, &execution_environment) {
+                return Err((state, substate, execution_environment,None));
+            }
+
 
 
             return Ok((state, substate, execution_environment, Vec::new()))

@@ -4,7 +4,7 @@ use alloy_primitives::{I256, U256};
 
 
 pub trait Xi {
-    fn evm_run(&mut self, state: WorldState, substate: SubState, execution_environment: ExecutionEnvironment) -> Result<(WorldState, SubState, ExecutionEnvironment, Vec<u8>), (WorldState, SubState, ExecutionEnvironment, Vec<u8>)> ;
+    fn evm_run(&mut self, state: WorldState, substate: SubState, execution_environment: ExecutionEnvironment) -> Result<(WorldState, SubState, ExecutionEnvironment, Vec<u8>), (WorldState, SubState, ExecutionEnvironment, Option<Vec<u8>>)> ;
 }
 
 pub trait Gfunction {
@@ -28,5 +28,9 @@ pub trait Ofunction {
 
     fn pop(&mut self) -> U256;
     fn push(&mut self, val:U256);
+}
+
+pub trait Hfunction {
+    fn evm_stop(&mut self, opcode:u8) -> Result<(), Option<Vec<u8>>>;
 }
     
