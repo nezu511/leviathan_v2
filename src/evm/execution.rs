@@ -655,36 +655,34 @@ impl Ofunction for EVM {
                 substate.a_access_storage.entry(address.clone()).or_default().entry(key).or_insert(pre_value);
                 let val0 = substate.a_access_storage.get(&address).unwrap().get(&key).cloned().unwrap();
 
-                let pre_value = state.get_storage_value(address, &key).unwrap();
-                if pre_value.is_zero() {        //キーが見つかるか
-                    //新規書き込み
-                    state.set_storage(address, key, value);
-                }else{
-                    //既存の書き込み
-                    if value.is_zero() {
-                        //データを削除
-                        state.remove_storage(address, key);
-                        substate.a_reimburse += 4800;
-                    }else{
-                        if pre_value == value {
-                            //同じ値の書き込み
-
-                        }else{
-                            state.set_storage(address, key, value);
-                            //払い戻し
-                            if val0 == value {
-                                if val0.is_zero() {
-                                    substate.a_reimburse += 19900;
-                                }else{
-                                    if pre_value.is_zero() && !value.is_zero() {
-                                        substate.a_reimburse += -4800;
-                                    }else{
-                                        substate.a_reimburse += 2800;
-                                    }
-                                }
+                //払い戻し
+                if pre_value != value {
+                    if val0 == pre_value {
+                        if val0 != U256::ZERO && value == U256::ZERO {
+                            substate.a_reimburse += 4800;
+                        }
+                    } else {
+                        if val0 != U256::ZERO && pre_value == U256::ZERO {
+                            substate.a_reimburse -= 4800;
+                        }
+                        if val0 != U256::ZERO && value == U256::ZERO {
+                            substate.a_reimburse += 4800;
+                        }
+                        if val0 == value {
+                            if val0 == U256::ZERO {
+                                substate.a_reimburse += 19900;
+                            } else {
+                                substate.a_reimburse += 2800;
                             }
                         }
                     }
+                }
+
+                //ステートを書き換える (0なら削除、それ以外なら保存)
+                if value == U256::ZERO {
+                    state.remove_storage(address, key);
+                } else {
+                    state.set_storage(address, key, value);
                 }
                     
             },
