@@ -726,6 +726,14 @@ impl Ofunction for EVM {
 
             },
 
+            0x80 ..= 0x8f => {  //DUP
+                let n = opcode as usize - 0x80 + 1;
+                let index = self.stack.len() - n;
+                let data = self.stack.get(index).cloned().unwrap();
+                self.push(data);
+            }
+
+
 
 
 
