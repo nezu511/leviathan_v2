@@ -677,7 +677,6 @@ impl Ofunction for EVM {
                         }
                     }
                 }
-
                 //ステートを書き換える (0なら削除、それ以外なら保存)
                 if value == U256::ZERO {
                     state.remove_storage(address, key);
@@ -686,6 +685,49 @@ impl Ofunction for EVM {
                 }
                     
             },
+
+            0x58 => {       //PC
+                self.push(U256::from(self.pc -1));
+            },
+
+            0x59 => {       //MSIZE
+                let len = self.memory.len();
+                self.push(U256::from(len));
+            },
+
+            0x5a => {       //GAS
+                self.push(self.gas);
+            },
+
+            0x5b => {       //JUMPDEST
+
+            },
+
+            0x60 ..=0x7f => {
+                let code = &execution_environment.i_byte;
+                let required_data_len = usize::from((opcode - 0x60) + 1);
+                let mut buffer = [0u8;32];
+
+                //let data_number = code.len() - (self.pc + 1);
+                let data_start = self.pc.saturating_sub(required_data_len);
+                let data_end = self.pc;
+
+                let copy_start = data_start.min(code.len());
+                let copy_end = data_end.min(code.len());
+                let actual_len = copy_end - copy_start;
+
+                if actual_len > 0 {
+                    let buffer_start = 32 - required_data_len;
+                    buffer[buffer_start .. buffer_start + actual_len].copy_from_slice(&code[copy_start .. copy_end]);
+                }
+
+                let data = U256::from_be_bytes(buffer);
+                self.push(data);
+
+            },
+
+
+
 
 
 
