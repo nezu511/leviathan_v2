@@ -170,16 +170,16 @@ impl Zfunction for EVM {
 
         //スタックが指定する飛び先の位置が有効か(JUMP)
         if opcode == 0x56{
-            let distination = self.stack[0].try_into().unwrap_or(usize::MAX);
+            let distination = self.peek(0).try_into().unwrap_or(usize::MAX);
             if distination >= self.safe_jump.len() || self.safe_jump[distination] != 1 {
                 return false;
             }
         }
         //スタックが指定する飛び先の位置が有効か(JUMPI)
         if opcode == 0x57{
-            let flag = self.stack[1].try_into().unwrap_or(usize::MAX);
+            let flag = self.peek(1).try_into().unwrap_or(usize::MAX);
             if flag != 0 {
-                let distination = self.stack[0].try_into().unwrap_or(usize::MAX);
+                let distination = self.peek(0).try_into().unwrap_or(usize::MAX);
                 if distination >= self.safe_jump.len() || self.safe_jump[distination] != 1 {
                     return false;
                 }
@@ -193,8 +193,8 @@ impl Zfunction for EVM {
 
         //RETURNDATACOPYに関するルール
         if opcode == 0x3e {
-            let offset = self.stack[1];
-            let size = self.stack[2];
+            let offset = self.peek(1);
+            let size = self.peek(2);
             let required_size = offset.saturating_add(size);
             if required_size > U256::from(self.return_back.len()) {
                 return false;
@@ -213,7 +213,7 @@ impl Zfunction for EVM {
                     opcode == 0xa3 ||   //LOG
                     opcode == 0xa4  {
                         return false;
-                    }else if  opcode == 0xf1 && !self.stack[2].is_zero() {
+                    }else if  opcode == 0xf1 && !self.peek(2).is_zero() {
                         return false;
                     }
         }

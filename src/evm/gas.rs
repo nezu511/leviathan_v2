@@ -166,7 +166,7 @@ impl Gfunction for EVM {
 
         let used_gas = match opcode {
             0x0a => {   //EXP   OK対応!
-                let exponent = self.stack[1];
+                let exponent = self.peek(1);
                 let bit = exponent.bit_len();
                 let byte = (bit + 7) /8;
                 let byte_u256 = U256::from(byte);
@@ -176,8 +176,8 @@ impl Gfunction for EVM {
             },
             0x20 => {   //KECCAK256
                 //メモリ拡張コスト
-                let offset = self.stack[0];
-                let size = self.stack[1];
+                let offset = self.peek(0);
+                let size = self.peek(1);
                 let ext_cost = self.extension_cost(offset, size);
                 //計算の動的コスト
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
@@ -188,14 +188,14 @@ impl Gfunction for EVM {
 
             0x31 | 0x3b | 0x3f => {   //BALANCE
                     //Address型に変換
-                    let data = self.stack[0];
+                    let data = self.peek(0);
                     let cost = self.is_account_access(data, substate);
                     return U256::from(cost);
             },
 
             0x37 | 0x39 | 0x3e => {   //CALLDATACOPY, CODECOPY, RETURNDATACOPY
-                let offset = self.stack[0];
-                let size = self.stack[2];
+                let offset = self.peek(0);
+                let size = self.peek(2);
                 let ext_cost = self.extension_cost(offset, size);
                 //計算の動的コスト
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
@@ -205,9 +205,9 @@ impl Gfunction for EVM {
             },
 
             0x3c => {   //EXTCODECOPY
-                let address = self.stack[0];
-                let offset = self.stack[1];
-                let size = self.stack[3];
+                let address = self.peek(0);
+                let offset = self.peek(1);
+                let size = self.peek(3);
                 //アドレスのアクセス状態
                 let acc_cost = self.is_account_access(address, substate);
                 //メモリの拡張コスト
@@ -219,14 +219,14 @@ impl Gfunction for EVM {
             },
 
             0x51 | 0x52 => {   //MLOAD, MSTORE
-                let offset = self.stack[0];
+                let offset = self.peek(0);
                 let ext_cost = self.extension_cost(offset, U256::from(32));
                 let total = ext_cost.saturating_add(U256::from(3));
                 return total;
             },
 
             0x53 => {        //MSTORE8
-                let offset = self.stack[0];
+                let offset = self.peek(0);
                 let ext_cost = self.extension_cost(offset, U256::from(1));
                 let total = ext_cost.saturating_add(U256::from(3));
                 return total;
@@ -234,7 +234,7 @@ impl Gfunction for EVM {
 
             0x54 => {       //SLOAD
                 let address = &execution_environment.i_address;
-                let key = self.stack[0];
+                let key = self.peek(0);
                 let key_case = substate.a_access_storage.get(address);
                 if key_case.is_none() {
                     U256::from(2100)
@@ -249,8 +249,8 @@ impl Gfunction for EVM {
 
             0x55 => {       //SSTORE
                 let address = &execution_environment.i_address;
-                let key = self.stack[0];
-                let new_value = self.stack[1];
+                let key = self.peek(0);
+                let new_value = self.peek(1);
                 //今現在，スロットに入ってる値
                 let current_value = state.get_storage_value(&address, &key).unwrap_or(U256::from(0));
                 //トランザクションが始まる前に，入っていた値
@@ -288,8 +288,8 @@ impl Gfunction for EVM {
             },
 
             0xa0 ..=0xa4 => {       //LOG0 ~ LOG4
-                let offset = self.stack[0];
-                let size = self.stack[1];
+                let offset = self.peek(0);
+                let size = self.peek(1);
                 let ext_cost = self.extension_cost(offset, size);
                 //topic cost
                 let topic = opcode - 0xa0;
@@ -301,8 +301,8 @@ impl Gfunction for EVM {
             },
 
             0xf0 => {           //CREATE
-                let offset = self.stack[1];
-                let size = self.stack[2];
+                let offset = self.peek(1);
+                let size = self.peek(2);
                 //拡張コスト
                 let ext_cost = self.extension_cost(offset, size);
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
@@ -312,13 +312,13 @@ impl Gfunction for EVM {
             },
 
             0xf1 => {       //CALL
-                let child_gas_limit = self.stack[0];
-                let address = self.stack[1];
-                let value = self.stack[2];
-                let args_offset = self.stack[3];
-                let args_size = self.stack[4];
-                let ret_offset = self.stack[5];
-                let ret_size = self.stack[6];
+                let child_gas_limit = self.peek(0);
+                let address = self.peek(1);
+                let value = self.peek(2);
+                let args_offset = self.peek(3);
+                let args_size = self.peek(4);
+                let ret_offset = self.peek(5);
+                let ret_size = self.peek(6);
                 //メモリ拡張コスト
                 let args_end = if args_size.is_zero() { 
                     U256::ZERO 
@@ -357,13 +357,13 @@ impl Gfunction for EVM {
             },
             
             0xf2 => {       //CALLCODE
-                let child_gas_limit = self.stack[0];
-                let address = self.stack[1];
-                let value = self.stack[2];
-                let args_offset = self.stack[3];
-                let args_size = self.stack[4];
-                let ret_offset = self.stack[5];
-                let ret_size = self.stack[6];
+                let child_gas_limit = self.peek(0);
+                let address = self.peek(1);
+                let value = self.peek(2);
+                let args_offset = self.peek(3);
+                let args_size = self.peek(4);
+                let ret_offset = self.peek(5);
+                let ret_size = self.peek(6);
                 //メモリ拡張コスト
                 let args_end = if args_size.is_zero() { 
                     U256::ZERO 
@@ -399,20 +399,20 @@ impl Gfunction for EVM {
             },
 
            0xf3 | 0xfd => {       //RETURN
-                let offset = self.stack[0];
-                let size = self.stack[1];
+                let offset = self.peek(0);
+                let size = self.peek(1);
                 let ext_cost = self.extension_cost(offset, size);
                 return ext_cost;
             },
 
 
             0xf4 | 0xfa => {       //DELEGATECALL, STATICCALL
-                let child_gas_limit = self.stack[0];
-                let address = self.stack[1];
-                let args_offset = self.stack[2];
-                let args_size = self.stack[3];
-                let ret_offset = self.stack[4];
-                let ret_size = self.stack[5];
+                let child_gas_limit = self.peek(0);
+                let address = self.peek(1);
+                let args_offset = self.peek(2);
+                let args_size = self.peek(3);
+                let ret_offset = self.peek(4);
+                let ret_size = self.peek(5);
                 //メモリ拡張コスト
                 let args_end = if args_size.is_zero() { 
                     U256::ZERO 
@@ -443,8 +443,8 @@ impl Gfunction for EVM {
             },
 
             0xf5 => {           //CREATE2
-                let offset = self.stack[1];
-                let size = self.stack[2];
+                let offset = self.peek(1);
+                let size = self.peek(2);
                 //拡張コスト
                 let ext_cost = self.extension_cost(offset, size);
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
@@ -454,7 +454,7 @@ impl Gfunction for EVM {
             },
 
             0xff => {
-                let data = self.stack[0];
+                let data = self.peek(0);
                 //送り先のアドレスのアクセス状態
                 let address = Address::from_u256(data);
                 let access_state_cost = if substate.a_access.contains(&address) {

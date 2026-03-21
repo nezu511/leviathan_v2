@@ -49,7 +49,7 @@ impl EVM {
         }
     }
 
-    pub fn peak(&self, n:usize) -> U256 {
+    pub fn peek(&self, n:usize) -> U256 {
         let index = self.stack.len().checked_sub(n+1).expect("Stack underflow during peak");
         self.stack[index]
     }
