@@ -20,6 +20,12 @@ pub struct Log {
     data: Vec<u8>,
 }
 
+impl Log {
+    pub fn new(address:Address, topic:Vec<U256>, data:Vec<u8>) -> Self {
+        Self{address, topic, data}
+    }
+}
+
 pub struct ExecutionEnvironment {
     pub i_address: Address,     //現在実行中のコードを所有しているアカウント
     pub i_origin: Address,      //実行の起点となった大本のトランザクション送信者

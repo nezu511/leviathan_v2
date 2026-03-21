@@ -4,7 +4,7 @@ use alloy_primitives::{I256, U256};
 use crate::my_trait::evm_trait::{Xi, Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::State;
 use crate::leviathan::world_state::{WorldState, Address, Account};
-use crate::leviathan::structs::{SubState, ExecutionEnvironment};
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log};
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
 
@@ -739,16 +739,34 @@ impl Ofunction for EVM {
                 self.stack.swap(top, target);
             }
 
+            0xa0 ..= 0xa4 => {      //LOG
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //topic
+                let mut topic_n = opcode - 0xa0;
+                let mut topic = Vec::new();
+                while topic_n > 0{
+                    let topi = self.pop();
+                    topic.push(topi);
+                    topic_n -= 1;
+                }
 
-
-
-
-
-
-
-
-
-
+                //メモリ読み取り
+                let mut data = Vec::<u8>::new();
+                if size > 0 {
+                    let required_size = offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = required_size.saturating_add(31) / 32;
+                        self.memory.resize(words.saturating_mul(32), 0);
+                    }
+                    let slice = &self.memory[offset .. required_size];
+                    data = slice.to_vec();
+                }
+                //アドレス
+                let address = &execution_environment.i_address;
+                let log = Log::new(address.clone(), topic, data);
+                substate.a_log.push(log);
+            },
 
 
             _ => todo!(),
