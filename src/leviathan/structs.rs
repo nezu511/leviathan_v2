@@ -2,8 +2,20 @@
 
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use alloy_primitives::{I256, U256};
-use std::time::SystemTime;
 use std::collections::HashMap;
+
+pub struct Transaction {
+    pub t_nonce: usize,
+    pub t_gas_limit: U256,
+    pub t_price: U256,
+    pub t_to: Option<Address>,
+    pub t_value: U256,
+    pub data: Vec<u8>,
+    pub t_r: U256,
+    pub t_s: U256,
+    pub t_w: U256
+}
+
 
 pub struct SubState {
     pub a_des: Vec<Address>,    //破棄されるアカウント集合

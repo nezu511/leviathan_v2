@@ -1,5 +1,5 @@
 use crate::leviathan::world_state::{WorldState, Address, Account};
-use crate::leviathan::structs::{SubState, ExecutionEnvironment};
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction};
 use alloy_primitives::{I256, U256};
 
 pub trait State {
@@ -29,7 +29,7 @@ pub trait State {
 }
 
 pub trait TransactionExecution {
-    // fn execution() -> WorldState;
+     fn execution(state: &mut WorldState, transaction:Transaction) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)>;
     //
     // fn contract_creation() -> Result<(WorldState), (WorldState)>;
     //
