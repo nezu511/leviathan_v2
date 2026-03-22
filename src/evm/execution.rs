@@ -46,6 +46,10 @@ impl Ofunction for EVM {
 
         //Opcode実践
         match opcode {
+            0x00 => {       //STOP
+                    return Some(false);
+            },
+
             0x01 => {       //ADD
                 let val1 = self.pop();
                 let val2 = self.pop();
