@@ -19,10 +19,10 @@ impl Ofunction for EVM {
     }
 
 
-    fn execution(&mut self, opcode:u8, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment) {
+    fn execution(&mut self, opcode:u8, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment) -> Option<bool>{
         //ガスを消費
         let gas_cost = self.gas(opcode, substate, state, execution_environment);
-        self.gas - gas_cost;
+        self.gas = self.gas.saturating_sub(gas_cost);
 
         //プログラムカウンターを進める
         if opcode == 0x56 { //JUMP
@@ -768,10 +768,59 @@ impl Ofunction for EVM {
                 substate.a_log.push(log);
             },
 
+            0xf3 => {       //RETURN
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //メモリ読み取り
+                if size > 0 {
+                    let required_size = offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = required_size.saturating_add(31) / 32;
+                        self.memory.resize(words.saturating_mul(32), 0);
+                    }
+                    let slice = &self.memory[offset .. required_size];
+                    self.return_back = slice.to_vec();
+                }
+                return Some(false);
+            },
+
+            0xfd => {       //REVERT
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //メモリ読み取り
+                if size > 0 {
+                    let required_size = offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = required_size.saturating_add(31) / 32;
+                        self.memory.resize(words.saturating_mul(32), 0);
+                    }
+                    let slice = &self.memory[offset .. required_size];
+                    self.return_back = slice.to_vec();
+                }
+                return Some(true);
+            },
+
+            0xff => {       //SELFDESTRUCT
+                let from_address = &execution_environment.i_address;
+                let val1 = self.pop();
+                let to_address = Address::from_u256(val1);
+                let balance = state.get_balance(&from_address).unwrap();
+                if from_address.clone() == to_address {
+                    state.set_balance(from_address, U256::ZERO)
+                }else{
+                    if balance != U256::ZERO {
+                        state.send_eth(from_address, &to_address, balance);
+                    }
+                    substate.a_des.push(from_address.clone());
+                    return Some(false);
+                }
+            },
+
+
 
             _ => todo!(),
         }
-
+        return None;
 
 
     }

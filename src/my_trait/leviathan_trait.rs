@@ -22,6 +22,8 @@ pub trait State {
     
     fn remove_storage(&mut self, address: &Address, key:U256) ;
 
+    fn send_eth(&mut self, from: &Address, to: &Address, eth:U256) -> Result<(),&'static str>;
+
     //fn delete_account(&mut self, address: &Address);
 
 }

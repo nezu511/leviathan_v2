@@ -94,6 +94,25 @@ impl State for WorldState {
         account.code = code;
     }
 
+    fn send_eth(&mut self, from: &Address, to: &Address, eth:U256) -> Result<(),&'static str> {
+        let mut from_account = self.0.get_mut(from).unwrap_or(return Err("送信元のアカウントが存在しない"));
+        if from_account.balance >= eth {
+            from_account.balance -= eth;
+        }else{
+            return Err("残高不足");
+        }
+        let to_account = self.0.get_mut(to);
+        if to_account.is_none() {
+            //アカウントを作成
+            self.0.insert(to.clone(), Account::new());
+            let mut new_account = self.0.get_mut(to).unwrap();
+            new_account.balance += eth;
+        }else{
+            to_account.unwrap().balance += eth;
+        }
+        return Ok(());
+    }
+
 
 }
 

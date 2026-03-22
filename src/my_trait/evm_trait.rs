@@ -4,7 +4,11 @@ use alloy_primitives::{I256, U256};
 
 
 pub trait Xi {
-    fn evm_run(&mut self, state: WorldState, substate: SubState, execution_environment: ExecutionEnvironment) -> Result<(WorldState, SubState, ExecutionEnvironment, Vec<u8>), (WorldState, SubState, ExecutionEnvironment, Option<Vec<u8>>)> ;
+    fn evm_run(&mut self, state: &mut WorldState, substate: &mut SubState, execution_environment: &mut ExecutionEnvironment) -> Result<Vec<u8>,Option<Vec<u8>>> ;
+
+    //Ok()：正常停止
+    //Err(None) => Z関数による停止
+    //Err(Some(Vec<u8>)) => REVERTによる停止
 }
 
 pub trait Gfunction {
@@ -24,7 +28,10 @@ pub trait Zfunction {
 
 pub trait Ofunction {
     //状態遷移
-    fn execution(&mut self, opcode:u8, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment);
+    fn execution(&mut self, opcode:u8, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment) -> Option<bool>;
+    //Noneのときは継続
+    //Some(true)：Revert
+    //Some(false):STOP, RETURN, SELFDESTRUCT
 
     fn pop(&mut self) -> U256;
     fn push(&mut self, val:U256);

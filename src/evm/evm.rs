@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use alloy_primitives::{I256, U256};
-use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction, Hfunction};
+use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction, Hfunction, Ofunction};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
 
@@ -57,7 +57,10 @@ impl EVM {
 
 
 impl Xi for EVM {
-    fn evm_run(&mut self, state: WorldState, substate: SubState, execution_environment: ExecutionEnvironment) -> Result<(WorldState, SubState, ExecutionEnvironment, Vec<u8>), (WorldState, SubState, ExecutionEnvironment, Option<Vec<u8>>)>  {
+    fn evm_run(&mut self, state: &mut WorldState, substate: &mut SubState, execution_environment: &mut ExecutionEnvironment) -> Result<Vec<u8>,Option<Vec<u8>>>  {
+        //Ok()：正常停止
+        //Err(None) => Z関数による停止
+        //Err(Some(Vec<u8>)) => REVERTによる停止
 
         let code = execution_environment.i_byte.clone();
         let mut opcode = 0u8;
@@ -70,13 +73,22 @@ impl Xi for EVM {
                 opcode = code[self.pc];
             }
             
+            //Z関数による安全性を確認
             if !self.is_safe(opcode, &substate, &state, &execution_environment) {
-                return Err((state, substate, execution_environment,None));
+                return Err(None);      //例外的な停止
             }
+    
+            //O関数による状態遷移
+            let result = self.execution(opcode, substate, state, execution_environment);
 
-
-
-            return Ok((state, substate, execution_environment, Vec::new()))
+            if result.is_some() {       //Some(true)：Revert / Some(false):STOP, RETURN, SELFDESTRUCT
+                    if result.unwrap() {    //REVERT
+                        return Err(Some(self.return_back.clone()));
+                    }else{
+                        return Ok(self.return_back.clone());
+                    }
+            }
+                        
         }
     }
 
