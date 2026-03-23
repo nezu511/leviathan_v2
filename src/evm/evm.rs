@@ -94,3 +94,20 @@ impl Xi for EVM {
 
 }
 
+
+// --- evm.rs の一番下 ---
+
+// ↓ 「cargo test」を実行した時だけ、このブロックをコンパイルしてね、という合図です
+#[cfg(test)]
+mod tests {
+    use super::*; // evm.rsにあるEVM構造体などをテスト内で使えるようにします
+
+    // ↓ 「これがテストを実行する関数だよ！」という合図です
+    #[test]
+    fn my_first_test() {
+        let a = 1;
+        let b = 2;
+        // assert_eq! は「左と右が同じか確認する」マクロです。違ったらテスト失敗になります。
+        assert_eq!(a + b, 3);
+    }
+}
