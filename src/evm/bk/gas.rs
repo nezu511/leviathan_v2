@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 /*
- *テストに対応するためBerlin以前の仕様に変更(called_cost 廃止(2100)!)
- *
+ * Berlin EIP-2929対応
 */
 use alloy_primitives::{I256, U256};
 use crate::my_trait::evm_trait::{Xi, Gfunction};
@@ -257,15 +256,15 @@ impl Gfunction for EVM {
                 //今現在，スロットに入ってる値
                 let current_value = state.get_storage_value(&address, &key).unwrap_or(U256::from(0));
                 //トランザクションが始まる前に，入っていた値
-                //let mut called_cost = 0usize;
+                let mut called_cost = 0usize;
                 let key_case = substate.a_access_storage.get(address);
                 let original_value = if key_case.is_none() {
-                    //called_cost = 2100;    //called_cost2100を付加
+                    called_cost = 2100;    //called_cost2100を付加
                     current_value   
                 }else{
                     let val1 = key_case.unwrap().get(&key);
                     if val1.is_none() {
-                        //called_cost = 2100;    //called_cost2100を付加
+                        called_cost = 2100;    //called_cost2100を付加
                         current_value
                     }else{
                         val1.unwrap().clone()
@@ -286,8 +285,7 @@ impl Gfunction for EVM {
                     }
                 };
                 //トータルcostを算出
-                //let total = update_cost + called_cost;
-                let total = update_cost;
+                let total = update_cost + called_cost;
                 return U256::from(total);
             },
 
