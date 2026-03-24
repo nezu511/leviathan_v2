@@ -113,11 +113,10 @@ mod tests {
     use crate::my_trait::evm_trait::Xi;
 
     #[test]
-    fn test_all_arithmetic() {
-        // テストファイルが入っているディレクトリのパス
+    fn test_add_instructions() {
+        // 前回作成していただいた ADD 専用のディレクトリを指定してください
         let test_dir = "test_data/VMTests/vmArithmeticTest/add";
         
-        // ディレクトリ内のすべてのファイルを探索
         let paths = fs::read_dir(test_dir).expect("ディレクトリの読み込みに失敗しました");
 
         let mut pass_count = 0;
@@ -126,7 +125,6 @@ mod tests {
         for path in paths {
             let path = path.unwrap().path();
             
-            // 拡張子が .json のファイルだけを処理する
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 total_count += 1;
                 
@@ -137,15 +135,12 @@ mod tests {
                 let json_data = fs::read_to_string(&path)
                     .unwrap_or_else(|_| panic!("ファイルの読み込みに失敗しました: {:?}", path));
                 
-                // 受け皿（パーサー）にパース
                 let suite: VmTestSuite = serde_json::from_str(&json_data)
                     .unwrap_or_else(|_| panic!("JSONのパースに失敗しました: {:?}", path));
 
-                // ファイル内のすべてのテストケースを実行
                 for (test_name, test_data) in suite {
                     println!("--- Running Test Case: {} ---", test_name);
 
-                    // --- 詰め替え作業 ---
                     let block_header = BlockHeader {
                         h_beneficiary: Address::new(*test_data.env.current_coinbase.0),
                         h_timestamp: test_data.env.current_timestamp,
@@ -168,17 +163,23 @@ mod tests {
                         i_permission: true,
                     };
 
-                    let mut world_state_map = HashMap::new();
-                    for (addr, acc_data) in test_data.pre {
-                        let account = Account {
-                            nonce: acc_data.nonce.try_into().unwrap_or(0),
-                            balance: acc_data.balance,
-                            storage: acc_data.storage,
-                            code: acc_data.code.to_vec(),
-                        };
-                        world_state_map.insert(Address::new(*addr.0), account);
-                    }
-                    let mut state = WorldState(world_state_map);
+                    // --- 変更点: ステートの初期化をクロージャ（関数）にして使い回せるようにする ---
+                    // これにより、ロールバックが必要な時に一瞬で初期状態に戻せます
+                    let build_initial_state = || {
+                        let mut world_state_map = HashMap::new();
+                        for (addr, acc_data) in &test_data.pre {
+                            let account = Account {
+                                nonce: acc_data.nonce.try_into().unwrap_or(0),
+                                balance: acc_data.balance,
+                                storage: acc_data.storage.clone(),
+                                code: acc_data.code.to_vec(),
+                            };
+                            world_state_map.insert(Address::new(*addr.0), account);
+                        }
+                        WorldState(world_state_map)
+                    };
+
+                    let mut state = build_initial_state();
 
                     let mut substate = SubState {
                         a_des: Vec::new(),
@@ -189,15 +190,42 @@ mod tests {
                         a_access_storage: HashMap::new(),
                     };
 
-                    // --- EVMの実行 ---
                     let mut evm = EVM::new(&execution_environment);
                     evm.gas = test_data.exec.gas;
 
-                    let _result = evm.evm_run(&mut state, &mut substate, &mut execution_environment);
+                    // キック！
+                    let result = evm.evm_run(&mut state, &mut substate, &mut execution_environment);
+
+                    // --- 変更点: Yellow Paperに基づく終了ステータスごとの処理 ---
+                    match result {
+                        Ok(_) => {
+                            // 【正常終了】 (STOP, RETURN, SELFDESTRUCTなど)
+                            // ステート: 維持
+                            // ガス: 残りガス ＋ 払い戻し(a_reimburse)
+                            let gas_used = test_data.exec.gas.saturating_sub(evm.gas);
+                            let max_refund = gas_used / U256::from(2); // Constantinople仕様: 上限は消費の半分
+                            let raw_refund = U256::from(substate.a_reimburse.max(0) as u64);
+                            let actual_refund = std::cmp::min(raw_refund, max_refund);
+                            
+                            evm.gas = evm.gas.saturating_add(actual_refund);
+                        }
+                        Err(None) => {
+                            // 【例外停止】 (Z関数条件: Out of Gas, 不正命令, スタックアンダーフロー等)
+                            // ステート: 実行前の状態にロールバック
+                            state = build_initial_state();
+                            // ガス: 全没収
+                            evm.gas = U256::ZERO;
+                        }
+                        Err(Some(_)) => {
+                            // 【REVERTによる停止】
+                            // ステート: 実行前の状態にロールバック
+                            state = build_initial_state();
+                            // ガス: 全没収されず、残ガスは維持される（ただし払い戻しは無効）
+                        }
+                    }
 
                     // --- 検証 (Assertion) ---
 
-                    // 1. ガスの検証
                     if let Some(expected_gas) = test_data.gas {
                         assert_eq!(
                             evm.gas, 
@@ -208,13 +236,11 @@ mod tests {
                         println!("✓ Gas: OK");
                     }
 
-                    // 2. ストレージの検証 (JSONのpostデータを使って動的に検証)
                     let target_address = Address::new(*test_data.exec.address.0);
                     let actual_account = state.0.get(&target_address).expect("アカウントが存在しません");
 
                     if let Some(post_state) = &test_data.post {
                         if let Some(expected_account) = post_state.get(&test_data.exec.address) {
-                            // JSONに記載されているすべての正解ストレージスロットを検証
                             for (key, expected_val) in &expected_account.storage {
                                 let actual_val = actual_account.storage.get(key).unwrap_or(&U256::ZERO);
                                 

@@ -659,7 +659,7 @@ impl Ofunction for EVM {
                 substate.a_access_storage.entry(address.clone()).or_default().entry(key).or_insert(pre_value);
                 let val0 = substate.a_access_storage.get(&address).unwrap().get(&key).cloned().unwrap();
 
-                /*/払い戻し
+                //払い戻し
                 if pre_value != value {
                     if val0 == pre_value {
                         if val0 != U256::ZERO && value == U256::ZERO {
@@ -680,10 +680,6 @@ impl Ofunction for EVM {
                             }
                         }
                     }
-                }
-                */
-                if !pre_value.is_zero() && value.is_zero() {
-                    substate.a_reimburse += 15000;
                 }
                 //ステートを書き換える (0なら削除、それ以外なら保存)
                 if value == U256::ZERO {

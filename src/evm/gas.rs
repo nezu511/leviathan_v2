@@ -238,6 +238,7 @@ impl Gfunction for EVM {
             0x54 => {       //SLOAD
                 let address = &execution_environment.i_address;
                 let key = self.peek(0);
+                /*
                 let key_case = substate.a_access_storage.get(address);
                 if key_case.is_none() {
                     U256::from(2100)
@@ -247,7 +248,8 @@ impl Gfunction for EVM {
                     }else{
                         U256::from(2100)
                     }
-                }
+                }*/
+                U256::from(200)
             },
 
             0x55 => {       //SSTORE
@@ -256,16 +258,26 @@ impl Gfunction for EVM {
                 let new_value = self.peek(1);
                 //今現在，スロットに入ってる値
                 let current_value = state.get_storage_value(&address, &key).unwrap_or(U256::from(0));
+                if current_value.is_zero()  && !new_value.is_zero(){
+                    U256::from(20000)
+                }else{
+                    U256::from(5000)
+                }
+                    
+
+
+                //【Constantinople仕様】
                 //トランザクションが始まる前に，入っていた値
                 //let mut called_cost = 0usize;
+                /*
                 let key_case = substate.a_access_storage.get(address);
                 let original_value = if key_case.is_none() {
-                    //called_cost = 2100;    //called_cost2100を付加
+                    called_cost = 2100;    //called_cost2100を付加
                     current_value   
                 }else{
                     let val1 = key_case.unwrap().get(&key);
                     if val1.is_none() {
-                        //called_cost = 2100;    //called_cost2100を付加
+                        called_cost = 2100;    //called_cost2100を付加
                         current_value
                     }else{
                         val1.unwrap().clone()
@@ -289,6 +301,7 @@ impl Gfunction for EVM {
                 //let total = update_cost + called_cost;
                 let total = update_cost;
                 return U256::from(total);
+                */
             },
 
             0xa0 ..=0xa4 => {       //LOG0 ~ LOG4

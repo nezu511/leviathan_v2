@@ -254,6 +254,7 @@ impl Gfunction for EVM {
                 let key = self.peek(0);
                 let new_value = self.peek(1);
                 //今現在，スロットに入ってる値
+                substate.a_access_storage.entry(address.clone()).or_default().entry(key).or_insert(new_value.unwrap_or(U256::ZERO));
                 let current_value = state.get_storage_value(&address, &key).unwrap_or(U256::from(0));
                 //トランザクションが始まる前に，入っていた値
                 let mut called_cost = 0usize;

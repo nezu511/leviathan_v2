@@ -1,0 +1,9 @@
+0x60		push1
+01		01(push1)
+7f		push 32
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff (push32)
+01		add
+60		push1
+00		00 (push1)
+55		SSTORE
+00		STOP
