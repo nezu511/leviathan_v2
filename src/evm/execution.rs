@@ -743,6 +743,10 @@ impl Ofunction for EVM {
 
             },
 
+            0x5f => {       //push0
+                self.push(U256::ZERO);
+            },
+
             0x60 ..=0x7f => {
                 let code = &execution_environment.i_byte;
                 let required_data_len = usize::from((opcode - 0x60) + 1);
