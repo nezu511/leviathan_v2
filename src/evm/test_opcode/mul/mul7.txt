@@ -1,0 +1,29 @@
+0x70
+01234567890abcdef0fedcba0987654321
+70
+01234567890abcdef0fedcba0987654321
+70
+01234567890abcdef0fedcba0987654321
+02	//mul
+02	//mul
+60	//push1
+00			//push1 00
+52	//MSTORE
+60	//push1
+20			//push1 20
+60	//push1
+00			//push1 00
+f3	//RETURN??
+00
+
+
+push17 01234567890abcdef0fedcba0987654321	3
+push17 01234567890abcdef0fedcba0987654321	3
+push17 01234567890abcdef0fedcba0987654321	3
+mul						5
+mul						5
+push1 00					3
+MSTORE	{offset:0, data:17バイト}		3 + 3	//ロジックを確認せよ！
+push1 20					3
+push1 00					3
+RETURN {offset:00, size:20}			0
