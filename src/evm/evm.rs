@@ -72,6 +72,8 @@ impl Xi for EVM {
             }else{
                 opcode = code[self.pc];
             }
+
+            println!("{:x}", opcode);
             
             //Z関数による安全性を確認
             if !self.is_safe(opcode, &substate, &state, &execution_environment) {
@@ -88,6 +90,7 @@ impl Xi for EVM {
                         return Ok(self.return_back.clone());
                     }
             }
+
                         
         }
     }
@@ -115,7 +118,7 @@ mod tests {
     #[test]
     fn test_add_instructions() {
         // 前回作成していただいた ADD 専用のディレクトリを指定してください
-        let test_dir = "test_data/VMTests/vmArithmeticTest/exp";
+        let test_dir = "test_data/VMTests/vmBitwiseLogicOperation/others";
         
         let paths = fs::read_dir(test_dir).expect("ディレクトリの読み込みに失敗しました");
 
