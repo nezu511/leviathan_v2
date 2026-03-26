@@ -105,7 +105,7 @@ impl State for WorldState {
     }
 
     fn send_eth(&mut self, from: &Address, to: &Address, eth:U256) -> Result<(),&'static str> {
-        let mut from_account = self.0.get_mut(from).unwrap_or(return Err("送信元のアカウントが存在しない"));
+        let mut from_account = self.0.get_mut(from).ok_or("送信元のアカウントが存在しない")?;
         if from_account.balance >= eth {
             from_account.balance -= eth;
         }else{
@@ -123,6 +123,18 @@ impl State for WorldState {
         return Ok(());
     }
 
+    fn buy_gas(&mut self, address: &Address, limit: U256, price: U256) -> Result<U256,(&'static str)> {
+        let mut from_account = self.0.get_mut(address).ok_or("送信元のアカウントが存在しない")?;
+        let need_eth = limit.saturating_mul(price);
+        if from_account.balance >= need_eth {
+            from_account.balance -= need_eth;
+        }else{
+            return Err("残高不足");
+        }
+        return Ok(limit);
+    }
+
+        
 
 }
 

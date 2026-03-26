@@ -26,6 +26,8 @@ pub trait State {
 
     fn send_eth(&mut self, from: &Address, to: &Address, eth:U256) -> Result<(),&'static str>;
 
+    fn buy_gas(&mut self, address: &Address, limit: U256, price: U256) -> Result<U256,&'static str>;
+
     //fn delete_account(&mut self, address: &Address);
 
 }
@@ -37,12 +39,43 @@ pub trait TransactionChecks {
 
 pub trait TransactionExecution {
      fn execution(&self, state: &mut WorldState, transaction:Transaction) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)>;
+}
 
+pub trait ContractCreation {
+    fn contract_creation(&mut self,
+                         state: &mut WorldState,
+                         substate: &mut SubState,
+                         sender: Address,   //送信者のアドレス
+                         origin: Address,   //Originalアドレス
+                         gas: U256,      //利用可能なガス
+                         price: U256,      //ガス価格
+                         eth: U256,      //送るETH
+                         init_code: Vec<u8>,   //EVM初期化バイトコード
+                         depth: u32,       //コールスタック深さ
+                         solt: Option<U256>,      //Creat2用のソルト
+                         sudo: bool       //ステートへの変更権限
+                         ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)>;     //ガスとデータ？
+}
+                         
 
-    //
-    // fn contract_creation() -> Result<(WorldState), (WorldState)>;
-    //
+pub trait MessageCall {
+    fn message_call(&mut self,
+                    state: &mut WorldState,
+                    substate: &mut SubState,
+                    sender: Address,   //送信者のアドレス
+                    origin: Address,   //Originalアドレス
+                    recipient: Address,   //送金を受け取るアドレス
+                    contract: Address,   //EVMコードを読み出して実行するアドレス
+                    gas: U256,      //利用可能なガス
+                    price: U256,      //ガス価格
+                    eth: U256,      //送るETH
+                    apparent_value: U256,      //見かけ上送るETH
+                    data: Vec<u8>,   //データ
+                    depth: u32,       //コールスタック深さ
+                    sudo: bool       //ステートへの変更権限
+                         ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)>;     //ガスとデータ？
+}
+
     // fn message_call() -> Result<(WorldState), (WorldState)>;      
     //
     // fn role_back();      contract_creationもしくはmessage_callの返り値が失敗なら発動！！
-}
