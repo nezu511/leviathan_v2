@@ -471,26 +471,6 @@ impl Gfunction for EVM {
             },
 
             0xff => {
-                /*
-                let data = self.peek(0);
-                //送り先のアドレスのアクセス状態
-                let address = Address::from_u256(data);
-                let access_state_cost = if substate.a_access.contains(&address) {
-                    0usize
-                }else{
-                    2600
-                };
-
-                //新規アカウント作成のペナルティ
-                let my_address = &execution_environment.i_address;
-                let create_cost = if state.get_balance(my_address).unwrap_or(U256::from(0)) > U256::from(0) && state.is_empty(&address) {
-                    25000
-                }else {
-                    0
-                };
-                let total = create_cost + access_state_cost + 5000;
-                return U256::from(total);
-                */
                 return U256::ZERO;
             },
                 
