@@ -27,42 +27,44 @@ pub struct LEVIATHAN (Vec<Action>);
 
 impl TransactionExecution for LEVIATHAN {
      fn execution(&self, state: &mut WorldState, transaction:Transaction) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)> {
+
         //=======ステップ1===========
         //【初期ガスの計算】
-        let base_gas = U256::from(21000);  //基本料金
-        let mut data_gas = U256::ZERO;
-        let mut index = 0;
-        while index < transaction.data.len() {  //データに関するガス
+         let base_gas = U256::from(21000);  //基本料金
+         let mut data_gas = U256::ZERO;
+         let mut index = 0;
+         while index < transaction.data.len() {  //データに関するガス
             if transaction.data[index] == 0 {
                 data_gas = data_gas.saturating_add(U256::from(4));
             }else{
                 data_gas = data_gas.saturating_add(U256::from(16));
             }
             index += 1;
-        }
-        let mut contract_gas = U256::ZERO;
-        if transaction.t_to.is_none() {     //コントラクト作成追加費
+         }
+         let mut contract_gas = U256::ZERO;
+         if transaction.t_to.is_none() {     //コントラクト作成追加費
             contract_gas = contract_gas.saturating_add(U256::from(32000));
             let words = U256::from(transaction.data.len()).saturating_add(U256::from(31)) / U256::from(32);
             let word_gas = words.saturating_mul(U256::from(2));
             contract_gas = contract_gas.saturating_add(word_gas);
-        }
-
-        let all_gas = base_gas + data_gas + contract_gas;
-
+         }
+         let all_gas = base_gas + data_gas + contract_gas;
         //【事前支払いコスト】
-        let max_cost = transaction.t_gas_limit.saturating_mul(transaction.t_price) + transaction.t_value;
-
-
+         let max_cost = transaction.t_gas_limit.saturating_mul(transaction.t_price) + transaction.t_value;
        //【トランザクションの事前検証】
-       let sender_address = LEVIATHAN::transaction_checks(state, &transaction, &all_gas, &max_cost);
-       if sender_address.is_ok() {
-           let sender_address = sender_address.unwrap();
-       }else{
-           return Err((U256::ZERO, Vec::new(), true));
-       }
+         let sender_address = LEVIATHAN::transaction_checks(state, &transaction, &all_gas, &max_cost);
+         if sender_address.is_err() {
+             return Err((U256::ZERO, Vec::new(), true));
+         }
+         let sender_address = sender_address.unwrap();
 
-       return Ok((U256::ZERO, Vec::new(), true));
+         //=======ステップ2=========== (ここからロールバックの起点）
+         //【Nonceの加算】
+         state.inc_nonce(&sender_address);
+         //【前払いガス代の徴収】
+         let gas = state.buy_gas(&sender_address, transaction.t_price, transaction.t_value);
+
+         return Ok((U256::ZERO, Vec::new(), true));
 
 
          
