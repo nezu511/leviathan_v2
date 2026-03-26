@@ -142,11 +142,6 @@ static SAFE_TABLE: [[u8;2];256] = {
 impl Zfunction for EVM {
 
     fn is_safe(&mut self, opcode:u8, substate: &SubState, state: &WorldState, execution_environment: &ExecutionEnvironment) -> bool  {
-        //命令のガスコストと現在の残ガスを比較
-        let gas_cost = self.gas(opcode, substate, state, execution_environment);
-        if  self.gas < gas_cost {
-            return false;
-        }
 
         //不正な命令の実行確認
         //SAFE_TABLEの値がu8::MAXは不正
@@ -167,6 +162,13 @@ impl Zfunction for EVM {
         if stack_size > 1024 {
             return false;
         }
+
+        //命令のガスコストと現在の残ガスを比較
+        let gas_cost = self.gas(opcode, substate, state, execution_environment);
+        if  self.gas < gas_cost {
+            return false;
+        }
+
 
         //スタックが指定する飛び先の位置が有効か(JUMP)
         if opcode == 0x56{
