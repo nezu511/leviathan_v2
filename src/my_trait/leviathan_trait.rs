@@ -28,8 +28,15 @@ pub trait State {
 
 }
 
+pub trait TransactionChecks {
+     fn transaction_checks(state: &mut WorldState, transaction:&Transaction) -> Result<Address,&'static str>;
+}
+
+
 pub trait TransactionExecution {
      fn execution(state: &mut WorldState, transaction:Transaction) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)>;
+
+
     //
     // fn contract_creation() -> Result<(WorldState), (WorldState)>;
     //
