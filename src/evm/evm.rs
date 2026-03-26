@@ -75,7 +75,7 @@ impl Xi for EVM {
 
         loop {
             // opcodeを取り出す
-            if code.len() < self.pc{
+            if code.len() <= self.pc{
                 opcode = 0x00;      //opcodeをSTOPに
             }else{
                 opcode = code[self.pc];
