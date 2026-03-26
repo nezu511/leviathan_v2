@@ -471,6 +471,7 @@ impl Gfunction for EVM {
             },
 
             0xff => {
+                /*
                 let data = self.peek(0);
                 //送り先のアドレスのアクセス状態
                 let address = Address::from_u256(data);
@@ -489,6 +490,8 @@ impl Gfunction for EVM {
                 };
                 let total = create_cost + access_state_cost + 5000;
                 return U256::from(total);
+                */
+                return U256::ZERO;
             },
                 
 

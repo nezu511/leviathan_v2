@@ -43,6 +43,7 @@ impl Ofunction for EVM {
                 _ => self.pc += 1,
             }
         }
+        println!("{:x}",opcode);
 
         //Opcode実践
         match opcode {
