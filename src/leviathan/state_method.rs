@@ -46,6 +46,16 @@ impl State for WorldState {
         return Some(value.cloned().unwrap_or(U256::from(0)));
     }
 
+    fn get_nonce(&self, address: &Address) -> Option<u32> {
+        if !self.0.contains_key(&address) {
+            return None;
+        }
+        let account = self.0.get(&address);
+        let nonce = account.unwrap().nonce;
+        return Some(nonce);
+    }
+
+
     fn set_balance(&mut self,address: &Address, value:U256) {
         let account = self.0.get_mut(&address);
         match account {

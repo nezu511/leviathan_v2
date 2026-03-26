@@ -69,6 +69,10 @@ impl TransactionChecks for LEVIATHAN {
         sender_address.copy_from_slice(&pubkey_hash[12..32]);
         let sender_address = Address::new(sender_address);
 
+        //Nonceの整合性
+        let sender_nonce = state.get_nonce(&sender_address);
+
+
 
         return Ok(sender_address);
      }

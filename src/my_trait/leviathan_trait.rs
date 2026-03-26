@@ -10,6 +10,8 @@ pub trait State {
     fn get_code(&self, address: &Address) -> Option<Vec<u8>>;
 
     fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256>;
+
+    fn get_nonce(&self, address: &Address) -> Option<u32>;
     
     // 書き込み系
     fn set_balance(&mut self, address: &Address, value:U256);
