@@ -726,6 +726,8 @@ impl Ofunction for EVM {
                     
             },
 
+            0x56 | 0x57 => (),
+
             0x58 => {       //PC
                 self.push(U256::from(self.pc -1));
             },
