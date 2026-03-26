@@ -1,0 +1,11 @@
+60 0a		push 0a
+43		NUMBER
+60 06		push 06
+57		JUMPI
+5b		JUMPDEST
+56		JUMP
+60 01		push 01
+5b		JUMPDEST
+60 01		push 01
+60 01		push 01
+55		SSTORE

@@ -64,14 +64,14 @@ static GAS_TABLE: [u8; 256] = {
                             
     // Block Information
     table[0x40] = 20;        // BLOCKHASH
-    table[0x41] = 20;        // COINBASE
-    table[0x42] = 20;        // TIMESTAMP
-    table[0x43] = 20;        // NUMER
-    table[0x44] = 20;        // PREVRANDAO
-    table[0x45] = 20;        // GASLIMIT
-    table[0x46] = 20;        // CHAINID
-    table[0x47] = 20;        // SELFBALANCE
-    table[0x48] = 20;        // BASEFEE
+    table[0x41] = 2;        // COINBASE
+    table[0x42] = 2;        // TIMESTAMP
+    table[0x43] = 2;        // NUMER
+    table[0x44] = 2;        // PREVRANDAO
+    table[0x45] = 2;        // GASLIMIT
+    table[0x46] = 2;        // CHAINID
+    table[0x47] = 5;        // SELFBALANCE
+    table[0x48] = 2;        // BASEFEE
 
     // Stack, Memory, Storage and Flow Operations
     table[0x50] = 2;   // POP
