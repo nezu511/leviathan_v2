@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn test_add_instructions() {
         // 前回作成していただいた ADD 専用のディレクトリを指定してください
-        let test_dir = "test_data/VMTests/vmPerformance";
+        let test_dir = "test_data/VMTests/vmRandomTest";
         
         let paths = fs::read_dir(test_dir).expect("ディレクトリの読み込みに失敗しました");
 
