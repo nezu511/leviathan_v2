@@ -119,7 +119,7 @@ mod tests {
     #[test]
     fn test_add_instructions() {
         // 前回作成していただいた ADD 専用のディレクトリを指定してください
-        let test_dir = "test_data/VMTests/vmEnvironmentalInfo";
+        let test_dir = "test_data/VMTests/vmBlockInfoTest";
         
         let paths = fs::read_dir(test_dir).expect("ディレクトリの読み込みに失敗しました");
 
@@ -149,7 +149,7 @@ mod tests {
                         h_beneficiary: Address::new(*test_data.env.current_coinbase.0),
                         h_timestamp: test_data.env.current_timestamp,
                         h_number: test_data.env.current_number,
-                        h_prevrandao: U256::ZERO,
+                        h_prevrandao: test_data.env.current_difficulty,
                         h_gaslimit: test_data.env.current_gas_limit,
                         h_basefee: U256::ZERO,
                     };
