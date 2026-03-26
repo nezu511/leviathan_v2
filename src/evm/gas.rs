@@ -249,7 +249,7 @@ impl Gfunction for EVM {
                         U256::from(2100)
                     }
                 }*/
-                U256::from(200)
+                U256::from(50)
             },
 
             0x55 => {       //SSTORE

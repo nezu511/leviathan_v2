@@ -1,0 +1,19 @@
+60 00
+35	//CALLDATALOAD
+60 00
+55
+
+60 20
+35	//CALLDATALOAD
+60 01
+55
+
+60 01
+54	//SLOAD	(push 0f)
+
+60 00
+54	//SLOAD (push 02)
+0a	//EXP
+60 02
+55
+00
