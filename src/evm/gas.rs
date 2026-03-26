@@ -173,7 +173,7 @@ impl Gfunction for EVM {
                 let bit = exponent.bit_len();
                 let byte = (bit + 7) /8;
                 let byte_u256 = U256::from(byte);
-                let result = byte_u256.saturating_mul(U256::from(50))
+                let result = byte_u256.saturating_mul(U256::from(10))
                     .saturating_add(U256::from(10));
                 result
             },
