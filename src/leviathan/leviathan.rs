@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use alloy_primitives::{I256, U256};
-use crate::my_trait::leviathan_trait::{State, TransactionExecution};
+use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionChecks};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction};
 use crate::evm::evm::EVM;
@@ -26,7 +26,7 @@ pub enum Action {
 pub struct LEVIATHAN (Vec<Action>);
 
 impl TransactionExecution for LEVIATHAN {
-     fn execution(state: &mut WorldState, transaction:Transaction) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)> {
+     fn execution(&self, state: &mut WorldState, transaction:Transaction) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)> {
         //=======ステップ1===========
         //【初期ガスの計算】
         let base_gas = U256::from(21000);  //基本料金
@@ -55,14 +55,14 @@ impl TransactionExecution for LEVIATHAN {
 
 
        //【トランザクションの事前検証】
-       //1. 
+       let sender_address = LEVIATHAN::transaction_checks(state, &transaction, &all_gas, &max_cost);
+       if sender_address.is_ok() {
+           let sender_address = sender_address.unwrap();
+       }else{
+           return Err((U256::ZERO, Vec::new(), true));
+       }
 
-        return Ok((U256::ZERO, Vec::new(), true));
-
-
-
-
-
+       return Ok((U256::ZERO, Vec::new(), true));
 
 
          

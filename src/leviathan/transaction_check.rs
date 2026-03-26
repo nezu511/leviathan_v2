@@ -14,7 +14,7 @@ use secp256k1::{
 };
 
 impl TransactionChecks for LEVIATHAN {
-     fn transaction_checks(state: &mut WorldState, transaction:&Transaction) -> Result<Address,&'static str> {
+     fn transaction_checks(state: &mut WorldState, transaction:&Transaction, inti_gas: &U256, pre_cost: &U256) -> Result<Address,&'static str>{
         //公開鍵取得
         //1. RlpStreamを使って，6つの要素をもつリストを作成する．
         let mut stream = RlpStream::new_list(6);    
@@ -70,8 +70,28 @@ impl TransactionChecks for LEVIATHAN {
         let sender_address = Address::new(sender_address);
 
         //Nonceの整合性
-        let sender_nonce = state.get_nonce(&sender_address);
+        let sender_nonce = state.get_nonce(&sender_address).ok_or("送信者のアカウントが見つからない")?;
+        if sender_nonce as usize != transaction.t_nonce {
+            return Err("nonceの整合性が不一致");
+        }
 
+        //Codeの不在
+        let sender_code = state.get_code(&sender_address).unwrap();
+        if sender_code.len() > 0 {
+            return Err("送信者のアカウントにコントラクトコードがデプロイされている");
+        }
+
+        //ガスリミットの妥当性
+        let gas_limit = transaction.t_gas_limit;
+        if gas_limit < *inti_gas {
+            return Err("初期ガスが指定されたガスリミットを超えている");
+        }
+
+        //残高の妥当性
+        let sender_balance = state.get_balance(&sender_address).unwrap();
+        if sender_balance < *pre_cost {
+            return Err("送信者の残高が事前支払いコストを満たしていない");
+        }
 
 
         return Ok(sender_address);
