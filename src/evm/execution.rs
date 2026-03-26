@@ -615,6 +615,10 @@ impl Ofunction for EVM {
                 self.push(val);
             },
 
+            0x50 => {
+                self.pop();
+            },
+
             0x51 => {       //MLOAD メモリから読み込む（32B)
                 let pointer = self.pop().try_into().unwrap_or(usize::MAX);
                 let required_size = pointer.saturating_add(32);
