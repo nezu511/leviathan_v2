@@ -162,7 +162,7 @@ mod tests {
                         i_sender: Address::new(*test_data.exec.caller.0),
                         i_value: test_data.exec.value,
                         i_byte: test_data.exec.code.to_vec(),
-                        i_block_header: block_header,
+                        i_block_header: &block_header,
                         i_depth: 0,
                         i_permission: true,
                     };
