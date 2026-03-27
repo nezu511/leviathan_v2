@@ -38,7 +38,7 @@ impl Log {
     }
 }
 
-pub struct ExecutionEnvironment {
+pub struct ExecutionEnvironment <'a> {
     pub i_address: Address,     //現在実行中のコードを所有しているアカウント
     pub i_origin: Address,      //実行の起点となった大本のトランザクション送信者
     pub i_gas_price: U256,      //この実行の起点となったトランザクションの署名者が支払うガス価格
@@ -46,7 +46,7 @@ pub struct ExecutionEnvironment {
     pub i_sender: Address,      //このコードを実行する直接の原因となったアカウント
     pub i_value: U256,          //実行に伴ってアカウントに渡される総金額
     pub i_byte: Vec<u8>,        //実行されるマシンコードのバイト列
-    pub i_block_header: BlockHeader,    //現在のブロックヘッダー情報
+    pub i_block_header: &'a BlockHeader,    //現在のブロックヘッダー情報
     pub i_depth: usize,
     pub i_permission: bool,     //ステートを変更する権限の有無
 }
