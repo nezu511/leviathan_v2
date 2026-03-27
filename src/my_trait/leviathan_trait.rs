@@ -12,6 +12,8 @@ pub trait State {
     fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256>;
 
     fn get_nonce(&self, address: &Address) -> Option<u32>;
+
+    fn get_account(&self, address: &Address) -> Account;
     
     // 書き込み系
     fn set_balance(&mut self, address: &Address, value:U256);
@@ -35,6 +37,7 @@ pub trait State {
     fn delete_account(&mut self, address: &Address);
 
     fn add_account(&mut self, address: &Address, account: Account);
+
 
 }
 

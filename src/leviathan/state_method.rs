@@ -55,6 +55,16 @@ impl State for WorldState {
         return Some(nonce);
     }
 
+    //非推奨
+    fn get_account(&self, address: &Address) -> Account{
+        let account = self.0.get(&address);
+        match account {
+            Some(x) => return x.clone(),
+            None => {
+                return Account::new()
+            }
+        }
+    }
 
     fn set_balance(&mut self,address: &Address, value:U256) {
         let account = self.0.get_mut(&address);
