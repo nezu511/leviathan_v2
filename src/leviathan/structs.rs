@@ -16,6 +16,28 @@ pub struct Transaction {
     pub t_w: U256
 }
 
+pub struct BackupSubstate{
+    pub a_des: usize,
+    pub a_log: usize,
+    pub a_touch: usize,
+    pub a_reimburse: i64,
+    pub a_access: usize,
+    pub a_access_storage: HashMap<Address, HashMap<U256, U256>> 
+}
+
+impl BackupSubstate {
+    pub fn backup(substate: &SubState) -> Self {
+        let a_des = substate.a_des.len();
+        let a_log = substate.a_log.len();
+        let a_touch = substate.a_touch.len();
+        let a_reimburse = substate.a_reimburse;
+        let a_access = substate.a_access.len();
+        let a_access_storage = substate.a_access_storage.clone();
+
+        Self {a_des, a_log, a_touch, a_reimburse, a_access, a_access_storage}
+    }
+}
+
 
 pub struct SubState {
     pub a_des: Vec<Address>,    //破棄されるアカウント集合
