@@ -26,6 +26,18 @@ pub struct SubState {
     pub a_access_storage: HashMap<Address, HashMap<U256, U256>>  //一度アクセスしたストレージのスロット
 }
 
+impl SubState {
+    pub fn new()  -> Self{
+        let a_des  = Vec::<Address>::new();
+        let a_log = Vec::<Log>::new();
+        let a_touch = Vec::<Address>::new();
+        let a_reimburse = 0i64;
+        let a_access = Vec::<Address>::new();
+        let a_access_storage = HashMap::new();
+        Self {a_des, a_log, a_touch, a_reimburse, a_access, a_access_storage}
+    }
+}
+
 pub struct Log {
     address: Address,
     topic: Vec<U256>, //0~4個

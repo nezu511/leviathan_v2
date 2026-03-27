@@ -59,11 +59,13 @@ impl TransactionExecution for LEVIATHAN {
          //【前払いガス代の徴収】
          let gas = state.buy_gas(&sender_address, transaction.t_price, transaction.t_value);
          //ここからロールバックの起点:ロールバックが起きたらこの状態にする
+         let mut substate = SubState::new();
     
          //=======ステップ3===========
          let result = if transaction.t_to.is_none() {
              //self.contract_creation()
          }else{
+             substate.a_touch.push(transaction.t_to.unwrap().clone());
              //self.message_call()
 
          };

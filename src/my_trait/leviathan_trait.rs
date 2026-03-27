@@ -52,7 +52,7 @@ pub trait ContractCreation {
                          eth: U256,      //送るETH
                          init_code: Vec<u8>,   //EVM初期化バイトコード
                          depth: u32,       //コールスタック深さ
-                         solt: Option<U256>,      //Creat2用のソルト
+                         salt: Option<U256>,      //Creat2用のソルト
                          sudo: bool       //ステートへの変更権限
                          ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)>;     //ガスとデータ？
 }
