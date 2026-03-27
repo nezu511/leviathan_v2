@@ -63,6 +63,13 @@ pub struct ExecutionEnvironment <'a> {
     pub i_permission: bool,     //ステートを変更する権限の有無
 }
 
+impl <'a> ExecutionEnvironment <'a>{
+    pub fn new(i_address: Address, i_origin: Address, i_gas_price: U256, i_data: Vec<u8>, i_sender: Address, 
+               i_value: U256, i_byte: Vec<u8>, i_block_header: &'a BlockHeader, i_depth: usize, i_permission:bool) -> Self {
+        Self {i_address, i_origin, i_gas_price, i_data, i_sender, i_value, i_byte, i_block_header, i_depth, i_permission}
+    }
+}
+
 pub struct BlockHeader {
     pub h_beneficiary: Address,     //ブロックの優先手数料を受け取るアドレス
     pub h_timestamp: U256,          //ブロック生成時の妥当なUnixスタンプ:

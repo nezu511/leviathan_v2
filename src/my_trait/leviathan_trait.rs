@@ -53,9 +53,10 @@ pub trait ContractCreation {
                          price: U256,      //ガス価格
                          eth: U256,      //送るETH
                          init_code: Vec<u8>,   //EVM初期化バイトコード
-                         depth: u32,       //コールスタック深さ
+                         depth: usize,       //コールスタック深さ
                          salt: Option<U256>,      //Creat2用のソルト
-                         sudo: bool       //ステートへの変更権限
+                         sudo: bool,       //ステートへの変更権限
+                         block_header: &BlockHeader,
                          ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)>;     //ガスとデータ？
 }
                          
@@ -73,7 +74,7 @@ pub trait MessageCall {
                     eth: U256,      //送るETH
                     apparent_value: U256,      //見かけ上送るETH
                     data: Vec<u8>,   //データ
-                    depth: u32,       //コールスタック深さ
+                    depth: usize,       //コールスタック深さ
                     sudo: bool       //ステートへの変更権限
                          ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)>;     //ガスとデータ？
 }

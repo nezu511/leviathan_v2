@@ -2,9 +2,10 @@
 
 use alloy_primitives::{I256, U256};
 use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionChecks, ContractCreation};
+use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction, Hfunction, Ofunction};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction};
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
 use rlp::RlpStream;
@@ -12,7 +13,7 @@ use rlp::RlpStream;
 
 impl ContractCreation for LEVIATHAN {
     fn contract_creation(&mut self, state: &mut WorldState, substate: &mut SubState, sender: Address, origin: Address,
-                         gas: U256, price: U256, eth: U256, init_code: Vec<u8>, depth: u32, salt: Option<U256>, sudo: bool
+                         gas: U256, price: U256, eth: U256, init_code: Vec<u8>, depth: usize, salt: Option<U256>, sudo: bool, block_header: &BlockHeader
                          ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)> {
 
         //新しいアカウントのアドレス
@@ -57,8 +58,28 @@ impl ContractCreation for LEVIATHAN {
         //codehashに空配列をセット
         state.set_code(&contract_address, Vec::<u8>::new());
 
+        //Execution Environmentの構築
+        let mut execution_environment = ExecutionEnvironment::new(contract_address.clone(),origin.clone(), price, Vec::new(), sender.clone(),eth, 
+                                                            init_code, block_header, depth,sudo);
 
+        //仮想マシンの実行
+        let mut evm = EVM::new(&execution_environment);
+        let result = evm.evm_run(state, substate, &mut execution_environment);
+        //Ok()：正常停止
+        //Err(None) => Z関数による停止
+        //Err(Some(Vec<u8>)) => REVERTによる停止
 
+        match result {
+            Ok(output) => (),
+
+            Err(Some(revert_data)) => {
+                //REVERT
+            },
+
+            Err(None) => {
+                //Z関数による停止
+            }
+        }
 
 
 
