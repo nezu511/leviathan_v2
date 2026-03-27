@@ -4,7 +4,7 @@ use alloy_primitives::{I256, U256};
 use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionChecks};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction};
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
 use rlp::RlpStream;
@@ -14,7 +14,7 @@ use secp256k1::{
 };
 
 impl TransactionChecks for LEVIATHAN {
-     fn transaction_checks(state: &mut WorldState, transaction:&Transaction, inti_gas: &U256, pre_cost: &U256) -> Result<Address,&'static str>{
+     fn transaction_checks(state: &mut WorldState, transaction:&Transaction, inti_gas: &U256, pre_cost: &U256, block_header: &BlockHeader) -> Result<Address,&'static str>{
         //公開鍵取得
         //1. RlpStreamを使って，6つの要素をもつリストを作成する．
         let mut stream = RlpStream::new_list(6);    
@@ -77,7 +77,7 @@ impl TransactionChecks for LEVIATHAN {
 
         //Codeの不在
         let sender_code = state.get_code(&sender_address).unwrap();
-        if sender_code.len() > 0 {
+        if !sender_code.is_empty() {
             return Err("送信者のアカウントにコントラクトコードがデプロイされている");
         }
 
@@ -92,6 +92,22 @@ impl TransactionChecks for LEVIATHAN {
         if sender_balance < *pre_cost {
             return Err("送信者の残高が事前支払いコストを満たしていない");
         }
+
+        //Initコードが49152バイト以下   
+        if transaction.t_to.is_none() {
+            if transaction.data.len() > 49152 {
+                return Err("Initコードが49152バイトを超えている");
+            }
+        }
+
+        //トランザクションの実行ガス価格が，ブロックのベースフィー以上
+        if transaction.t_price < block_header.h_basefee {
+            return Err("トランザクションの実行ガス価格がブロックのベースフィーを下回っている");
+        }
+        
+        
+
+        //トランザクションのガスリミットが，ブロック全体のガスリミットからブロックの累積消費ガスを引いた値以下か
 
 
         return Ok(sender_address);

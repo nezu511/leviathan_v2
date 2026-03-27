@@ -3,7 +3,7 @@
 use alloy_primitives::{I256, U256};
 use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionChecks};
 use crate::leviathan::world_state::{WorldState, Address, Account};
-use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction};
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
 
@@ -21,7 +21,7 @@ pub enum Action {
 pub struct LEVIATHAN (Vec<Action>);
 
 impl TransactionExecution for LEVIATHAN {
-     fn execution(&self, state: &mut WorldState, transaction:Transaction) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)> {
+     fn execution(&self, state: &mut WorldState, transaction:Transaction, block_header: &BlockHeader) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)> {
 
         //=======ステップ1===========
         //【初期ガスの計算】
@@ -47,7 +47,7 @@ impl TransactionExecution for LEVIATHAN {
         //【事前支払いコスト】
          let max_cost = transaction.t_gas_limit.saturating_mul(transaction.t_price) + transaction.t_value;
        //【トランザクションの事前検証】
-         let sender_address = LEVIATHAN::transaction_checks(state, &transaction, &all_gas, &max_cost);
+         let sender_address = LEVIATHAN::transaction_checks(state, &transaction, &all_gas, &max_cost, block_header);
          if sender_address.is_err() {
              return Err((U256::ZERO, Vec::new(), true));
          }

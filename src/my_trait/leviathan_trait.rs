@@ -1,5 +1,5 @@
 use crate::leviathan::world_state::{WorldState, Address, Account};
-use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction};
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
 use alloy_primitives::{I256, U256};
 
 pub trait State {
@@ -33,12 +33,12 @@ pub trait State {
 }
 
 pub trait TransactionChecks {
-     fn transaction_checks(state: &mut WorldState, transaction:&Transaction, inti_gas: &U256, pre_cost: &U256) -> Result<Address,&'static str>;
+     fn transaction_checks(state: &mut WorldState, transaction:&Transaction, inti_gas: &U256, pre_cost: &U256, block_header: &BlockHeader) -> Result<Address,&'static str>;
 }
 
 
 pub trait TransactionExecution {
-     fn execution(&self, state: &mut WorldState, transaction:Transaction) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)>;
+     fn execution(&self, state: &mut WorldState, transaction:Transaction, block_header: &BlockHeader) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)>;
 }
 
 pub trait ContractCreation {
