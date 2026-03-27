@@ -65,7 +65,7 @@ impl TransactionExecution for LEVIATHAN {
          let result = if transaction.t_to.is_none() {
              //self.contract_creation()
          }else{
-             substate.a_touch.push(transaction.t_to.unwrap().clone());
+             substate.a_access.push(transaction.t_to.unwrap().clone());
              //self.message_call()
 
          };

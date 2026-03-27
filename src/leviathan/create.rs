@@ -42,6 +42,23 @@ impl ContractCreation for LEVIATHAN {
         let mut tmp = [0u8;20];
         tmp.copy_from_slice(&result[12..32]);
         let contract_address = Address::new(tmp);
+        
+        //サブステートのアクセス済みアカウントに追加
+        if !substate.a_access.contains(&contract_address) {
+            substate.a_access.push(contract_address.clone())
+        }
+
+        //Nonceを1にする．
+        state.inc_nonce(&contract_address);
+        //送金する
+        state.send_eth(&sender, &contract_address, eth);
+        //storageRootを空にする
+        state.reset_storage(&contract_address);
+        //codehashに空配列をセット
+        state.set_code(&contract_address, Vec::<u8>::new());
+
+
+
 
 
 

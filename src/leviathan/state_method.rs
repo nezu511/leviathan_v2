@@ -134,6 +134,12 @@ impl State for WorldState {
         return Ok(limit);
     }
 
+    fn reset_storage(&mut self, address: &Address) {
+        let account = self.0.get_mut(&address).unwrap();
+        account.storage.clear();
+    }
+
+
         
 
 }

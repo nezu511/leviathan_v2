@@ -28,6 +28,8 @@ pub trait State {
 
     fn buy_gas(&mut self, address: &Address, limit: U256, price: U256) -> Result<U256,&'static str>;
 
+    fn reset_storage(&mut self, address: &Address);
+
     //fn delete_account(&mut self, address: &Address);
 
 }
