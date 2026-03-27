@@ -6,11 +6,6 @@ use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction};
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
-use rlp::RlpStream;
-use secp256k1::{
-    ecdsa::{RecoverableSignature, RecoveryId},
-    Message, Secp256k1,
-};
 
 #[derive(Debug,Clone)]
 pub enum Action {
@@ -58,11 +53,20 @@ impl TransactionExecution for LEVIATHAN {
          }
          let sender_address = sender_address.unwrap();
 
-         //=======ステップ2=========== (ここからロールバックの起点）
+         //=======ステップ2===========
          //【Nonceの加算】
          state.inc_nonce(&sender_address);
          //【前払いガス代の徴収】
          let gas = state.buy_gas(&sender_address, transaction.t_price, transaction.t_value);
+         //ここからロールバックの起点:ロールバックが起きたらこの状態にする
+    
+         //=======ステップ3===========
+         let result = if transaction.t_to.is_none() {
+             //self.contract_creation()
+         }else{
+             //self.message_call()
+
+         };
 
          return Ok((U256::ZERO, Vec::new(), true));
 
