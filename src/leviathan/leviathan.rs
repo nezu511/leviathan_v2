@@ -3,22 +3,13 @@
 use alloy_primitives::{I256, U256};
 use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionChecks};
 use crate::leviathan::world_state::{WorldState, Address, Account};
+use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
 
-#[derive(Debug,Clone)]
-pub enum Action {
-    Sstorage (Address,U256, U256),         //Address, pre_value, Key
-    Send_eth (Address, Address, U256),       //from, to, eth
-    Add_nonce (Address),
-    Store_code (Address, Vec<u8>),
-    Account_creation (Address),
-    Child_evm (usize),
-}
 
-
-pub struct LEVIATHAN (Vec<Action>);
+pub struct LEVIATHAN (pub Vec<Action>);
 
 impl TransactionExecution for LEVIATHAN {
      fn execution(&self, state: &mut WorldState, transaction:Transaction, block_header: &BlockHeader) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)> {

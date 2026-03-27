@@ -18,6 +18,8 @@ pub trait State {
 
     fn inc_nonce(&mut self, address: &Address);
 
+    fn dec_nonce(&mut self, address: &Address);
+
     fn set_storage(&mut self, address: &Address, key: U256, value: U256);
 
     fn set_code(&mut self, address: &Address, code: Vec<u8>);
@@ -30,7 +32,9 @@ pub trait State {
 
     fn reset_storage(&mut self, address: &Address);
 
-    //fn delete_account(&mut self, address: &Address);
+    fn delete_account(&mut self, address: &Address);
+
+    fn add_account(&mut self, address: &Address, account: Account);
 
 }
 
@@ -79,6 +83,8 @@ pub trait MessageCall {
                          ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)>;     //ガスとデータ？
 }
 
-    // fn message_call() -> Result<(WorldState), (WorldState)>;      
-    //
-    // fn role_back();      contract_creationもしくはmessage_callの返り値が失敗なら発動！！
+pub trait RoleBack {
+    fn roleback(&mut self, state: &mut WorldState) -> Result<(), &'static str>;
+}
+
+
