@@ -45,6 +45,13 @@ impl ContractCreation for LEVIATHAN {
         let mut tmp = [0u8;20];
         tmp.copy_from_slice(&result[12..32]);
         let contract_address = Address::new(tmp);
+
+        //Address Collisionチェック
+        let nonce = state.get_nonce(&contract_address).unwrap_or(0);
+        let code = state.get_code(&contract_address).unwrap_or_else(|| Vec::new());
+        if nonce != 0 || !code.is_empty() {
+            return Err((U256::ZERO, None));
+        }
         
         //サブステートのアクセス済みアカウントに追加
         if !substate.a_access.contains(&contract_address) {
@@ -80,7 +87,36 @@ impl ContractCreation for LEVIATHAN {
         //Err(Some(Vec<u8>)) => REVERTによる停止
 
         match result {
-            Ok(output) => (),
+            Ok(output) => {
+                //不正なプレフィックス
+                if output.len() > 0 && output[0] == 0xefu8 {
+                    self.roleback(state);   //Roleback実行
+                    substate.road_backup(self.substate_backup.clone());  //SubStateの巻き戻し
+                    return Err((U256::ZERO, None));
+                }
+
+                //コードのサイズ制限
+                if output.len() > 24576 {
+                    self.roleback(state);   //Roleback実行
+                    substate.road_backup(self.substate_backup.clone());  //SubStateの巻き戻し
+                    return Err((U256::ZERO, None));
+                }
+
+                //コードデプロイ費用
+                let deposit_gas = 200 * output.len();
+                let rest_gas = evm.return_gas();
+                if U256::from(deposit_gas) > rest_gas {
+                    self.roleback(state);   //Roleback実行
+                    substate.road_backup(self.substate_backup.clone());  //SubStateの巻き戻し
+                    return Err((U256::ZERO, None));
+                }
+
+                //最終処理
+                let return_gas = rest_gas - U256::from(deposit_gas);
+                state.set_code(&contract_address, output);
+                return Ok((return_gas, Vec::<u8>::new()));
+
+            },
 
             Err(Some(revert_data)) => {
                 //REVERT
