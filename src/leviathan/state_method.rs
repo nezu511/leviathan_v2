@@ -166,7 +166,15 @@ impl State for WorldState {
         self.0.insert(address.clone(), account);
     }
 
-        
+    fn reset_balance(&mut self, address: &Address) {
+        let account = self.0.get_mut(&address);
+        match account {
+            Some(x) => {
+                x.balance = U256::ZERO;
+            },
+            None => (),
+        }
+    }
 
 }
 

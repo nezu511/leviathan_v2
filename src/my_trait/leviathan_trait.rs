@@ -38,6 +38,8 @@ pub trait State {
 
     fn add_account(&mut self, address: &Address, account: Account);
 
+    fn reset_balance(&mut self, address: &Address);
+
 
 }
 

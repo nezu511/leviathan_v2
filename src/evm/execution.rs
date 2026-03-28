@@ -814,7 +814,7 @@ impl Ofunction for EVM {
                 let balance = state.get_balance(&from_address).unwrap();
                 if from_address.clone() == to_address {
                     Action::Set_balance(from_address.clone(),U256::ZERO).push(leviathan, state);     //ロールバック用
-                    state.set_balance(from_address, U256::ZERO)
+                    state.reset_balance(from_address)
                 }else{
                     if balance != U256::ZERO {
                         Action::Send_eth(from_address.clone(), to_address.clone(), balance).push(leviathan, state);     //ロールバック用
