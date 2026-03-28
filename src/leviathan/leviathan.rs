@@ -18,6 +18,11 @@ impl LEVIATHAN {
     pub fn new() -> Self {
         Self{journal:Vec::<Action>::new(),substate_backup:BackupSubstate::new()}
     }
+
+    pub fn merge(&mut self, mut children: LEVIATHAN) {
+        self.journal.append(&mut children.journal);
+    }
+
 }
 
 impl TransactionExecution for LEVIATHAN {
