@@ -26,6 +26,10 @@ pub struct BackupSubstate{
 }
 
 impl BackupSubstate {
+    pub fn new() -> Self {
+        Self{a_des:0, a_log:0, a_touch:0, a_reimburse:0i64, a_access:0, a_access_storage:HashMap::new()}
+    }
+
     pub fn backup(substate: &SubState) -> Self {
         let a_des = substate.a_des.len();
         let a_log = substate.a_log.len();

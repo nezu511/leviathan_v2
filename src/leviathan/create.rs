@@ -5,10 +5,12 @@ use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionC
 use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction, Hfunction, Ofunction};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
+use crate::leviathan::roleback::Action;
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader, BackupSubstate};
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
 use rlp::RlpStream;
+use std::collections::HashMap;
 
 
 impl ContractCreation for LEVIATHAN {
@@ -48,14 +50,19 @@ impl ContractCreation for LEVIATHAN {
         if !substate.a_access.contains(&contract_address) {
             substate.a_access.push(contract_address.clone())
         }
+        self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
 
         //Nonceを1にする．
+        Action::Add_nonce(contract_address.clone()).push(self, state);     //ロールバック用
         state.inc_nonce(&contract_address);
         //送金する
+        Action::Send_eth(sender.clone(), contract_address.clone(), eth).push(self, state);     //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
         //storageRootを空にする
+        Action::Reset_storage(contract_address.clone(),HashMap::<U256, U256>::new()).push(self, state);     //ロールバック用
         state.reset_storage(&contract_address);
         //codehashに空配列をセット
+        Action::Store_code(contract_address.clone(), Vec::new()).push(self, state);     //ロールバック用
         state.set_code(&contract_address, Vec::<u8>::new());
 
         //Execution Environmentの構築

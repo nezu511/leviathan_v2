@@ -14,6 +14,12 @@ pub struct LEVIATHAN {
     pub substate_backup: BackupSubstate,
 }
 
+impl LEVIATHAN {
+    pub fn new() -> Self {
+        Self{journal:Vec::<Action>::new(),substate_backup:BackupSubstate::new()}
+    }
+}
+
 impl TransactionExecution for LEVIATHAN {
      fn execution(&self, state: &mut WorldState, transaction:Transaction, block_header: &BlockHeader) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)> {
 

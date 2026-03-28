@@ -7,6 +7,7 @@ use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
 use crate::evm::evm::EVM;
+use std::collections::HashMap;
 
 #[derive(Debug,Clone)]
 pub enum Action {
@@ -16,6 +17,7 @@ pub enum Action {
     Store_code (Address, Vec<u8>),
     Account_creation (Address),
     Delete_account (Address, Account),
+    Reset_storage (Address, HashMap<U256, U256>)
     //SubStateのアクション
 }
 
@@ -41,7 +43,13 @@ impl Action {
             Action::Delete_account(address, _) => {
                 let account = state.get_account(&address);
                 Action::Delete_account(address, account)
-            }
+            },
+
+            Action::Reset_storage(address, _) => {
+                let account = state.get_account(&address);
+                let storage = account.storage.clone();
+                Action::Reset_storage(address, storage)
+            },
 
         };
         leviathan.journal.push(action);
@@ -82,6 +90,13 @@ impl RoleBack for LEVIATHAN {
                 Action::Delete_account(address, account) => {
                     state.add_account(&address, account);
                 },
+
+                Action::Reset_storage(address, storage) => {
+                    for (key, value) in storage {
+                        state.set_storage(&address, key, value);
+                    }
+                }
+
 
                 _ => return Err("不明なAction"),
             }
