@@ -16,6 +16,7 @@ pub struct Transaction {
     pub t_w: U256
 }
 
+#[derive(Debug,Clone)]
 pub struct BackupSubstate{
     pub a_des: usize,
     pub a_log: usize,

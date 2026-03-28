@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use alloy_primitives::{I256, U256};
-use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionChecks, ContractCreation};
+use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionChecks, ContractCreation, RoleBack};
 use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction, Hfunction, Ofunction};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::leviathan::LEVIATHAN;
@@ -16,7 +16,7 @@ use std::collections::HashMap;
 impl ContractCreation for LEVIATHAN {
     fn contract_creation(&mut self, state: &mut WorldState, substate: &mut SubState, sender: Address, origin: Address,
                          gas: U256, price: U256, eth: U256, init_code: Vec<u8>, depth: usize, salt: Option<U256>, sudo: bool, block_header: &BlockHeader
-                         ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)> {
+                         ) -> Result<(U256,Vec<u8>),(U256,Option<Vec<u8>>)> {
 
         //新しいアカウントのアドレス
         let byte: Vec<u8> = if salt.is_none() {
@@ -84,10 +84,17 @@ impl ContractCreation for LEVIATHAN {
 
             Err(Some(revert_data)) => {
                 //REVERT
+                let revert_gas = evm.return_gas();  //ガス返却
+                self.roleback(state);   //Roleback実行
+                substate.road_backup(self.substate_backup.clone());  //SubStateの巻き戻し
+                return Err((revert_gas, Some(revert_data)));
             },
 
             Err(None) => {
                 //Z関数による停止
+                self.roleback(state);   //Roleback実行
+                substate.road_backup(self.substate_backup.clone());  //SubStateの巻き戻し
+                return Err((U256::ZERO, None));
             }
         }
 

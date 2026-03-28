@@ -54,6 +54,13 @@ impl EVM {
         let index = self.stack.len().checked_sub(n+1).expect("Stack underflow during peak");
         self.stack[index]
     }
+
+    pub fn return_gas(&mut self) -> U256 {
+        let gas = self.gas;
+        self.gas = U256::ZERO;
+        return gas;
+    }
+
 }
 
 
