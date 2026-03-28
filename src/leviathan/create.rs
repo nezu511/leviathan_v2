@@ -53,7 +53,7 @@ impl ContractCreation for LEVIATHAN {
         self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
 
         //Nonceを1にする．
-        if state.is_empty() {
+        if state.is_empty(&contract_address) {
             Action::Account_creation(contract_address.clone()).push(self, state);   //アカウントが存在しない場合
         }
         Action::Add_nonce(contract_address.clone()).push(self, state);     //ロールバック用
