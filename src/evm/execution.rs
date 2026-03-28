@@ -839,7 +839,7 @@ impl Ofunction for EVM {
                 let to_address = Address::from_u256(val1);
                 let balance = state.get_balance(&from_address).unwrap();
                 if from_address.clone() == to_address {
-                    state.set_balance(from_address, U256::ZERO)
+                    state.reset_balance(from_address);
                 }else{
                     if balance != U256::ZERO {
                         state.send_eth(from_address, &to_address, balance);

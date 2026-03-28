@@ -24,7 +24,6 @@ pub trait State {
 
     fn send_eth(&mut self, from: &Address, to: &Address, eth:U256) -> Result<(),&'static str>;
 
-=======
     fn buy_gas(&mut self, address: &Address, limit: U256, price: U256) -> Result<U256,&'static str>;
 
     fn reset_storage(&mut self, address: &Address);
