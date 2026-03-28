@@ -3,22 +3,27 @@
 use alloy_primitives::{I256, U256};
 use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionChecks};
 use crate::leviathan::world_state::{WorldState, Address, Account};
-use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
+use crate::leviathan::roleback::Action;
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader, BackupSubstate};
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
 
-#[derive(Debug,Clone)]
-pub enum Action {
-    Sstorage (Address,U256, U256),         //Address, pre_value, Key
-    Send_eth (Address, Address, U256),       //from, to, eth
-    Add_nonce (Address),
-    Store_code (Address, Vec<u8>),
-    Account_creation (Address),
-    Child_evm (usize),
+
+pub struct LEVIATHAN {
+    pub journal: Vec<Action>,
+    pub substate_backup: BackupSubstate,
 }
 
+impl LEVIATHAN {
+    pub fn new() -> Self {
+        Self{journal:Vec::<Action>::new(),substate_backup:BackupSubstate::new()}
+    }
 
-pub struct LEVIATHAN (Vec<Action>);
+    pub fn merge(&mut self, mut children: LEVIATHAN) {
+        self.journal.append(&mut children.journal);
+    }
+
+}
 
 impl TransactionExecution for LEVIATHAN {
      fn execution(&self, state: &mut WorldState, transaction:Transaction, block_header: &BlockHeader) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)> {
@@ -59,11 +64,13 @@ impl TransactionExecution for LEVIATHAN {
          //【前払いガス代の徴収】
          let gas = state.buy_gas(&sender_address, transaction.t_price, transaction.t_value);
          //ここからロールバックの起点:ロールバックが起きたらこの状態にする
+         let mut substate = SubState::new();
     
          //=======ステップ3===========
          let result = if transaction.t_to.is_none() {
              //self.contract_creation()
          }else{
+             substate.a_access.push(transaction.t_to.unwrap().clone());
              //self.message_call()
 
          };

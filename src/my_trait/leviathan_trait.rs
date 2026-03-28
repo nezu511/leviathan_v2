@@ -12,11 +12,15 @@ pub trait State {
     fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256>;
 
     fn get_nonce(&self, address: &Address) -> Option<u32>;
+
+    fn get_account(&self, address: &Address) -> Account;
     
     // 書き込み系
     fn set_balance(&mut self, address: &Address, value:U256);
 
     fn inc_nonce(&mut self, address: &Address);
+
+    fn dec_nonce(&mut self, address: &Address);
 
     fn set_storage(&mut self, address: &Address, key: U256, value: U256);
 
@@ -28,7 +32,12 @@ pub trait State {
 
     fn buy_gas(&mut self, address: &Address, limit: U256, price: U256) -> Result<U256,&'static str>;
 
-    //fn delete_account(&mut self, address: &Address);
+    fn reset_storage(&mut self, address: &Address);
+
+    fn delete_account(&mut self, address: &Address);
+
+    fn add_account(&mut self, address: &Address, account: Account);
+
 
 }
 
@@ -51,10 +60,11 @@ pub trait ContractCreation {
                          price: U256,      //ガス価格
                          eth: U256,      //送るETH
                          init_code: Vec<u8>,   //EVM初期化バイトコード
-                         depth: u32,       //コールスタック深さ
-                         solt: Option<U256>,      //Creat2用のソルト
-                         sudo: bool       //ステートへの変更権限
-                         ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)>;     //ガスとデータ？
+                         depth: usize,       //コールスタック深さ
+                         salt: Option<U256>,      //Creat2用のソルト
+                         sudo: bool,       //ステートへの変更権限
+                         block_header: &BlockHeader,
+                         ) -> Result<(U256,Vec<u8>),(U256,Option<Vec<u8>>)>;     //ガスとデータ？
 }
                          
 
@@ -71,11 +81,13 @@ pub trait MessageCall {
                     eth: U256,      //送るETH
                     apparent_value: U256,      //見かけ上送るETH
                     data: Vec<u8>,   //データ
-                    depth: u32,       //コールスタック深さ
+                    depth: usize,       //コールスタック深さ
                     sudo: bool       //ステートへの変更権限
-                         ) -> Result<(U256,Vec<u8>),(U256,Vec<u8>)>;     //ガスとデータ？
+                         ) -> Result<(U256,Vec<u8>),(U256,Option<Vec<u8>>)>;     //ガスとデータ？
 }
 
-    // fn message_call() -> Result<(WorldState), (WorldState)>;      
-    //
-    // fn role_back();      contract_creationもしくはmessage_callの返り値が失敗なら発動！！
+pub trait RoleBack {
+    fn roleback(&mut self, state: &mut WorldState) -> Result<(), &'static str>;
+}
+
+
