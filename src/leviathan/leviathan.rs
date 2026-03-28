@@ -4,12 +4,15 @@ use alloy_primitives::{I256, U256};
 use crate::my_trait::leviathan_trait::{State, TransactionExecution, TransactionChecks};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::roleback::Action;
-use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader, BackupSubstate};
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
 
 
-pub struct LEVIATHAN (pub Vec<Action>);
+pub struct LEVIATHAN {
+    pub journal: Vec<Action>,
+    pub substate_backup: BackupSubstate,
+}
 
 impl TransactionExecution for LEVIATHAN {
      fn execution(&self, state: &mut WorldState, transaction:Transaction, block_header: &BlockHeader) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)> {

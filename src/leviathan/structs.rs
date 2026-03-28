@@ -58,6 +58,15 @@ impl SubState {
         let a_access_storage = HashMap::new();
         Self {a_des, a_log, a_touch, a_reimburse, a_access, a_access_storage}
     }
+
+    pub fn road_backup(&mut self, backup: BackupSubstate) {
+        self.a_des.drain(backup.a_des ..);
+        self.a_log.drain(backup.a_log ..);
+        self.a_touch.drain(backup.a_touch ..);
+        self.a_reimburse = backup.a_reimburse;
+        self.a_access.drain(backup.a_access ..);
+        self.a_access_storage = backup.a_access_storage;
+    }
 }
 
 pub struct Log {

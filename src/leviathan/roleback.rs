@@ -44,15 +44,15 @@ impl Action {
             }
 
         };
-        leviathan.0.push(action);
+        leviathan.journal.push(action);
     }
 }
 
 
 impl RoleBack for LEVIATHAN {
     fn roleback(&mut self, state: &mut WorldState)  -> Result<(), &'static str>{
-        while self.0.len() > 0{
-            let action = self.0.pop();
+        while self.journal.len() > 0{
+            let action = self.journal.pop();
             match action.unwrap() {
 
                 Action::Sstorage (address, key, pre_value) => {
