@@ -113,6 +113,39 @@ impl State for WorldState {
         return Ok(());
     }
 
+    fn buy_gas(&mut self, address: &Address, limit: U256, price: U256) -> Result<U256,&'static str> {
+        let mut from_account = self.0.get_mut(address).ok_or("送信元のアカウントが存在しない")?;
+        let need_eth = limit.saturating_mul(price);
+        if from_account.balance >= need_eth {
+            from_account.balance -= need_eth;
+        }else{
+            return Err("残高不足");
+        }
+        return Ok(limit);
+    }
+
+    fn reset_storage(&mut self, address: &Address) {
+        let account = self.0.get_mut(&address).unwrap();
+        account.storage.clear();
+    }
+    
+    fn delete_account(&mut self, address: &Address) {
+        self.0.remove(&address);
+    }
+
+    fn add_account(&mut self, address: &Address, account: Account) {
+        self.0.insert(address.clone(), account);
+    }
+
+    fn reset_balance(&mut self, address: &Address) {
+        let account = self.0.get_mut(&address);
+        match account {
+            Some(x) => {
+                x.balance = U256::ZERO;
+            },
+            None => (),
+        }
+    }
 
 }
 
