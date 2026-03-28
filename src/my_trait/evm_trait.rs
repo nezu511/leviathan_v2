@@ -1,10 +1,11 @@
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
 use alloy_primitives::{I256, U256};
+use crate::leviathan::leviathan::LEVIATHAN;
 
 
 pub trait Xi {
-    fn evm_run(&mut self, state: &mut WorldState, substate: &mut SubState, execution_environment: &mut ExecutionEnvironment) -> Result<Vec<u8>,Option<Vec<u8>>> ;
+    fn evm_run(&mut self, leviathan: &mut LEVIATHAN, state: &mut WorldState, substate: &mut SubState, execution_environment: &mut ExecutionEnvironment) -> Result<Vec<u8>,Option<Vec<u8>>> ;
 
     //Ok()：正常停止
     //Err(None) => Z関数による停止
@@ -28,7 +29,7 @@ pub trait Zfunction {
 
 pub trait Ofunction {
     //状態遷移
-    fn execution(&mut self, opcode:u8, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment) -> Option<bool>;
+    fn execution(&mut self, opcode:u8, leviathan: &mut LEVIATHAN, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment) -> Option<bool>;
     //Noneのときは継続
     //Some(true)：Revert
     //Some(false):STOP, RETURN, SELFDESTRUCT

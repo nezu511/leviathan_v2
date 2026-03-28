@@ -17,8 +17,8 @@ pub enum Action {
     Store_code (Address, Vec<u8>),
     Account_creation (Address),
     Delete_account (Address, Account),
-    Reset_storage (Address, HashMap<U256, U256>)
-    //SubStateのアクション
+    Reset_storage (Address, HashMap<U256, U256>),
+    Set_balance (Address, U256),
 }
 
 impl Action {
@@ -49,6 +49,11 @@ impl Action {
                 let account = state.get_account(&address);
                 let storage = account.storage.clone();
                 Action::Reset_storage(address, storage)
+            },
+
+            Action::Set_balance(address, _) => {
+                let pre_value = state.get_balance(&address).unwrap_or(U256::ZERO);
+                Action::Set_balance(address, pre_value)
             },
 
         };
@@ -95,7 +100,12 @@ impl RoleBack for LEVIATHAN {
                     for (key, value) in storage {
                         state.set_storage(&address, key, value);
                     }
-                }
+                },
+
+                Action::Set_balance(address, pre_value) => {
+                    state.set_balance(&address, pre_value);
+                },
+
 
 
                 _ => return Err("不明なAction"),
