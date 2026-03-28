@@ -32,6 +32,7 @@ impl Address {
 
 }
 
+#[derive(Debug,Clone)]
 pub struct Account {
     pub nonce: u32,
     pub balance: U256, 

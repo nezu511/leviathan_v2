@@ -4,6 +4,7 @@ use alloy_primitives::{I256, U256};
 use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction, Hfunction, Ofunction};
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment};
+use crate::leviathan::leviathan::LEVIATHAN;
 
 pub struct EVM {
     pub gas: U256,
@@ -53,11 +54,18 @@ impl EVM {
         let index = self.stack.len().checked_sub(n+1).expect("Stack underflow during peak");
         self.stack[index]
     }
+
+    pub fn return_gas(&mut self) -> U256 {
+        let gas = self.gas;
+        self.gas = U256::ZERO;
+        return gas;
+    }
+
 }
 
 
 impl Xi for EVM {
-    fn evm_run(&mut self, state: &mut WorldState, substate: &mut SubState, execution_environment: &mut ExecutionEnvironment) -> Result<Vec<u8>,Option<Vec<u8>>>  {
+    fn evm_run(&mut self, leviathan: &mut LEVIATHAN, state: &mut WorldState, substate: &mut SubState, execution_environment: &mut ExecutionEnvironment) -> Result<Vec<u8>,Option<Vec<u8>>>  {
         //Ok()：正常停止
         //Err(None) => Z関数による停止
         //Err(Some(Vec<u8>)) => REVERTによる停止
@@ -79,7 +87,7 @@ impl Xi for EVM {
             }
     
             //O関数による状態遷移
-            let result = self.execution(opcode, substate, state, execution_environment);
+            let result = self.execution(opcode, leviathan, substate, state, execution_environment);
 
             if result.is_some() {       //Some(true)：Revert / Some(false):STOP, RETURN, SELFDESTRUCT
                     if result.unwrap() {    //REVERT

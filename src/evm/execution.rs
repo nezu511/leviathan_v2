@@ -5,6 +5,8 @@ use crate::my_trait::evm_trait::{Xi, Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::State;
 use crate::leviathan::world_state::{WorldState, Address, Account};
 use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log};
+use crate::leviathan::leviathan::LEVIATHAN;
+use crate::leviathan::roleback::Action;
 use crate::evm::evm::EVM;
 use sha3::{Keccak256, Digest};
 
@@ -19,7 +21,7 @@ impl Ofunction for EVM {
     }
 
 
-    fn execution(&mut self, opcode:u8, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment) -> Option<bool>{
+    fn execution(&mut self, opcode:u8, leviathan: &mut LEVIATHAN, substate: &mut SubState, state: &mut WorldState, execution_environment: &ExecutionEnvironment) -> Option<bool>{
         //ガスを消費
         let gas_cost = self.gas(opcode, substate, state, execution_environment);
         self.gas = self.gas.saturating_sub(gas_cost);
@@ -694,8 +696,8 @@ impl Ofunction for EVM {
                 let key = self.pop();
                 let value = self.pop();
                 let address = &execution_environment.i_address;
-                //トランザクションが始まったときの一番最初の値を記録する
                 let pre_value = state.get_storage_value(address, &key).unwrap_or(U256::ZERO);
+                //トランザクションが始まったときの一番最初の値を記録する
                 substate.a_access_storage.entry(address.clone()).or_default().entry(key).or_insert(pre_value);
                 let val0 = substate.a_access_storage.get(&address).unwrap().get(&key).cloned().unwrap();
 
@@ -722,6 +724,7 @@ impl Ofunction for EVM {
                     }
                 }
                 //ステートを書き換える (0なら削除、それ以外なら保存)
+                Action::Sstorage(address.clone(), key, U256::ZERO).push(leviathan, state);     //ロールバック用
                 if value == U256::ZERO {
                     state.remove_storage(address, key);
                 } else {
@@ -867,9 +870,11 @@ impl Ofunction for EVM {
                 let to_address = Address::from_u256(val1);
                 let balance = state.get_balance(&from_address).unwrap();
                 if from_address.clone() == to_address {
-                    state.set_balance(from_address, U256::ZERO)
+                    Action::Set_balance(from_address.clone(),U256::ZERO).push(leviathan, state);     //ロールバック用
+                    state.reset_balance(from_address)
                 }else{
                     if balance != U256::ZERO {
+                        Action::Send_eth(from_address.clone(), to_address.clone(), balance).push(leviathan, state);     //ロールバック用
                         state.send_eth(from_address, &to_address, balance);
                     }
                     substate.a_des.push(from_address.clone());
