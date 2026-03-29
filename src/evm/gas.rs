@@ -4,7 +4,7 @@
  *
 */
 use crate::evm::evm::EVM;
-use crate::leviathan::structs::{ExecutionEnvironment, SubState};
+use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Xi};
 use crate::my_trait::leviathan_trait::State;
@@ -181,10 +181,18 @@ impl Gfunction for EVM {
                 let bit = exponent.bit_len();
                 let byte = (bit + 7) / 8;
                 let byte_u256 = U256::from(byte);
-                let result = byte_u256
-                    .saturating_mul(U256::from(10))
-                    .saturating_add(U256::from(10));
-                result
+
+                if self.version == VersionId::Frontier {
+                    let result = byte_u256
+                        .saturating_mul(U256::from(10))
+                        .saturating_add(U256::from(10));
+                    result
+                }else{
+                    let result = byte_u256
+                        .saturating_mul(U256::from(50))
+                        .saturating_add(U256::from(10));
+                    result
+                }
             }
             0x20 => {
                 //KECCAK256
@@ -260,18 +268,20 @@ impl Gfunction for EVM {
                 //SLOAD
                 let address = &execution_environment.i_address;
                 let key = self.peek(0);
-                /*
-                let key_case = substate.a_access_storage.get(address);
-                if key_case.is_none() {
-                    U256::from(2100)
+                if self.version == VersionId::Frontier {
+                    U256::from(50)
                 }else{
-                    if key_case.unwrap().contains_key(&key) {
-                        U256::from(100)
-                    }else{
+                    let key_case = substate.a_access_storage.get(address);
+                    if key_case.is_none() {
                         U256::from(2100)
+                    }else{
+                        if key_case.unwrap().contains_key(&key) {
+                            U256::from(100)
+                        }else{
+                            U256::from(2100)
+                        }
                     }
-                }*/
-                U256::from(50)
+                }
             }
 
             0x55 => {
@@ -283,48 +293,45 @@ impl Gfunction for EVM {
                 let current_value = state
                     .get_storage_value(&address, &key)
                     .unwrap_or(U256::from(0));
-                if current_value.is_zero() && !new_value.is_zero() {
-                    U256::from(20000)
-                } else {
-                    U256::from(5000)
-                }
-
-                //【Constantinople仕様】
-                //トランザクションが始まる前に，入っていた値
-                //let mut called_cost = 0usize;
-                /*
-                let key_case = substate.a_access_storage.get(address);
-                let original_value = if key_case.is_none() {
-                    called_cost = 2100;    //called_cost2100を付加
-                    current_value
+                if self.version == VersionId::Frontier {
+                    if current_value.is_zero() && !new_value.is_zero() {
+                        U256::from(20000)
+                    } else {
+                        U256::from(5000)
+                    }
                 }else{
-                    let val1 = key_case.unwrap().get(&key);
-                    if val1.is_none() {
+                    let mut called_cost = 0usize;
+                    let key_case = substate.a_access_storage.get(address);
+                    let original_value = if key_case.is_none() {
                         called_cost = 2100;    //called_cost2100を付加
-                        current_value
+                        current_value   
                     }else{
-                        val1.unwrap().clone()
-                    }
-                };
-                //Update Costを算出
-                let update_cost = if current_value == new_value {
-                    100
-                }else{
-                    if current_value == original_value{
-                        if original_value == U256::from(0) {
-                            20000
+                        let val1 = key_case.unwrap().get(&key);
+                        if val1.is_none() {
+                            called_cost = 2100;    //called_cost2100を付加
+                            current_value
                         }else{
-                            2900
+                            val1.unwrap().clone()
                         }
-                    }else{
+                    };
+                    //Update Costを算出
+                    let update_cost = if current_value == new_value {
                         100
-                    }
-                };
-                //トータルcostを算出
-                //let total = update_cost + called_cost;
-                let total = update_cost;
-                return U256::from(total);
-                */
+                    }else{
+                        if current_value == original_value{
+                            if original_value == U256::from(0) {
+                                20000
+                            }else{
+                                2900
+                            }
+                        }else{
+                            100
+                        }
+                    };
+                    //トータルcostを算出
+                    let total = update_cost + called_cost;
+                    return U256::from(total);
+                }
             }
 
             0xa0..=0xa4 => {
@@ -511,7 +518,29 @@ impl Gfunction for EVM {
             }
 
             0xff => {
-                return U256::ZERO;
+                if self.version == VersionId::Frontier {
+                    return U256::ZERO;
+                }else{
+                    let data = self.peek(0);
+                    //送り先のアドレスのアクセス状態
+                    let address = Address::from_u256(data);
+                    let access_state_cost = if substate.a_access.contains(&address) {
+                        0usize
+                    }else{
+                        2600
+                    };
+
+                    //新規アカウント作成のペナルティ
+                    let my_address = &execution_environment.i_address;
+                    let create_cost = if state.get_balance(my_address).unwrap_or(U256::from(0)) > U256::from(0) && state.is_empty(&address) {
+                        25000
+                    }else {
+                        0
+                    };
+                    let total = create_cost + access_state_cost + 5000;
+                    return U256::from(total);
+                }
+
             }
 
             _ => U256::from(0),

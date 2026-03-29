@@ -122,7 +122,7 @@ mod tests {
 
     // あなたが作った構造体をインポート
     use crate::leviathan::leviathan::LEVIATHAN;
-    use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, SubState};
+    use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, SubState, VersionId};
     use crate::leviathan::world_state::{Account, Address, WorldState};
     use crate::my_trait::leviathan_trait::TransactionExecution;
 
@@ -235,10 +235,10 @@ mod tests {
                     a_access_storage: HashMap::new(),
                 };
 
-                let mut evm = EVM::new(&execution_environment);
+                let mut evm = EVM::new(&execution_environment, VersionId::Frontier);
                 evm.gas = test_data.exec.gas;
 
-                let mut leviathan = LEVIATHAN::new();
+                let mut leviathan = LEVIATHAN::new(VersionId::Frontier);
                 let result = evm.evm_run(
                     &mut leviathan,
                     &mut state,

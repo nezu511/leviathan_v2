@@ -3,7 +3,7 @@
 use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
-use crate::leviathan::structs::{ExecutionEnvironment, Log, SubState};
+use crate::leviathan::structs::{ExecutionEnvironment, Log, SubState, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
 use crate::my_trait::leviathan_trait::State;
@@ -777,9 +777,35 @@ impl Ofunction for EVM {
                     .get(&key)
                     .cloned()
                     .unwrap();
-
-                if !pre_value.is_zero() && value.is_zero() {
-                    substate.a_reimburse += 15000;
+                
+                //払い戻し
+                if self.version == VersionId::Frontier {
+                    if !pre_value.is_zero() && value.is_zero() {
+                        substate.a_reimburse += 15000;
+                    }
+                }else{
+                    let val0 = substate.a_access_storage.get(&address).unwrap().get(&key).cloned().unwrap_or(U256::ZERO);
+                    if pre_value != value {
+                        if val0 == pre_value {
+                            if val0 != U256::ZERO && value == U256::ZERO {
+                                substate.a_reimburse += 4800;
+                            }
+                        } else {
+                            if val0 != U256::ZERO && pre_value == U256::ZERO {
+                                substate.a_reimburse -= 4800;
+                            }
+                            if val0 != U256::ZERO && value == U256::ZERO {
+                                substate.a_reimburse += 4800;
+                            }
+                            if val0 == value {
+                                if val0 == U256::ZERO {
+                                    substate.a_reimburse += 19900;
+                                } else {
+                                    substate.a_reimburse += 2800;
+                                }
+                            }
+                        }
+                    }
                 }
                 //ステートを書き換える (0なら削除、それ以外なら保存)
                 Action::Sstorage(address.clone(), key, U256::ZERO).push(leviathan, state);

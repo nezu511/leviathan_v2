@@ -160,6 +160,7 @@ impl TransactionExecution for LEVIATHAN {
 }
 
 // leviathan.rs の一番下に追加
+// leviathan.rs の一番下に追加
 #[cfg(test)]
 mod state_tests {
     use super::*;
@@ -174,19 +175,39 @@ mod state_tests {
     use secp256k1::{Message, Secp256k1, SecretKey};
     use sha3::{Digest, Keccak256};
 
-    use crate::leviathan::structs::{BlockHeader, Transaction};
+    use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
     use crate::leviathan::world_state::{Account, Address, WorldState};
     use crate::my_trait::leviathan_trait::TransactionExecution;
     use crate::test::state_parser::StateTestSuite;
 
     // --- ヘルパー関数 ---
-    // コメントキー("//" や "_")を再帰的に削除するヘルパー関数
+    
+    // 🌟 追加: JSONの "network" 文字列から VersionId を取得する関数
+    fn parse_version(network_str: &str) -> VersionId {
+        // ">Frontier" や ">=Frontier" などのプレフィックスを削除して純粋なフォーク名にする
+        let clean_str = network_str.trim_start_matches(">=").trim_start_matches('>');
+        match clean_str {
+            "Frontier" => VersionId::Frontier,
+            "Homestead" => VersionId::Homestead,
+            "EIP150" | "TangerineWhistle" => VersionId::TangerineWhistle,
+            "EIP158" | "SpuriousDragon" => VersionId::SpuriousDragon,
+            "Byzantium" => VersionId::Byzantium,
+            "Constantinople" | "ConstantinopleFix" => VersionId::Constantinople,
+            "Petersburg" => VersionId::Petersburg,
+            "Istanbul" => VersionId::Istanbul,
+            "Berlin" => VersionId::Berlin,
+            "London" => VersionId::London,
+            "Merge" | "Paris" => VersionId::Merge,
+            "Shanghai" => VersionId::Shanghai,
+            "Cancun" => VersionId::Cancun,
+            _ => VersionId::Latest, // 未知の場合は最新とする
+        }
+    }
+
     fn strip_comments(val: &mut serde_json::Value) {
         match val {
             serde_json::Value::Object(map) => {
-                // "//" または "_" で始まるキーを削除
                 map.retain(|k, _| !k.starts_with("//") && !k.starts_with('_'));
-                // 残った値の中も再帰的にチェック
                 for v in map.values_mut() {
                     strip_comments(v);
                 }
@@ -229,7 +250,6 @@ mod state_tests {
         hex::decode(s.trim_start_matches("0x")).unwrap_or_default()
     }
 
-    // U256をRLP用に先頭ゼロを取り除いた最小バイト列に変換する関数
     fn u256_to_minimal_bytes(val: U256) -> Vec<u8> {
         if val == U256::ZERO {
             return vec![];
@@ -239,7 +259,6 @@ mod state_tests {
         bytes[start..].to_vec()
     }
 
-    // 秘密鍵から署名 (v, r, s) を生成する厳密な関数
     fn sign_transaction(
         nonce: U256,
         gas_price: U256,
@@ -249,7 +268,6 @@ mod state_tests {
         data: &[u8],
         secret_key_hex: &str,
     ) -> (U256, U256, U256) {
-        // 1. FrontierレガシートランザクションのRLPエンコード: [nonce, gasPrice, gasLimit, to, value, data]
         let mut stream = RlpStream::new_list(6);
         stream.append(&u256_to_minimal_bytes(nonce));
         stream.append(&u256_to_minimal_bytes(gas_price));
@@ -264,26 +282,21 @@ mod state_tests {
         stream.append(&u256_to_minimal_bytes(value));
         stream.append(&data);
 
-        // 2. Keccak256でハッシュ化
         let mut hasher = Keccak256::new();
         hasher.update(stream.out());
         let hash: [u8; 32] = hasher.finalize().try_into().unwrap();
 
-        // 3. 秘密鍵をパースしてECDSA署名 (Recoverable)
         let secp = Secp256k1::new();
         let secret_key_bytes = hex::decode(secret_key_hex).expect("Invalid secret key hex");
         let secret_key = SecretKey::from_slice(&secret_key_bytes).expect("Invalid secret key");
         let message = Message::from_digest_slice(&hash).expect("Invalid message hash");
 
-        // 【修正 E0277】 &message ではなく message を値として渡す
         let sig = secp.sign_ecdsa_recoverable(message, &secret_key);
         let (recovery_id, sig_bytes) = sig.serialize_compact();
 
-        // 4. v, r, s の抽出
         let r = U256::from_be_slice(&sig_bytes[0..32]);
         let s = U256::from_be_slice(&sig_bytes[32..64]);
 
-        // 【修正 E0599】 to_i32() の代わりに i32::from() または .to_byte() を使用
         let rec_id_i32 = i32::from(recovery_id);
         let v = U256::from(rec_id_i32 as u64 + 27);
 
@@ -295,14 +308,11 @@ mod state_tests {
         let test_file = "testdata/GeneralStateTestsFiller/stMemoryTest/callDataCopyOffsetFiller.json";
         let json_data = fs::read_to_string(test_file).expect("Failed to read JSON file");
 
-        // 1. 一旦型なしの柔軟なValueとして読み込む
         let mut raw_json: serde_json::Value =
             serde_json::from_str(&json_data).expect("Failed to parse raw JSON");
 
-        // 2. コメント類 ("//comment", "_info" など) をすべて取り除く
         strip_comments(&mut raw_json);
 
-        // 3. 綺麗になったJSONデータを、本来の StateTestSuite 構造体にパースする
         let suite: StateTestSuite =
             serde_json::from_value(raw_json).expect("Failed to parse into StateTestSuite");
 
@@ -310,7 +320,15 @@ mod state_tests {
             println!("========================================");
             println!("▶ Running STRICT State Test: {}", test_name);
 
-            // 1. Env (BlockHeader) 構築...
+            // 🌟 追加: JSONの "network" から VersionId を取得
+            let network_str = test_data.expect[0]
+                .network
+                .first()
+                .map(|s| s.as_str())
+                .unwrap_or("Frontier"); // もし未定義ならFrontierをデフォルトにする
+            let version = parse_version(network_str);
+            println!("⚙️ Selected Fork Version: {:?}", version);
+
             let block_header = BlockHeader {
                 h_beneficiary: parse_address(&test_data.env.current_coinbase),
                 h_timestamp: parse_u256(&test_data.env.current_timestamp),
@@ -320,7 +338,6 @@ mod state_tests {
                 h_basefee: U256::ZERO,
             };
 
-            // 2. Pre State 構築...
             let mut world_state_map = HashMap::new();
             for (addr_str, acc_data) in &test_data.pre {
                 let mut storage = HashMap::new();
@@ -352,7 +369,6 @@ mod state_tests {
             }
             let mut state = WorldState(world_state_map);
 
-            // 3. トランザクション・パラメータ取得
             let tx_data = parse_code(&test_data.transaction.data[0]);
             let to_address = if test_data.transaction.to.is_empty() {
                 None
@@ -367,7 +383,6 @@ mod state_tests {
 
             let secret_key_hex = test_data.transaction.secret_key.trim_start_matches("0x");
 
-            // 4. アプローチA: 署名生成！
             let (v, r, s) = sign_transaction(
                 nonce,
                 gas_price,
@@ -384,16 +399,15 @@ mod state_tests {
                 t_gas_limit: gas_limit,
                 t_price: gas_price,
                 t_value: value,
-                // 【修正 E0308】 Transaction構造体の型に合わせて usize または u64 にキャスト
                 t_nonce: nonce.try_into().unwrap_or(0),
-                // 【修正 E0560】 t_v を t_w に修正
                 t_w: v,
                 t_r: r,
                 t_s: s,
             };
 
-            // 5. トランザクション実行
-            let mut leviathan = LEVIATHAN::new();
+            // 🌟 修正: LEVIATHAN::new() にバージョンを渡す
+            let mut leviathan = LEVIATHAN::new(version);
+            
             let result = leviathan.execution(&mut state, transaction, &block_header);
 
             assert!(
@@ -401,7 +415,7 @@ mod state_tests {
                 "Transaction execution failed: {:?}",
                 result.err()
             );
-            // 6. Post Condition (Expect) の検証
+
             let expect_data = &test_data.expect[0];
             for (addr_str, expected_acc) in &expect_data.result {
                 let addr = parse_address(addr_str);
@@ -430,7 +444,6 @@ mod state_tests {
                 }
 
                 if let Some(expected_nonce_str) = &expected_acc.nonce {
-                    // E0308, E0277解消: u64 -> u32
                     let expected_nonce: u32 =
                         parse_u256(expected_nonce_str).try_into().unwrap_or(0);
                     assert_eq!(
