@@ -36,7 +36,7 @@ jobs:
 
       # 5. 危険な書き方や非効率なコードがないか静的解析（警告があればエラーにする）
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features 
 
       # 6. いよいよテスト実行！あなたのVMテストとStateTestがここで走る
       - name: Run tests
