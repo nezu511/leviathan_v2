@@ -73,6 +73,7 @@ impl MessageCall for LEVIATHAN {
                 execution_environment.i_byte = exe_code;
                 //仮想マシンの実行
                 let mut evm = EVM::new(&execution_environment);
+                evm.gas = gas;
                 let result = evm.evm_run(self, state, substate, &mut execution_environment);
                 match result {
                     Ok(output) => {
