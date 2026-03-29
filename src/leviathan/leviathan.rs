@@ -327,7 +327,7 @@ mod state_tests {
                 .map(|s| s.as_str())
                 .unwrap_or("Frontier"); // もし未定義ならFrontierをデフォルトにする
             let version = parse_version(network_str);
-            println!("⚙️ Selected Fork Version: {:?}", version);
+            println!("Selected Fork Version: {:?}", version);
 
             let block_header = BlockHeader {
                 h_beneficiary: parse_address(&test_data.env.current_coinbase),
