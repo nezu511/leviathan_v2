@@ -124,7 +124,7 @@ mod tests {
     use crate::leviathan::leviathan::LEVIATHAN;
     use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, SubState, VersionId};
     use crate::leviathan::world_state::{Account, Address, WorldState};
-    use crate::my_trait::leviathan_trait::TransactionExecution;
+    use crate::my_trait::leviathan_trait::{RoleBack, TransactionExecution};
 
     // パーサーをインポート
     use crate::my_trait::evm_trait::Xi;
@@ -256,11 +256,11 @@ mod tests {
                         evm.gas = evm.gas.saturating_add(actual_refund);
                     }
                     Err(None) => {
-                        state = build_initial_state();
+                        leviathan.roleback(&mut state).expect("ロールバックに失敗しました");
                         evm.gas = U256::ZERO;
                     }
                     Err(Some(_)) => {
-                        state = build_initial_state();
+                        leviathan.roleback(&mut state).expect("ロールバックに失敗しました");
                     }
                 }
 
