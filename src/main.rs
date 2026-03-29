@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-pub mod test { pub mod test_parser; }
+pub mod test;
 pub mod leviathan;
 pub mod my_trait;
 pub mod evm;
