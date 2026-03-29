@@ -3,7 +3,7 @@
 use crate::evm::evm::EVM;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
-    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction,
+    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId
 };
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::leviathan_trait::{
@@ -15,13 +15,15 @@ use sha3::{Digest, Keccak256};
 pub struct LEVIATHAN {
     pub journal: Vec<Action>,
     pub substate_backup: BackupSubstate,
+    pub version: VersionId
 }
 
 impl LEVIATHAN {
-    pub fn new() -> Self {
+    pub fn new(version: VersionId) -> Self {
         Self {
             journal: Vec::<Action>::new(),
             substate_backup: BackupSubstate::new(),
+            version: version
         }
     }
 
@@ -290,7 +292,7 @@ mod state_tests {
 
     #[test]
     fn test_add11_state_strict() {
-        let test_file = "testdata/GeneralStateTestsFiller/stExample/add11Filler.json";
+        let test_file = "testdata/GeneralStateTestsFiller/stMemoryTest/callDataCopyOffsetFiller.json";
         let json_data = fs::read_to_string(test_file).expect("Failed to read JSON file");
 
         // 1. 一旦型なしの柔軟なValueとして読み込む

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{ExecutionEnvironment, SubState};
+use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
 use alloy_primitives::{I256, U256};
@@ -14,10 +14,11 @@ pub struct EVM {
     pub stack: Vec<U256>,
     pub return_back: Vec<u8>,
     pub safe_jump: Vec<u8>,
+    pub version: VersionId,
 }
 
 impl EVM {
-    pub fn new(execution_environment: &ExecutionEnvironment) -> Self {
+    pub fn new(execution_environment: &ExecutionEnvironment, version: VersionId) -> Self {
         //安全なjump先のリストを作成
         let code = execution_environment.i_byte.clone();
         let code_len = code.len();
@@ -46,6 +47,7 @@ impl EVM {
             stack: Vec::new(),
             return_back: Vec::new(),
             safe_jump: safe_jump,
+            version: version,
         }
     }
 

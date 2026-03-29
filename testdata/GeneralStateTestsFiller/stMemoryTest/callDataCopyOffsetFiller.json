@@ -29,7 +29,7 @@
             "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" : {
                 "balance" : "1000000000000000000",
                 "//codeDescription": "/* fill memory up */ /* copy call data to memory with offset > call data length */  /* only part of memory should be zeroed out */",
-                "code": "{ (MSTORE 0x00 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) (CALLDATACOPY 0x00 0xffff  0x10) (SSTORE 0x00 (MLOAD 0x00)) }",
+		"code": "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff600052601061ffff600037600051600055",
                 "nonce" : "1",
                 "storage": {
                 }

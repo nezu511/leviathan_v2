@@ -4,6 +4,24 @@ use crate::leviathan::world_state::{Account, Address, WorldState};
 use alloy_primitives::{I256, U256};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum VersionId {
+    Frontier,
+    Homestead,
+    TangerineWhistle,
+    SpuriousDragon,
+    Byzantium,
+    Constantinople,
+    Petersburg,
+    Istanbul,
+    Berlin,
+    London,
+    Merge,
+    Shanghai,
+    Cancun,
+    Latest,
+}
+
 pub struct Transaction {
     pub t_nonce: usize,
     pub t_gas_limit: U256,
