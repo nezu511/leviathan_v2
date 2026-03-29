@@ -46,6 +46,26 @@ impl State for WorldState {
         return Some(value.cloned().unwrap_or(U256::from(0)));
     }
 
+    fn get_nonce(&self, address: &Address) -> Option<u32> {
+        if !self.0.contains_key(&address) {
+            return None;
+        }
+        let account = self.0.get(&address);
+        let nonce = account.unwrap().nonce;
+        return Some(nonce);
+    }
+
+    //非推奨
+    fn get_account(&self, address: &Address) -> Account{
+        let account = self.0.get(&address);
+        match account {
+            Some(x) => return x.clone(),
+            None => {
+                return Account::new()
+            }
+        }
+    }
+
     fn set_balance(&mut self,address: &Address, value:U256) {
         let account = self.0.get_mut(&address);
         match account {
@@ -78,6 +98,15 @@ impl State for WorldState {
         }
     }
 
+    fn dec_nonce(&mut self, address: &Address) {
+        let account = self.0.get_mut(&address);
+        match account {
+            Some(x) => {
+                x.nonce -= 1;
+            },
+            None => (),
+        }
+    }
 
     fn set_storage(&mut self, address: &Address, key: U256, value: U256) {
         let account = self.0.get_mut(&address).unwrap();
@@ -95,7 +124,7 @@ impl State for WorldState {
     }
 
     fn send_eth(&mut self, from: &Address, to: &Address, eth:U256) -> Result<(),&'static str> {
-        let mut from_account = self.0.get_mut(from).unwrap_or(return Err("送信元のアカウントが存在しない"));
+        let mut from_account = self.0.get_mut(from).ok_or("送信元のアカウントが存在しない")?;
         if from_account.balance >= eth {
             from_account.balance -= eth;
         }else{

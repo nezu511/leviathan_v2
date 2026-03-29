@@ -1,5 +1,5 @@
 use crate::leviathan::world_state::{WorldState, Address, Account};
-use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction};
+use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader};
 use alloy_primitives::{I256, U256};
 
 pub trait State {
@@ -10,11 +10,17 @@ pub trait State {
     fn get_code(&self, address: &Address) -> Option<Vec<u8>>;
 
     fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256>;
+
+    fn get_nonce(&self, address: &Address) -> Option<u32>;
+
+    fn get_account(&self, address: &Address) -> Account;
     
     // 書き込み系
     fn set_balance(&mut self, address: &Address, value:U256);
 
     fn inc_nonce(&mut self, address: &Address);
+
+    fn dec_nonce(&mut self, address: &Address);
 
     fn set_storage(&mut self, address: &Address, key: U256, value: U256);
 
@@ -35,14 +41,63 @@ pub trait State {
     fn reset_balance(&mut self, address: &Address);
 
 
+
 }
 
+pub trait TransactionChecks {
+     fn transaction_checks(state: &mut WorldState, transaction:&Transaction, inti_gas: &U256, pre_cost: &U256, block_header: &BlockHeader) -> Result<Address,&'static str>;
+}
+
+
 pub trait TransactionExecution {
-     fn execution(state: &mut WorldState, transaction:Transaction) -> Result<(U256, Vec<Log>, bool),(U256, Vec<Log>, bool)>;
-    //
-    // fn contract_creation() -> Result<(WorldState), (WorldState)>;
-    //
-    // fn message_call() -> Result<(WorldState), (WorldState)>;      
-    //
-    // fn role_back();      contract_creationもしくはmessage_callの返り値が失敗なら発動！！
+     fn execution(&mut self, state: &mut WorldState, transaction:Transaction, block_header: &BlockHeader) -> Result<(U256, Vec<Log>),(U256, Vec<Log>)>;
+}
+
+pub trait ContractCreation {
+    fn contract_creation(&mut self,
+                         state: &mut WorldState,
+                         substate: &mut SubState,
+                         sender: Address,   //送信者のアドレス
+                         origin: Address,   //Originalアドレス
+                         gas: U256,      //利用可能なガス
+                         price: U256,      //ガス価格
+                         eth: U256,      //送るETH
+                         init_code: Vec<u8>,   //EVM初期化バイトコード
+                         depth: usize,       //コールスタック深さ
+                         salt: Option<U256>,      //Creat2用のソルト
+                         sudo: bool,       //ステートへの変更権限
+                         block_header: &BlockHeader,
+                         ) -> Result<(U256,Vec<u8>),(U256,Option<Vec<u8>>)>;     //ガスとデータ？
+}
+                         
+
+pub trait MessageCall {
+    fn message_call(&mut self,
+                    state: &mut WorldState,
+                    substate: &mut SubState,
+                    sender: Address,   //送信者のアドレス
+                    origin: Address,   //Originalアドレス
+                    recipient: Address,   //送金を受け取るアドレス
+                    contract: Address,   //EVMコードを読み出して実行するアドレス
+                    gas: U256,      //利用可能なガス
+                    price: U256,      //ガス価格
+                    eth: U256,      //送るETH
+                    apparent_value: U256,      //見かけ上送るETH
+                    data: Vec<u8>,   //データ
+                    depth: usize,       //コールスタック深さ
+                    sudo: bool,       //ステートへの変更権限
+                    block_header: &BlockHeader,
+                    ) -> Result<(U256,Vec<u8>),(U256,Option<Vec<u8>>)>;     //ガスとデータ？
+}
+
+pub trait RoleBack {
+    fn roleback(&mut self, state: &mut WorldState) -> Result<(), &'static str>;
+}
+
+pub trait CompiledContract {
+    fn sha256(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn precompile_ripemd160(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn precompile_identity(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> ;
+
+
 }
