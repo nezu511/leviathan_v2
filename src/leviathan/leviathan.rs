@@ -320,7 +320,7 @@ mod state_tests {
             println!("========================================");
             println!("▶ Running STRICT State Test: {}", test_name);
 
-            // 🌟 追加: JSONの "network" から VersionId を取得
+            //  追加: JSONの "network" から VersionId を取得
             let network_str = test_data.expect[0]
                 .network
                 .first()
@@ -405,7 +405,7 @@ mod state_tests {
                 t_s: s,
             };
 
-            // 🌟 修正: LEVIATHAN::new() にバージョンを渡す
+            //  修正: LEVIATHAN::new() にバージョンを渡す
             let mut leviathan = LEVIATHAN::new(version);
             
             let result = leviathan.execution(&mut state, transaction, &block_header);
