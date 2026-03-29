@@ -84,6 +84,10 @@ impl TransactionExecution for LEVIATHAN {
         //ここからロールバックの起点:ロールバックが起きたらこの状態にする
         let mut substate = SubState::new();
 
+        //gasから初期ガスを引く
+        let mut gas = gas.unwrap();
+        gas = gas.saturating_sub(all_gas);
+
         //=======ステップ3===========
         let result = if transaction.t_to.is_none() {
             self.contract_creation(
@@ -91,7 +95,7 @@ impl TransactionExecution for LEVIATHAN {
                 &mut substate,
                 sender_address.clone(),
                 sender_address.clone(),
-                gas.unwrap(),
+                gas,
                 transaction.t_price,
                 transaction.t_value,
                 transaction.data,
@@ -109,7 +113,7 @@ impl TransactionExecution for LEVIATHAN {
                 sender_address.clone(),
                 to_address.clone(),
                 to_address.clone(),
-                gas.unwrap(),
+                gas,
                 transaction.t_price,
                 transaction.t_value,
                 transaction.t_value,
