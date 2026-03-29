@@ -62,7 +62,7 @@ impl TransactionExecution for LEVIATHAN {
          //【Nonceの加算】
          state.inc_nonce(&sender_address);
          //【前払いガス代の徴収】
-         let gas = state.buy_gas(&sender_address, transaction.t_price, transaction.t_value);
+         let gas = state.buy_gas(&sender_address, transaction.t_gas_limit, transaction.t_price);
          //ここからロールバックの起点:ロールバックが起きたらこの状態にする
          let mut substate = SubState::new();
     
