@@ -312,6 +312,7 @@ impl Ofunction for EVM {
                 let slice = if size == 0 {
                     &[0u8;0]
                 }else{
+                    //メモリ拡張
                     let required_size = offset.saturating_add(size);
                     if required_size > self.memory.len() {
                         let words = (required_size.saturating_add(31))/32;
@@ -325,6 +326,10 @@ impl Ofunction for EVM {
                 let result = hasher.finalize().try_into().unwrap();
                 let val = U256::from_be_bytes(result);
                 self.push(val);
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
+                
             },
 
             0x30 => {       //ADDRESS
@@ -408,6 +413,9 @@ impl Ofunction for EVM {
                         }
                     }
                 }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
             },
 
             0x38 => {       //CODESIZE
@@ -438,6 +446,9 @@ impl Ofunction for EVM {
                         }
                     }
                 }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
             },
 
             0x3a => {       //GASPRICE
@@ -493,6 +504,9 @@ impl Ofunction for EVM {
                 if !substate.a_access.contains(&address) {
                     substate.a_access.push(address.clone())
                 }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
             },
 
             0x3d => {       //RETURNDATASIZE
@@ -516,6 +530,9 @@ impl Ofunction for EVM {
                     let read_size = offset.saturating_add(size);
                     self.memory[dest_offset .. required_size].copy_from_slice(&data[offset .. read_size]);
                 }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
             },
 
             0x3f => {       //EXTCODEHASH
@@ -600,9 +617,14 @@ impl Ofunction for EVM {
                 self.push(val);
             },
 
+            0x50 => {
+                self.pop();
+            },
+
             0x51 => {       //MLOAD メモリから読み込む（32B)
                 let pointer = self.pop().try_into().unwrap_or(usize::MAX);
                 let required_size = pointer.saturating_add(32);
+                //メモリ拡張
                 if required_size > self.memory.len() {
                     let words = required_size.saturating_add(31) / 32;
                     self.memory.resize(words.saturating_mul(32), 0);
@@ -612,12 +634,16 @@ impl Ofunction for EVM {
                 tmp[..].copy_from_slice(slice);
                 let val = U256::from_be_bytes(tmp);
                 self.push(val);
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
             },
 
             0x52 => {       //MSTORE メモリに保存(32)
                 let pointer = self.pop().try_into().unwrap_or(usize::MAX);
                 let data = self.pop();
                 let required_size = pointer.saturating_add(32);
+                //メモリ拡張
                 if required_size > self.memory.len() {
                     let words = required_size.saturating_add(31) / 32;
                     self.memory.resize(words.saturating_mul(32), 0);
@@ -625,12 +651,16 @@ impl Ofunction for EVM {
                 let slice = &mut self.memory[pointer .. required_size];
                 let bytes:[u8;32] = data.to_be_bytes();
                 slice.copy_from_slice(&bytes);
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
             },
 
             0x53 => {       //MSTORE8
                 let pointer = self.pop().try_into().unwrap_or(usize::MAX);
                 let data = self.pop();
                 let required_size = pointer.saturating_add(1);
+                //メモリ拡張
                 if required_size > self.memory.len() {
                     let words = required_size.saturating_add(31) / 32;
                     self.memory.resize(words.saturating_mul(32), 0);
@@ -638,7 +668,11 @@ impl Ofunction for EVM {
                 let slice = &mut self.memory[pointer..required_size];
                 let bytes:[u8;32] = data.to_be_bytes();
                 slice.copy_from_slice(&bytes[31..32]);
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
             },
+
             0x54 => {       //SLOAD
                 let key:U256 = self.pop();
                 let address = &execution_environment.i_address;
@@ -664,6 +698,7 @@ impl Ofunction for EVM {
                     substate.a_reimburse += 15000;
                 }
                 //ステートを書き換える (0なら削除、それ以外なら保存)
+                Action::Sstorage(address.clone(), key, U256::ZERO).push(leviathan, state);
                 if value == U256::ZERO {
                     state.remove_storage(address, key);
                 } else {
@@ -672,6 +707,7 @@ impl Ofunction for EVM {
                     
             },
 
+            0x56 | 0x57 => (),
 
             0x58 => {       //PC
                 self.push(U256::from(self.pc -1));
@@ -688,6 +724,10 @@ impl Ofunction for EVM {
 
             0x5b => {       //JUMPDEST
 
+            },
+
+            0x5f => {       //push0
+                self.push(U256::ZERO);
             },
 
             0x60 ..=0x7f => {
@@ -753,6 +793,9 @@ impl Ofunction for EVM {
                 let address = &execution_environment.i_address;
                 let log = Log::new(address.clone(), topic, data);
                 substate.a_log.push(log);
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
             },
 
             0xf3 => {       //RETURN
@@ -768,6 +811,9 @@ impl Ofunction for EVM {
                     let slice = &self.memory[offset .. required_size];
                     self.return_back = slice.to_vec();
                 }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
                 return Some(false);
             },
 
@@ -784,6 +830,9 @@ impl Ofunction for EVM {
                     let slice = &self.memory[offset .. required_size];
                     self.return_back = slice.to_vec();
                 }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
                 return Some(true);
             },
 
