@@ -1,16 +1,18 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{I256, U256};
-use crate::my_trait::leviathan_trait::{State, TransactionExecution, RoleBack, CompiledContract};
-use crate::my_trait::evm_trait::{Xi, Gfunction, Zfunction, Hfunction, Ofunction};
-use crate::leviathan::world_state::{WorldState, Address, Account};
+use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
-use crate::leviathan::structs::{SubState, ExecutionEnvironment, Log, Transaction, BlockHeader, BackupSubstate};
-use crate::evm::evm::EVM;
-use sha3::Keccak256;
+use crate::leviathan::structs::{
+    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction,
+};
+use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
+use crate::my_trait::leviathan_trait::{CompiledContract, RoleBack, State, TransactionExecution};
+use alloy_primitives::{I256, U256};
+use ripemd::{Digest, Ripemd160};
 use sha2::Sha256;
-use ripemd::{Ripemd160, Digest};
+use sha3::Keccak256;
 use std::collections::HashMap;
 
 impl CompiledContract for LEVIATHAN {
@@ -37,7 +39,10 @@ impl CompiledContract for LEVIATHAN {
         Ok((remaining_gas, result))
     }
 
-    fn precompile_ripemd160(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    fn precompile_ripemd160(
+        gas: U256,
+        data: &[u8],
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 600 + 120 * ceil(|data| / 32) [cite: 1388]
         let word_count = (data.len() + 31) / 32;
         let gas_required = U256::from(600) + U256::from(120 * word_count);
@@ -64,10 +69,12 @@ impl CompiledContract for LEVIATHAN {
         Ok((remaining_gas, result))
     }
 
-
-        // プリコンパイルコントラクト: Identity (Address 4)
-        // Yellow Paper Appendix E (式230-233)
-    fn precompile_identity(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    // プリコンパイルコントラクト: Identity (Address 4)
+    // Yellow Paper Appendix E (式230-233)
+    fn precompile_identity(
+        gas: U256,
+        data: &[u8],
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 15 + 3 * ceil(|data| / 32) [cite: 1397]
         let word_count = (data.len() + 31) / 32;
         let gas_required = U256::from(15) + U256::from(3 * word_count);

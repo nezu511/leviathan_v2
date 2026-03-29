@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, Bytes, B256, U256};
+use alloy_primitives::{Address, B256, Bytes, U256};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -14,8 +14,8 @@ pub struct VmTest {
     pub exec: Exec,
     pub pre: HashMap<Address, AccountState>,
     pub post: Option<HashMap<Address, AccountState>>, // テストによっては無い場合もあるのでOption
-    pub gas: Option<U256>, // 期待される残りガス
-    pub out: Option<Bytes>, // 期待されるリターンデータ
+    pub gas: Option<U256>,                            // 期待される残りガス
+    pub out: Option<Bytes>,                           // 期待されるリターンデータ
 }
 
 /// ブロック環境 (ExecutionEnvironmentの元データ)
