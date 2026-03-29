@@ -134,6 +134,26 @@ mod state_tests {
     use crate::my_trait::leviathan_trait::TransactionExecution;
 
     // --- ヘルパー関数 ---
+    // コメントキー("//" や "_")を再帰的に削除するヘルパー関数
+    fn strip_comments(val: &mut serde_json::Value) {
+        match val {
+            serde_json::Value::Object(map) => {
+                // "//" または "_" で始まるキーを削除
+                map.retain(|k, _| !k.starts_with("//") && !k.starts_with('_'));
+                // 残った値の中も再帰的にチェック
+                for v in map.values_mut() {
+                    strip_comments(v);
+                }
+            }
+            serde_json::Value::Array(arr) => {
+                for v in arr.iter_mut() {
+                    strip_comments(v);
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn parse_u256(s: &str) -> U256 {
         let s = s.trim();
         if s.is_empty() { return U256::ZERO; }
@@ -227,7 +247,15 @@ fn sign_transaction(
         let test_file = "testdata/GeneralStateTestsFiller/stExample/add11Filler.json";
         let json_data = fs::read_to_string(test_file).expect("Failed to read JSON file");
         
-        let suite: StateTestSuite = serde_json::from_str(&json_data).expect("Failed to parse JSON");
+        // 1. 一旦型なしの柔軟なValueとして読み込む
+        let mut raw_json: serde_json::Value = serde_json::from_str(&json_data).expect("Failed to parse raw JSON");
+        
+        // 2. コメント類 ("//comment", "_info" など) をすべて取り除く
+        strip_comments(&mut raw_json);
+        
+        // 3. 綺麗になったJSONデータを、本来の StateTestSuite 構造体にパースする
+        let suite: StateTestSuite = serde_json::from_value(raw_json).expect("Failed to parse into StateTestSuite");
+        
 
         for (test_name, test_data) in suite.tests {
             println!("========================================");
