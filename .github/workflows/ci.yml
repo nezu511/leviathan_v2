@@ -1,0 +1,43 @@
+name: Rust EVM CI
+
+# どのタイミングでCIを動かすか（masterブランチにPushされた時など）
+on:
+  push:
+    branches: [ "master", "feat/**" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-and-lint:
+    name: Check, Lint, and Test
+    runs-on: ubuntu-latest # クラウド上の最新のUbuntuサーバーを借りる
+
+    steps:
+      # 1. あなたのリポジトリのコードをサーバーにダウンロードする
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 最新のRustコンパイラをセットアップする
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      # 3. ビルドを高速化するためのキャッシュ設定（プロの現場では必須）
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      # 4. コードのフォーマットが崩れていないかチェック
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check
+
+      # 5. 危険な書き方や非効率なコードがないか静的解析（警告があればエラーにする）
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      # 6. いよいよテスト実行！あなたのVMテストとStateTestがここで走る
+      - name: Run tests
+        run: cargo test --verbose
