@@ -402,15 +402,7 @@ impl Gfunction for EVM {
                 let base_cost = ext_cost
                     .saturating_add(acc_cost)
                     .saturating_add(create_cost);
-                //サブコールへのガス割当
-                let gr = self.gas.saturating_sub(base_cost);
-                let gr = gr - (gr / U256::from(64));
-                let mut result = if gr > child_gas_limit {
-                    child_gas_limit
-                } else {
-                    gr
-                };
-                return result.saturating_add(base_cost);
+                return base_cost;
             }
 
             0xf2 => {
@@ -447,15 +439,7 @@ impl Gfunction for EVM {
                 let base_cost = ext_cost
                     .saturating_add(acc_cost)
                     .saturating_add(create_cost);
-                //サブコールへのガス割当
-                let gr = self.gas.saturating_sub(base_cost);
-                let gr = gr - (gr / U256::from(64));
-                let mut result = if gr > child_gas_limit {
-                    child_gas_limit
-                } else {
-                    gr
-                };
-                return result.saturating_add(base_cost);
+                return base_cost;
             }
 
             0xf3 | 0xfd => {
@@ -492,15 +476,7 @@ impl Gfunction for EVM {
                 let acc_cost = self.is_account_access(address, substate);
 
                 let base_cost = ext_cost.saturating_add(acc_cost);
-                //サブコールへのガス割当
-                let gr = self.gas.saturating_sub(base_cost);
-                let gr = gr - (gr / U256::from(64));
-                let mut result = if gr > child_gas_limit {
-                    child_gas_limit
-                } else {
-                    gr
-                };
-                return result.saturating_add(base_cost);
+                return base_cost;
             }
 
             0xf5 => {
