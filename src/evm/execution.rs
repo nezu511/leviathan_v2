@@ -431,8 +431,8 @@ impl Ofunction for EVM {
             0x37 => {
                 //CALLDATACOPY
                 let data = &execution_environment.i_data;
-                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);  //メモリ
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);   //CALLDATA
                 let size = self.pop().try_into().unwrap_or(usize::MAX);
                 //メモリ拡張
                 if size != 0 {
@@ -442,17 +442,17 @@ impl Ofunction for EVM {
                         self.memory.resize(words * 32, 0);
                     }
                     //メモリに値を書き込む
+                    let mut slice = vec![0u8;size];
                     let read_size = offset.saturating_add(size);
                     if offset <= data.len() {
                         if read_size > data.len() {
                             let copy_len = data.len() - offset;
-                            self.memory[dest_offset..dest_offset + copy_len]
-                                .copy_from_slice(&data[offset..data.len()]);
+                            slice[..copy_len].copy_from_slice(&data[offset..data.len()]);
                         } else {
-                            self.memory[dest_offset..required_size]
-                                .copy_from_slice(&data[offset..read_size]);
+                                slice.copy_from_slice(&data[offset..read_size]);
                         }
                     }
+                    self.memory[dest_offset..required_size].copy_from_slice(&slice);
                 }
                 //アクティブなword数を更新
                 let active_words = self.memory.len() / 32;
