@@ -2,7 +2,7 @@
 
 use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, Log, SubState, Transaction};
+use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::leviathan_trait::{State, TransactionChecks, TransactionExecution};
 use alloy_primitives::{I256, U256};
@@ -15,6 +15,7 @@ use sha3::{Digest, Keccak256};
 
 impl TransactionChecks for LEVIATHAN {
     fn transaction_checks(
+        &self,
         state: &mut WorldState,
         transaction: &Transaction,
         inti_gas: &U256,
@@ -108,9 +109,11 @@ impl TransactionChecks for LEVIATHAN {
         }
 
         //Initコードが49152バイト以下
-        if transaction.t_to.is_none() {
-            if transaction.data.len() > 49152 {
-                return Err("Initコードが49152バイトを超えている");
+        if self.version >= VersionId::Shanghai {   //Shanghai以降
+            if transaction.t_to.is_none() {
+                if transaction.data.len() > 49152 {
+                    return Err("Initコードが49152バイトを超えている");
+                }
             }
         }
 
