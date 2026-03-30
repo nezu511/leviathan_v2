@@ -48,6 +48,7 @@ pub trait State {
 
 pub trait TransactionChecks {
     fn transaction_checks(
+        &self,
         state: &mut WorldState,
         transaction: &Transaction,
         inti_gas: &U256,

@@ -77,7 +77,7 @@
         "pre" : {
             "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6" : {
                 "balance" : "1000000000000000000",
-                "code" : "{ (MSTORE8 63967 42) [[ 0 ]] (MSIZE) } ",
+                "code" : "0x602a61f9df5359600055",
                 "nonce" : "0",
                 "storage" : {
                 }
