@@ -306,7 +306,7 @@ mod state_tests {
     #[test]
     fn state_test() {
         let test_file =
-            "testdata/GeneralStateTestsFiller/stMemoryTest/mem32b_singleByteFiller.json";
+            "testdata/GeneralStateTestsFiller/stMemoryTest/mem32kb+33Filler.json";
         let json_data = fs::read_to_string(test_file).expect("Failed to read JSON file");
 
         let mut raw_json: serde_json::Value =
