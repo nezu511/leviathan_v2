@@ -256,11 +256,15 @@ mod tests {
                         evm.gas = evm.gas.saturating_add(actual_refund);
                     }
                     Err(None) => {
-                        leviathan.roleback(&mut state).expect("ロールバックに失敗しました");
+                        leviathan
+                            .roleback(&mut state)
+                            .expect("ロールバックに失敗しました");
                         evm.gas = U256::ZERO;
                     }
                     Err(Some(_)) => {
-                        leviathan.roleback(&mut state).expect("ロールバックに失敗しました");
+                        leviathan
+                            .roleback(&mut state)
+                            .expect("ロールバックに失敗しました");
                     }
                 }
 

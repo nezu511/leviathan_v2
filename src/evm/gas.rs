@@ -187,7 +187,7 @@ impl Gfunction for EVM {
                         .saturating_mul(U256::from(10))
                         .saturating_add(U256::from(10));
                     result
-                }else{
+                } else {
                     let result = byte_u256
                         .saturating_mul(U256::from(50))
                         .saturating_add(U256::from(10));
@@ -270,14 +270,14 @@ impl Gfunction for EVM {
                 let key = self.peek(0);
                 if self.version == VersionId::Frontier {
                     U256::from(50)
-                }else{
+                } else {
                     let key_case = substate.a_access_storage.get(address);
                     if key_case.is_none() {
                         U256::from(2100)
-                    }else{
+                    } else {
                         if key_case.unwrap().contains_key(&key) {
                             U256::from(100)
-                        }else{
+                        } else {
                             U256::from(2100)
                         }
                     }
@@ -299,32 +299,32 @@ impl Gfunction for EVM {
                     } else {
                         U256::from(5000)
                     }
-                }else{
+                } else {
                     let mut called_cost = 0usize;
                     let key_case = substate.a_access_storage.get(address);
                     let original_value = if key_case.is_none() {
-                        called_cost = 2100;    //called_cost2100を付加
-                        current_value   
-                    }else{
+                        called_cost = 2100; //called_cost2100を付加
+                        current_value
+                    } else {
                         let val1 = key_case.unwrap().get(&key);
                         if val1.is_none() {
-                            called_cost = 2100;    //called_cost2100を付加
+                            called_cost = 2100; //called_cost2100を付加
                             current_value
-                        }else{
+                        } else {
                             val1.unwrap().clone()
                         }
                     };
                     //Update Costを算出
                     let update_cost = if current_value == new_value {
                         100
-                    }else{
-                        if current_value == original_value{
+                    } else {
+                        if current_value == original_value {
                             if original_value == U256::from(0) {
                                 20000
-                            }else{
+                            } else {
                                 2900
                             }
-                        }else{
+                        } else {
                             100
                         }
                     };
@@ -402,15 +402,7 @@ impl Gfunction for EVM {
                 let base_cost = ext_cost
                     .saturating_add(acc_cost)
                     .saturating_add(create_cost);
-                //サブコールへのガス割当
-                let gr = self.gas.saturating_sub(base_cost);
-                let gr = gr - (gr / U256::from(64));
-                let mut result = if gr > child_gas_limit {
-                    child_gas_limit
-                } else {
-                    gr
-                };
-                return result.saturating_add(base_cost);
+                return base_cost;
             }
 
             0xf2 => {
@@ -447,15 +439,7 @@ impl Gfunction for EVM {
                 let base_cost = ext_cost
                     .saturating_add(acc_cost)
                     .saturating_add(create_cost);
-                //サブコールへのガス割当
-                let gr = self.gas.saturating_sub(base_cost);
-                let gr = gr - (gr / U256::from(64));
-                let mut result = if gr > child_gas_limit {
-                    child_gas_limit
-                } else {
-                    gr
-                };
-                return result.saturating_add(base_cost);
+                return base_cost;
             }
 
             0xf3 | 0xfd => {
@@ -492,15 +476,7 @@ impl Gfunction for EVM {
                 let acc_cost = self.is_account_access(address, substate);
 
                 let base_cost = ext_cost.saturating_add(acc_cost);
-                //サブコールへのガス割当
-                let gr = self.gas.saturating_sub(base_cost);
-                let gr = gr - (gr / U256::from(64));
-                let mut result = if gr > child_gas_limit {
-                    child_gas_limit
-                } else {
-                    gr
-                };
-                return result.saturating_add(base_cost);
+                return base_cost;
             }
 
             0xf5 => {
@@ -520,27 +496,29 @@ impl Gfunction for EVM {
             0xff => {
                 if self.version == VersionId::Frontier {
                     return U256::ZERO;
-                }else{
+                } else {
                     let data = self.peek(0);
                     //送り先のアドレスのアクセス状態
                     let address = Address::from_u256(data);
                     let access_state_cost = if substate.a_access.contains(&address) {
                         0usize
-                    }else{
+                    } else {
                         2600
                     };
 
                     //新規アカウント作成のペナルティ
                     let my_address = &execution_environment.i_address;
-                    let create_cost = if state.get_balance(my_address).unwrap_or(U256::from(0)) > U256::from(0) && state.is_empty(&address) {
+                    let create_cost = if state.get_balance(my_address).unwrap_or(U256::from(0))
+                        > U256::from(0)
+                        && state.is_empty(&address)
+                    {
                         25000
-                    }else {
+                    } else {
                         0
                     };
                     let total = create_cost + access_state_cost + 5000;
                     return U256::from(total);
                 }
-
             }
 
             _ => U256::from(0),

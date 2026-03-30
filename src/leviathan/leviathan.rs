@@ -3,7 +3,7 @@
 use crate::evm::evm::EVM;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
-    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId
+    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId,
 };
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::leviathan_trait::{
@@ -15,7 +15,7 @@ use sha3::{Digest, Keccak256};
 pub struct LEVIATHAN {
     pub journal: Vec<Action>,
     pub substate_backup: BackupSubstate,
-    pub version: VersionId
+    pub version: VersionId,
 }
 
 impl LEVIATHAN {
@@ -23,7 +23,7 @@ impl LEVIATHAN {
         Self {
             journal: Vec::<Action>::new(),
             substate_backup: BackupSubstate::new(),
-            version: version
+            version: version,
         }
     }
 
@@ -181,7 +181,7 @@ mod state_tests {
     use crate::test::state_parser::StateTestSuite;
 
     // --- ヘルパー関数 ---
-    
+
     // 🌟 追加: JSONの "network" 文字列から VersionId を取得する関数
     fn parse_version(network_str: &str) -> VersionId {
         // ">Frontier" や ">=Frontier" などのプレフィックスを削除して純粋なフォーク名にする
@@ -304,8 +304,9 @@ mod state_tests {
     }
 
     #[test]
-    fn test_add11_state_strict() {
-        let test_file = "testdata/GeneralStateTestsFiller/stMemoryTest/callDataCopyOffsetFiller.json";
+    fn state_test() {
+        let test_file =
+            "testdata/GeneralStateTestsFiller/stMemoryTest/callDataCopyOffsetFiller.json";
         let json_data = fs::read_to_string(test_file).expect("Failed to read JSON file");
 
         let mut raw_json: serde_json::Value =
@@ -407,7 +408,7 @@ mod state_tests {
 
             //  修正: LEVIATHAN::new() にバージョンを渡す
             let mut leviathan = LEVIATHAN::new(version);
-            
+
             let result = leviathan.execution(&mut state, transaction, &block_header);
 
             assert!(
