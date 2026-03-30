@@ -410,7 +410,7 @@ mod state_tests {
             let mut leviathan = LEVIATHAN::new(version);
 
             let result = leviathan.execution(&mut state, transaction, &block_header);
-            
+
             match result {
                 Ok(_) => println!("  => Transaction Result: Success"),
                 Err(_) => println!("  => Transaction Result: Exception Halt (Expected)"),
