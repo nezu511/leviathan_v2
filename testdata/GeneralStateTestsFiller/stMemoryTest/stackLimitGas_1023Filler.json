@@ -75,7 +75,7 @@
         "pre" : {
             "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6" : {
                 "balance" : "1000000000000000000",
-                "code" : "(asm 1021 0x00 MSTORE JUMPDEST GAS 0x01 0x00 MLOAD SUB 0x00 MSTORE 0x00 MLOAD 0x06 JUMPI STOP )",
+                "code" : "0x6103fd6000525b5a60016000510360005260005160065700",
                 "nonce" : "0",
                 "storage" : {
                 }
