@@ -69,11 +69,17 @@ impl TransactionExecution for LEVIATHAN {
         let mut contract_gas = U256::ZERO;
         if transaction.t_to.is_none() {
             //コントラクト作成追加費
-            contract_gas = contract_gas.saturating_add(U256::from(32000));
-            let words =
-                U256::from(transaction.data.len()).saturating_add(U256::from(31)) / U256::from(32);
-            let word_gas = words.saturating_mul(U256::from(2));
-            contract_gas = contract_gas.saturating_add(word_gas);
+            if self.version >=  VersionId::Homestead {    //Homestead以降
+                contract_gas = contract_gas.saturating_add(U256::from(32000));
+
+                if self.version >= VersionId::Shanghai {   //Shanghai以降
+                    //Initcodeのサイズに対する従量課金
+                    let words =
+                        U256::from(transaction.data.len()).saturating_add(U256::from(31)) / U256::from(32);
+                    let word_gas = words.saturating_mul(U256::from(2));
+                    contract_gas = contract_gas.saturating_add(word_gas);
+                }
+            }
         }
         let all_gas = base_gas + data_gas + contract_gas;
         //【事前支払いコスト】
