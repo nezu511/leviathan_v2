@@ -44,15 +44,28 @@ impl TransactionExecution for LEVIATHAN {
         let base_gas = U256::from(21000); //基本料金
         let mut data_gas = U256::ZERO;
         let mut index = 0;
-        while index < transaction.data.len() {
-            //データに関するガス
-            if transaction.data[index] == 0 {
-                data_gas = data_gas.saturating_add(U256::from(4));
-            } else {
-                data_gas = data_gas.saturating_add(U256::from(16));
+
+        //データに関するガス
+        if self.version <  VersionId::Istanbul {    //Istanbul以前
+            while index < transaction.data.len() {
+                if transaction.data[index] == 0 {
+                    data_gas = data_gas.saturating_add(U256::from(4));
+                } else {
+                    data_gas = data_gas.saturating_add(U256::from(68));
+                }
+                index += 1;
             }
-            index += 1;
+        }else{
+            while index < transaction.data.len() {
+                if transaction.data[index] == 0 {
+                    data_gas = data_gas.saturating_add(U256::from(4));
+                } else {
+                    data_gas = data_gas.saturating_add(U256::from(16));
+                }
+                index += 1;
+            }
         }
+
         let mut contract_gas = U256::ZERO;
         if transaction.t_to.is_none() {
             //コントラクト作成追加費
