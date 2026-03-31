@@ -64,19 +64,28 @@ impl State for WorldState {
     }
 
     fn set_balance(&mut self, address: &Address, value: U256) {
-        let account = self.0.get_mut(&address).expect("アカウントが存在しない.事前にadd_account");
+        let account = self
+            .0
+            .get_mut(&address)
+            .expect("アカウントが存在しない.事前にadd_account");
         account.balance += value;
     }
 
     fn inc_nonce(&mut self, address: &Address) {
         //エラーが出るはずがない
         //事前にチェックして，&mut self系は呼ぶ
-        let account = self.0.get_mut(&address).expect("アカウントが存在しない.事前にadd_account");
+        let account = self
+            .0
+            .get_mut(&address)
+            .expect("アカウントが存在しない.事前にadd_account");
         account.nonce += 1
     }
 
     fn dec_nonce(&mut self, address: &Address) {
-        let account = self.0.get_mut(&address).expect("[dec_nonce]: アカウントが存在しない");
+        let account = self
+            .0
+            .get_mut(&address)
+            .expect("[dec_nonce]: アカウントが存在しない");
         account.nonce += 1
     }
 
@@ -96,13 +105,19 @@ impl State for WorldState {
     }
 
     fn send_eth(&mut self, from: &Address, to: &Address, eth: U256) -> Result<(), &'static str> {
-        let from_account = self.0.get_mut(from).expect("[dec_nonce]: アカウントが存在しない");
+        let from_account = self
+            .0
+            .get_mut(from)
+            .expect("[dec_nonce]: アカウントが存在しない");
         if from_account.balance >= eth {
             from_account.balance -= eth;
         } else {
             return Err("残高不足");
         }
-        let to_account = self.0.get_mut(to).expect("[dec_nonce]: アカウントが存在しない");
+        let to_account = self
+            .0
+            .get_mut(to)
+            .expect("[dec_nonce]: アカウントが存在しない");
         to_account.balance += eth;
         return Ok(());
     }
