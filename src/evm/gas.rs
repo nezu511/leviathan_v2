@@ -268,8 +268,12 @@ impl Gfunction for EVM {
                 //SLOAD
                 let address = &execution_environment.i_address;
                 let key = self.peek(0);
-                if self.version == VersionId::Frontier {
+                if self.version < VersionId::TangerineWhistle {
                     U256::from(50)
+                }else if self.version < VersionId::Istanbul {
+                    U256::from(200)
+                }else if self.version < VersionId::Berlin {
+                    U256::from(800)
                 } else {
                     let key_case = substate.a_access_storage.get(address);
                     if key_case.is_none() {
@@ -293,7 +297,7 @@ impl Gfunction for EVM {
                 let current_value = state
                     .get_storage_value(&address, &key)
                     .unwrap_or(U256::from(0));
-                if self.version == VersionId::Frontier {
+                if self.version <  VersionId::Istanbul {
                     if current_value.is_zero() && !new_value.is_zero() {
                         U256::from(20000)
                     } else {
@@ -359,10 +363,14 @@ impl Gfunction for EVM {
                 let ext_cost = self.extension_cost(offset, size);
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
                 let dynamic_cost = words.saturating_mul(U256::from(2));
-                let total = dynamic_cost
+                if self.version < VersionId::Shanghai {
+                    let total = ext_cost.saturating_add(U256::from(32000));
+                    return total;
+                }else{let total = dynamic_cost
                     .saturating_add(ext_cost)
                     .saturating_add(U256::from(32000));
-                return total;
+                    return total;
+                }
             }
 
             0xf1 => {
@@ -389,7 +397,13 @@ impl Gfunction for EVM {
                 let max_end = args_end.max(ret_end);
                 let ext_cost = self.extension_cost(U256::ZERO, max_end);
                 //アドレスのアクセス状態
-                let acc_cost = self.is_account_access(address, substate);
+                let acc_cost  = if self.version < VersionId::TangerineWhistle {
+                    U256::from(40)
+                }else if self.version < VersionId::Berlin {
+                    U256::from(700)
+                }else{
+                    self.is_account_access(address, substate)
+                };
                 //送金とアカウント作成の追加コスト
                 let address = Address::from_u256(address);
                 let mut create_cost = U256::ZERO;

@@ -957,8 +957,13 @@ impl Ofunction for EVM {
                 //depthのインクリメント
                 let depth = execution_environment.i_depth + 1;
                 //子に渡すガスの計算
-                let gr = self.gas; //利用可能ガス
-                let child_gas = gr - (gr / U256::from(64)); //渡せる上限
+                let mut child_gas = U256::from(0);
+                if self.version < VersionId::TangerineWhistle {
+                    child_gas = self.gas
+                }else{
+                    let gr = self.gas; //利用可能ガス
+                    child_gas = gr - (gr / U256::from(64)); //渡せる上限
+                }
                 self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
                 //サブコールの実行
                 let mut child_leviathan = LEVIATHAN::new(self.version);
