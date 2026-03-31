@@ -1,5 +1,5 @@
 {
-    "CREATE_EmptyContractWithBalance" : {
+    "CreateOOGafterInitCode" : {
         "env" : {
             "currentCoinbase" : "2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
             "currentDifficulty" : "0x020000",
@@ -12,20 +12,36 @@
             {
                 "indexes" : {
                     "data" : -1,
-                    "gas" : -1,
+                    "gas" : 0,
                     "value" : -1
                 },
-                "network" : ["Frontier"],
+                "network" : ["Byzantium"],
                 "result" : {
 		    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
 		        "storage" : {
-		            "0x00" : "0x08d5b6",
-		            "0x01" : "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40",
-		            "0x64" : "0x07bc62"
+		            "0x01" : "0"
 		        }
 		    },
-		    "f1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
-		        "balance" : "0x01"
+		    "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
+		        "shouldnotexist" : "1"
+		    }
+                }
+            },
+	    {
+                "indexes" : {
+                    "data" : -1,
+                    "gas" : 1,
+                    "value" : -1
+                },
+                "network" : ["Byzantium"],
+                "result" : {
+		    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+		        "storage" : {
+		            "0x01" : "0"
+		        }
+		    },
+		    "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
+		        "code" : "0x6001600155"
 		    }
                 }
             }
@@ -40,9 +56,9 @@
                 }
             },
 	    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                "balance" : "1",
+                "balance" : "0",
 		"nonce" : "0",
-		"code" : "{ [[0]](GAS) [[1]] (CREATE 1 0 32) [[100]] (GAS) }",
+		"code" : "0x6d6460016001556000526005601bf3600052600e60126000f0",
 		"storage": {
 		}
             }
@@ -52,7 +68,7 @@
                 ""
             ],
             "gasLimit" : [
-                "600000"
+                "54000", "55000"
             ],
             "gasPrice" : "1",
             "nonce" : "0",

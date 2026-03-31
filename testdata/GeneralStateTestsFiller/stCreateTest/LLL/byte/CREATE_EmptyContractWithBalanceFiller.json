@@ -1,8 +1,5 @@
 {
-    "CreateOOGafterInitCodeRevert2" : {
-	"_info" : {
-	    "comment" : "Calls a contract that runs CREATE which deploy a code. then after deployment and exiting from CREATE a REVERT is called. check the REVERT data in this case equal to RETURN value of CREATE. CREATE fails due to the deployment cost."
-	},
+    "CREATE_EmptyContractWithBalance" : {
         "env" : {
             "currentCoinbase" : "2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
             "currentDifficulty" : "0x020000",
@@ -12,21 +9,23 @@
             "previousHash" : "5e20a0453cecd065ea59c37ac63e079ee08998b6045136a8ce6635c7912ec0b6"
         },
         "expect" : [
-	    {
+            {
                 "indexes" : {
                     "data" : -1,
                     "gas" : -1,
                     "value" : -1
                 },
-                "network" : ["Byzantium"],
+                "network" : ["Frontier"],
                 "result" : {
-		    "c94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+		    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
 		        "storage" : {
-                                "0x01" : "0x6460016001556000526005601bf3"
-                         }
+		            "0x00" : "0x08d5b6",
+		            "0x01" : "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40",
+		            "0x64" : "0x07bc62"
+		        }
 		    },
-		    "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
-		        "shouldnotexist" : "1"
+		    "f1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
+		        "balance" : "0x01"
 		    }
                 }
             }
@@ -40,18 +39,10 @@
                 "storage" : {
                 }
             },
-	    "c94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                "balance" : "0",
-		"nonce" : "0",
-		"code" : "{ (CALL 33000 0xb94f5374fce5edbc8e2a8697c15331677e6ebf0b 0 0 0 0 32) [[ 1 ]] (MLOAD 0) }",
-		"storage": {
-		}
-            },
 	    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                "balance" : "0",
+                "balance" : "1",
 		"nonce" : "0",
-		"//code" : "(SSTORE 1 1) RETURN",
-		"code" : "{ (MSTORE 0 0x6460016001556000526005601bf3) (CREATE 0 18 14) (REVERT 0 32) }",
+		"code" : "0x5a600055602060006001f06001555a606455",
 		"storage": {
 		}
             }
@@ -61,12 +52,12 @@
                 ""
             ],
             "gasLimit" : [
-                "75000"
+                "600000"
             ],
             "gasPrice" : "1",
             "nonce" : "0",
             "secretKey" : "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8",
-            "to" : "c94f5374fce5edbc8e2a8697c15331677e6ebf0b",
+            "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
             "value" : [
                 "0"
             ]

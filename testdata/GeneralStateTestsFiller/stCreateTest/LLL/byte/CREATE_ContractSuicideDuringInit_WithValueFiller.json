@@ -1,5 +1,5 @@
 {
-    "CREATE_ContractSuicideDuringInit_ThenStoreThenReturn" : {
+    "CREATE_ContractSuicideDuringInit_WithValue" : {
         "env" : {
             "currentCoinbase" : "2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
             "currentDifficulty" : "0x020000",
@@ -21,15 +21,9 @@
 			"shouldnotexist" : "1"
 		    },
 		    "c94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-			"balance" : "0",
-		        "storage" : {
-			    "0x01" : "0x0c"
-		        }
-		    },
-		    "d94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
 			"balance" : "10",
 		        "storage" : {
-			    "0x01" : "0x00"
+			    "0x01" : "0x0c"
 		        }
 		    }
                 }
@@ -46,15 +40,9 @@
 			"shouldnotexist" : "1"
 		    },
 		    "c94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-			"balance" : "0",
-		        "storage" : {
-			    "0x01" : "0x0c"
-		        }
-		    },
-		    "d94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
 			"balance" : "10",
 		        "storage" : {
-			    "0x01" : "0x00"
+			    "0x01" : "0x0c"
 		        }
 		    }
                 }
@@ -71,28 +59,18 @@
             },
 	    "c94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
                 "balance" : "0",
-		"// code" : "This indicates that a call from transaction was initiated",
-                "code" : "{[[1]]12}",
-                "nonce" : "0",
-                "storage" : {
-                }
-            },
-	    "d94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                "balance" : "0",
-		"// code" : "This indicates that a call from transaction was initiated",
-                "code" : "{[[1]]12}",
+                "code" : "0x600c600155",
                 "nonce" : "0",
                 "storage" : {
                 }
             }
         },
         "transaction" : {
-	    "// data" : "{ (CALL 60000 0xc94f5374fce5edbc8e2a8697c15331677e6ebf0b 0 0 0 0 0) (MSTORE 0 0x64600c6000556000526005601bf3) (SELFDESTRUCT 0xd94f5374fce5edbc8e2a8697c15331677e6ebf0b) (CALL 60000 0xd94f5374fce5edbc8e2a8697c15331677e6ebf0b 0 0 0 0 0) [[0]]11 (RETURN 18 14)}",
             "data" : [
-                "0x6000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61ea60f1506d64600c6000556000526005601bf360005273d94f5374fce5edbc8e2a8697c15331677e6ebf0bff6000600060006000600073d94f5374fce5edbc8e2a8697c15331677e6ebf0b61ea60f150600b600055600e6012f3"
+                "0x6000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61ea60f1506d64600c6000556000526005601bf360005273c94f5374fce5edbc8e2a8697c15331677e6ebf0bff"
             ],
             "gasLimit" : [
-                "600000"
+                "150000"
             ],
             "gasPrice" : "1",
             "nonce" : "0",

@@ -1,5 +1,8 @@
 {
-    "CreateOOGafterInitCode" : {
+    "CreateOOGafterInitCodeRevert" : {
+	"_info" : {
+	    "comment" : "Calls a contract that runs CREATE which deploy a code. then after deployment and exiting from CREATE a REVERT is called. check the REVERT data in this case equal to RETURN value of CREATE"
+	},
         "env" : {
             "currentCoinbase" : "2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
             "currentDifficulty" : "0x020000",
@@ -9,39 +12,21 @@
             "previousHash" : "5e20a0453cecd065ea59c37ac63e079ee08998b6045136a8ce6635c7912ec0b6"
         },
         "expect" : [
-            {
-                "indexes" : {
-                    "data" : -1,
-                    "gas" : 0,
-                    "value" : -1
-                },
-                "network" : ["Byzantium"],
-                "result" : {
-		    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-		        "storage" : {
-		            "0x01" : "0"
-		        }
-		    },
-		    "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
-		        "shouldnotexist" : "1"
-		    }
-                }
-            },
 	    {
                 "indexes" : {
                     "data" : -1,
-                    "gas" : 1,
+                    "gas" : -1,
                     "value" : -1
                 },
                 "network" : ["Byzantium"],
                 "result" : {
-		    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+		    "c94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
 		        "storage" : {
-		            "0x01" : "0"
-		        }
+                                "0x01" : "0x6460016001556000526005601bf3"
+                         }
 		    },
 		    "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
-		        "code" : "0x6001600155"
+		        "shouldnotexist" : "1"
 		    }
                 }
             }
@@ -55,11 +40,17 @@
                 "storage" : {
                 }
             },
+	    "c94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+                "balance" : "0",
+		"nonce" : "0",
+		"code" : "0x6020600060006000600073b94f5374fce5edbc8e2a8697c15331677e6ebf0b5af150600051600155",
+		"storage": {
+		}
+            },
 	    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
                 "balance" : "0",
 		"nonce" : "0",
-		"//code" : "(SSTORE 1 1) RETURN",
-		"code" : "{ (MSTORE 0 0x6460016001556000526005601bf3) (CREATE 0 18 14) }",
+		"code" : "0x6d6460016001556000526005601bf3600052600e60126000f05060206000fd",
 		"storage": {
 		}
             }
@@ -69,12 +60,12 @@
                 ""
             ],
             "gasLimit" : [
-                "54000", "55000"
+                "75000"
             ],
             "gasPrice" : "1",
             "nonce" : "0",
             "secretKey" : "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8",
-            "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
+            "to" : "c94f5374fce5edbc8e2a8697c15331677e6ebf0b",
             "value" : [
                 "0"
             ]
