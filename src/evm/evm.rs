@@ -4,6 +4,7 @@ use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
+use crate::my_trait::leviathan_trait::State;
 use alloy_primitives::{I256, U256};
 
 pub struct EVM {
@@ -81,7 +82,6 @@ impl Xi for EVM {
 
         let code = execution_environment.i_byte.clone();
         let mut opcode = 0u8;
-
         loop {
             // opcodeを取り出す
             if code.len() <= self.pc {
