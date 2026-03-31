@@ -350,7 +350,7 @@ mod state_tests {
     #[test]
     fn state_test_all_in_dir() {
         // 🌟 ここにテストしたいディレクトリへのパスを指定します
-        let test_dir = "testdata/GeneralStateTestsFiller/stMemoryTest/";
+        let test_dir = "testdata/GeneralStateTestsFiller/stCreateTest/byte";
 
         let paths = fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));
