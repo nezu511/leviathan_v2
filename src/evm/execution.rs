@@ -942,14 +942,16 @@ impl Ofunction for EVM {
                 let my_balance = state
                     .get_balance(&execution_environment.i_address)
                     .unwrap_or(U256::from(0));
-                if my_balance < value || execution_environment.i_depth >= 1024 {    //残高・コールデプスチェック
+                if my_balance < value || execution_environment.i_depth >= 1024 {
+                    //残高・コールデプスチェック
                     self.push(U256::ZERO);
                     return None;
                 }
-                if self.version >= VersionId::Shanghai {    //Initcodeのサイズ確認
+                if self.version >= VersionId::Shanghai {
+                    //Initcodeのサイズ確認
                     if data.len() > 49152 {
-                    self.push(U256::ZERO);
-                    return None;
+                        self.push(U256::ZERO);
+                        return None;
                     }
                 }
                 //depthのインクリメント
@@ -957,7 +959,7 @@ impl Ofunction for EVM {
                 //子に渡すガスの計算
                 let gr = self.gas; //利用可能ガス
                 let child_gas = gr - (gr / U256::from(64)); //渡せる上限
-                self.gas = self.gas.saturating_sub(child_gas);  //親からガスを徴収
+                self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
                 //サブコールの実行
                 let mut child_leviathan = LEVIATHAN::new(self.version);
                 let result = child_leviathan.contract_creation(
@@ -973,7 +975,7 @@ impl Ofunction for EVM {
                     None,
                     execution_environment.i_permission,
                     execution_environment.i_block_header,
-                    );
+                );
                 //実行後の処理
                 match result {
                     Ok((return_gas, return_data, Some(contract_address))) => {
@@ -991,7 +993,7 @@ impl Ofunction for EVM {
                         leviathan.merge(child_leviathan);
                         //結果push
                         self.push(contract_u256);
-                    },
+                    }
 
                     Err((return_gas, Some(return_data), _)) => {
                         //ガスの精算
@@ -999,16 +1001,14 @@ impl Ofunction for EVM {
                         //return_backの更新
                         self.return_back = return_data;
                         self.push(U256::ZERO);
-                    },
+                    }
 
                     Err((return_gas, None, _)) => {
                         self.push(U256::ZERO);
-                    },
+                    }
                     Ok((_, _, None)) => todo!(),
                 }
-            },
-
-
+            }
 
             0xf1 => {
                 //CALL
