@@ -1112,6 +1112,9 @@ impl Ofunction for EVM {
                     state.reset_balance(from_address)
                 } else {
                     if balance != U256::ZERO {
+                        if state.is_empty(&from_address) {
+                            return Some(false);
+                        }
                         if state.is_empty(&to_address) {
                             state.add_account(&to_address, Account::new());   //アカウントを追加
                             Action::Account_creation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
