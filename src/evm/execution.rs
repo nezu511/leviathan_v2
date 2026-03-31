@@ -1002,7 +1002,7 @@ impl Ofunction for EVM {
 
                 //実行後の処理
                 match result {
-                    Ok((return_gas, return_data)) => {
+                    Ok((return_gas, return_data, _)) => {
                         //出力データのメモリ書き込み
                         let return_size = return_data.len();
                         let write_size = out_size.min(return_size); //書き込みサイズ
@@ -1027,7 +1027,7 @@ impl Ofunction for EVM {
                         self.push(U256::from(1));
                     }
 
-                    Err((return_gas, Some(return_data))) => {
+                    Err((return_gas, Some(return_data), _)) => {
                         //出力データのメモリ書き込み
                         let return_size = return_data.len();
                         let write_size = out_size.min(return_size); //書き込みサイズ
@@ -1050,7 +1050,7 @@ impl Ofunction for EVM {
                         self.push(U256::ZERO);
                     }
 
-                    Err((return_gas, None)) => {
+                    Err((return_gas, None, _)) => {
                         //アクセス済みリストの更新
                         if !substate.a_access.contains(&to_address) {
                             substate.a_access.push(to_address.clone())

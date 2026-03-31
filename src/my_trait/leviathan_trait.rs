@@ -81,7 +81,7 @@ pub trait ContractCreation {
         salt: Option<U256>, //Creat2用のソルト
         sudo: bool,         //ステートへの変更権限
         block_header: &BlockHeader,
-    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>; //ガスとデータ？
+    ) -> Result<(U256, Vec<u8>, Option<Address>), (U256, Option<Vec<u8>>, Option<Address>)>; //ガスとデータ？
 }
 
 pub trait MessageCall {
@@ -101,7 +101,7 @@ pub trait MessageCall {
         depth: usize,         //コールスタック深さ
         sudo: bool,           //ステートへの変更権限
         block_header: &BlockHeader,
-    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>; //ガスとデータ？
+    ) -> Result<(U256, Vec<u8>, Option<Address>), (U256, Option<Vec<u8>>, Option<Address>)>; //ガスとデータ？
 }
 
 pub trait RoleBack {

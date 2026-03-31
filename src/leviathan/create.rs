@@ -31,7 +31,7 @@ impl ContractCreation for LEVIATHAN {
         salt: Option<U256>,
         sudo: bool,
         block_header: &BlockHeader,
-    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    ) -> Result<(U256, Vec<u8>, Option<Address>), (U256, Option<Vec<u8>>, Option<Address>)> {
         //新しいアカウントのアドレス
         let byte: Vec<u8> = if salt.is_none() {
             //CREATE
@@ -71,7 +71,7 @@ impl ContractCreation for LEVIATHAN {
         let is_insufficient_funds = eth > sender_balance; // 残高不足
 
         if is_collision || is_too_deep || is_insufficient_funds {
-            return Err((U256::ZERO, None));
+            return Err((U256::ZERO, None, None));
         }
 
         //サブステートのアクセス済みアカウントに追加
@@ -125,14 +125,14 @@ impl ContractCreation for LEVIATHAN {
                 if output.len() > 0 && output[0] == 0xefu8 {
                     self.roleback(state); //Roleback実行
                     substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                    return Err((U256::ZERO, None));
+                    return Err((U256::ZERO, None, None));
                 }
 
                 //コードのサイズ制限
                 if output.len() > 24576 {
                     self.roleback(state); //Roleback実行
                     substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                    return Err((U256::ZERO, None));
+                    return Err((U256::ZERO, None, None));
                 }
 
                 //コードデプロイ費用
@@ -141,13 +141,13 @@ impl ContractCreation for LEVIATHAN {
                 if U256::from(deposit_gas) > rest_gas {
                     self.roleback(state); //Roleback実行
                     substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                    return Err((U256::ZERO, None));
+                    return Err((U256::ZERO, None, None));
                 }
 
                 //最終処理
                 let return_gas = rest_gas - U256::from(deposit_gas);
                 state.set_code(&contract_address, output);
-                return Ok((return_gas, Vec::<u8>::new()));
+                return Ok((return_gas, Vec::<u8>::new(), Some(contract_address.clone())));
             }
 
             Err(Some(revert_data)) => {
@@ -155,14 +155,14 @@ impl ContractCreation for LEVIATHAN {
                 let revert_gas = evm.return_gas(); //ガス返却
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                return Err((revert_gas, Some(revert_data)));
+                return Err((revert_gas, Some(revert_data), None));
             }
 
             Err(None) => {
                 //Z関数による停止
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                return Err((U256::ZERO, None));
+                return Err((U256::ZERO, None, None));
             }
         }
     }
