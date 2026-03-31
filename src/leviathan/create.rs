@@ -90,6 +90,10 @@ impl ContractCreation for LEVIATHAN {
             state.inc_nonce(&contract_address);
         }
         //送金する
+        if state.is_empty(&contract_address) {
+            state.add_account(&contract_address, Account::new());   //アカウントを追加
+            Action::Account_creation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
+        }
         Action::Send_eth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
         //storageRootを空にする

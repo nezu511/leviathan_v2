@@ -76,13 +76,8 @@ impl State for WorldState {
     }
 
     fn dec_nonce(&mut self, address: &Address) {
-        let account = self.0.get_mut(&address);
-        match account {
-            Some(x) => {
-                x.nonce -= 1;
-            }
-            None => (),
-        }
+        let account = self.0.get_mut(&address).expect("[dec_nonce]: アカウントが存在しない");
+        account.nonce += 1
     }
 
     fn set_storage(&mut self, address: &Address, key: U256, value: U256) {
@@ -101,24 +96,14 @@ impl State for WorldState {
     }
 
     fn send_eth(&mut self, from: &Address, to: &Address, eth: U256) -> Result<(), &'static str> {
-        let mut from_account = self
-            .0
-            .get_mut(from)
-            .ok_or("送信元のアカウントが存在しない")?;
+        let from_account = self.0.get_mut(from).expect("[dec_nonce]: アカウントが存在しない");
         if from_account.balance >= eth {
             from_account.balance -= eth;
         } else {
             return Err("残高不足");
         }
-        let to_account = self.0.get_mut(to);
-        if to_account.is_none() {
-            //アカウントを作成
-            self.0.insert(to.clone(), Account::new());
-            let mut new_account = self.0.get_mut(to).unwrap();
-            new_account.balance += eth;
-        } else {
-            to_account.unwrap().balance += eth;
-        }
+        let to_account = self.0.get_mut(to).expect("[dec_nonce]: アカウントが存在しない");
+        to_account.balance += eth;
         return Ok(());
     }
 
