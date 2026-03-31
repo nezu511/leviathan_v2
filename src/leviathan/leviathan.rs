@@ -150,7 +150,7 @@ impl TransactionExecution for LEVIATHAN {
 
         //払い戻しガス
         match result {
-            Ok((gas, _)) => {
+            Ok((gas, _, _)) => {
                 let used_gas = transaction.t_gas_limit.saturating_sub(gas);
                 let max_refund = used_gas / U256::from(5);
                 let reimburse_u256 = U256::from(substate.a_reimburse.max(0) as u64);
@@ -166,7 +166,7 @@ impl TransactionExecution for LEVIATHAN {
                 state.set_balance(&block_header.h_beneficiary, reward);
                 return Ok((final_billed_gas, substate.a_log.clone()));
             }
-            Err((gas, _)) => {
+            Err((gas, _, _)) => {
                 //送信者への返金
                 let reimburse = gas.saturating_mul(transaction.t_price);
                 state.set_balance(&sender_address, reimburse);
