@@ -957,6 +957,7 @@ impl Ofunction for EVM {
                 //子に渡すガスの計算
                 let gr = self.gas; //利用可能ガス
                 let child_gas = gr - (gr / U256::from(64)); //渡せる上限
+                self.gas = self.gas.saturating_sub(child_gas);  //親からガスを徴収
                 //サブコールの実行
                 let mut child_leviathan = LEVIATHAN::new(self.version);
                 let result = child_leviathan.contract_creation(
