@@ -48,7 +48,11 @@ impl MessageCall for LEVIATHAN {
 
         //残高の移動
         if eth != U256::ZERO {
+            if state.is_empty(&sender) {
+                return Err((U256::ZERO, None, None));
+            }
             if state.is_empty(&recipient) {
+                state.add_account(&recipient, Account::new()); //アカウントを追加
                 Action::Account_creation(recipient.clone()).push(self, state); //アカウントが存在しない場合
             }
             if sender != recipient {

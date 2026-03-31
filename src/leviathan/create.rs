@@ -4,7 +4,7 @@ use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
-    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction,
+    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId,
 };
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
@@ -82,11 +82,21 @@ impl ContractCreation for LEVIATHAN {
 
         //Nonceを1にする．
         if state.is_empty(&contract_address) {
+            state.add_account(&contract_address, Account::new()); //アカウントを追加
             Action::Account_creation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
         }
         Action::Add_nonce(contract_address.clone()).push(self, state); //ロールバック用
-        state.inc_nonce(&contract_address);
+        if self.version >= VersionId::SpuriousDragon {
+            state.inc_nonce(&contract_address);
+        }
         //送金する
+        if state.is_empty(&sender) {
+            return Err((U256::ZERO, None, None));
+        }
+        if state.is_empty(&contract_address) {
+            state.add_account(&contract_address, Account::new()); //アカウントを追加
+            Action::Account_creation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
+        }
         Action::Send_eth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
         //storageRootを空にする
