@@ -98,6 +98,9 @@ impl TransactionExecution for LEVIATHAN {
 
         //=======ステップ2===========
         //【Nonceの加算】
+        if state.is_empty(&sender_address) {
+            return Err((U256::ZERO, Vec::new())) //sender_addressが見つからないのは異常
+        }
         state.inc_nonce(&sender_address);
         //【前払いガス代の徴収】
         let gas = state.buy_gas(
@@ -158,6 +161,10 @@ impl TransactionExecution for LEVIATHAN {
                 let return_gas = gas.saturating_add(reimburse);
                 //送信者への返金
                 let reimburse = return_gas.saturating_mul(transaction.t_price);
+                if state.is_empty(&sender_address) {      //set_balance前の確認
+                    state.add_account(&sender_address, Account::new());   //アカウントを追加
+                    Action::Account_creation(sender_address.clone()).push(self, state); //アカウントが存在しない場合
+                }
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);

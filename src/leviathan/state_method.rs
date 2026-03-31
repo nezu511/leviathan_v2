@@ -64,33 +64,15 @@ impl State for WorldState {
     }
 
     fn set_balance(&mut self, address: &Address, value: U256) {
-        let account = self.0.get_mut(&address);
-        match account {
-            Some(x) => {
-                x.balance += value;
-            }
-            None => {
-                //アカウントを作成
-                self.0.insert(address.clone(), Account::new());
-                let account = self.0.get_mut(&address).unwrap();
-                account.balance = value;
-            }
-        }
+        let account = self.0.get_mut(&address).expect("アカウントが存在しない.事前にadd_account");
+        account.balance += value;
     }
 
     fn inc_nonce(&mut self, address: &Address) {
-        let account = self.0.get_mut(&address);
-        match account {
-            Some(x) => {
-                x.nonce += 1;
-            }
-            None => {
-                //アカウントを作成
-                self.0.insert(address.clone(), Account::new());
-                let account = self.0.get_mut(&address).unwrap();
-                account.nonce = 1;
-            }
-        }
+        //エラーが出るはずがない
+        //事前にチェックして，&mut self系は呼ぶ
+        let account = self.0.get_mut(&address).expect("アカウントが存在しない.事前にadd_account");
+        account.nonce += 1
     }
 
     fn dec_nonce(&mut self, address: &Address) {
