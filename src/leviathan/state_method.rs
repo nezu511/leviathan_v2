@@ -118,10 +118,7 @@ impl State for WorldState {
         } else {
             return Err("残高不足");
         }
-        let to_account = self
-            .0
-            .get_mut(to)
-            .expect("[send]: アカウントが存在しない");
+        let to_account = self.0.get_mut(to).expect("[send]: アカウントが存在しない");
         to_account.balance += eth;
         return Ok(());
     }
