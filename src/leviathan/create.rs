@@ -11,7 +11,7 @@ use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction}
 use crate::my_trait::leviathan_trait::{
     ContractCreation, RoleBack, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{I256, U256};
+use alloy_primitives::{I256, U256, hex};
 use rlp::RlpStream;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
@@ -74,6 +74,7 @@ impl ContractCreation for LEVIATHAN {
             return Err((U256::ZERO, None, None));
         }
 
+        println!("[Transaction] ContractCreation: 0x{}", hex::encode(contract_address.0));        //アドレス
         //サブステートのアクセス済みアカウントに追加
         if !substate.a_access.contains(&contract_address) {
             substate.a_access.push(contract_address.clone())

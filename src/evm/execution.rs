@@ -994,7 +994,7 @@ impl Ofunction for EVM {
                         if !substate.a_access.contains(&contract_address) {
                             substate.a_access.push(contract_address.clone())
                         }
-                        //println!("CREATE:0x{}", hex::encode(contract_address.0));        //アドレス
+                        println!("CREATE:0x{}", hex::encode(contract_address.0));        //アドレス
                         //Journalのmerge
                         leviathan.merge(child_leviathan);
                         //結果push
@@ -1021,7 +1021,7 @@ impl Ofunction for EVM {
                 let gas = self.pop(); //サブコールに割り当てる最大ガス
                 let to = self.pop(); //呼び出し先のアドレス
                 let to_address = Address::from_u256(to);
-                //println!("CALL: 0x{}", hex::encode(to_address.0));        //アドレス
+                println!("CALL: 0x{}", hex::encode(to_address.0));        //アドレス
                 let value = self.pop();
                 let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
                 let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1345,30 +1345,29 @@ impl Ofunction for EVM {
                 //SELFDESTRUCT
                 if self.version > VersionId::London {
                     substate.a_reimburse += 24000;
-                }else{
-                    let from_address = &execution_environment.i_address;
-                    let val1 = self.pop();
-                    let to_address = Address::from_u256(val1);
-                    let balance = state.get_balance(&from_address).unwrap();
-                    if from_address.clone() == to_address {
-                        Action::Set_balance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
-                        state.reset_balance(from_address)
-                    } else {
-                        if balance != U256::ZERO {
-                            if state.is_empty(&from_address) {
-                                return Some(false);
-                            }
-                            if state.is_empty(&to_address) {
-                                state.add_account(&to_address, Account::new()); //アカウントを追加
-                                Action::Account_creation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
-                            }
-                            Action::Send_eth(from_address.clone(), to_address.clone(), balance)
-                                .push(leviathan, state); //ロールバック用
-                            state.send_eth(from_address, &to_address, balance);
+                }
+                let from_address = &execution_environment.i_address;
+                let val1 = self.pop();
+                let to_address = Address::from_u256(val1);
+                let balance = state.get_balance(&from_address).unwrap();
+                if from_address.clone() == to_address {
+                    Action::Set_balance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
+                    state.reset_balance(from_address)
+                } else {
+                    if balance != U256::ZERO {
+                        if state.is_empty(&from_address) {
+                            return Some(false);
                         }
-                        substate.a_des.push(from_address.clone());
-                        return Some(false);
+                        if state.is_empty(&to_address) {
+                            state.add_account(&to_address, Account::new()); //アカウントを追加
+                            Action::Account_creation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
+                        }
+                        Action::Send_eth(from_address.clone(), to_address.clone(), balance)
+                            .push(leviathan, state); //ロールバック用
+                        state.send_eth(from_address, &to_address, balance);
                     }
+                    substate.a_des.push(from_address.clone());
+                    return Some(false);
                 }
             },
 
