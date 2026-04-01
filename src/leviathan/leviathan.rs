@@ -156,9 +156,10 @@ impl TransactionExecution for LEVIATHAN {
         match result {
             Ok((gas, _, _)) => {
                 let used_gas = transaction.t_gas_limit.saturating_sub(gas);
-                let max_refund = if self.version < VersionId::London {      //返金の上限がフォークで異なる
+                let max_refund = if self.version < VersionId::London {
+                    //返金の上限がフォークで異なる
                     used_gas / U256::from(2)
-                }else{
+                } else {
                     used_gas / U256::from(5)
                 };
                 let reimburse_u256 = U256::from(substate.a_reimburse.max(0) as u64);
@@ -173,7 +174,10 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
-                println!("マイナーアドレス: 0x{}", hex::encode(block_header.h_beneficiary.0));        //アドレス
+                println!(
+                    "マイナーアドレス: 0x{}",
+                    hex::encode(block_header.h_beneficiary.0)
+                ); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);
                 let f = transaction.t_price - block_header.h_basefee;
                 let reward = final_billed_gas.saturating_mul(f);

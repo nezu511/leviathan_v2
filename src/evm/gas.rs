@@ -270,9 +270,9 @@ impl Gfunction for EVM {
                 let key = self.peek(0);
                 if self.version < VersionId::TangerineWhistle {
                     U256::from(50)
-                }else if self.version < VersionId::Istanbul {
+                } else if self.version < VersionId::Istanbul {
                     U256::from(200)
-                }else if self.version < VersionId::Berlin {
+                } else if self.version < VersionId::Berlin {
                     U256::from(800)
                 } else {
                     let key_case = substate.a_access_storage.get(address);
@@ -297,7 +297,7 @@ impl Gfunction for EVM {
                 let current_value = state
                     .get_storage_value(&address, &key)
                     .unwrap_or(U256::from(0));
-                if self.version <  VersionId::Istanbul {
+                if self.version < VersionId::Istanbul {
                     if current_value.is_zero() && !new_value.is_zero() {
                         U256::from(20000)
                     } else {
@@ -366,9 +366,10 @@ impl Gfunction for EVM {
                 if self.version < VersionId::Shanghai {
                     let total = ext_cost.saturating_add(U256::from(32000));
                     return total;
-                }else{let total = dynamic_cost
-                    .saturating_add(ext_cost)
-                    .saturating_add(U256::from(32000));
+                } else {
+                    let total = dynamic_cost
+                        .saturating_add(ext_cost)
+                        .saturating_add(U256::from(32000));
                     return total;
                 }
             }
@@ -397,11 +398,11 @@ impl Gfunction for EVM {
                 let max_end = args_end.max(ret_end);
                 let ext_cost = self.extension_cost(U256::ZERO, max_end);
                 //アドレスのアクセス状態
-                let acc_cost  = if self.version < VersionId::TangerineWhistle {
+                let acc_cost = if self.version < VersionId::TangerineWhistle {
                     U256::from(40)
-                }else if self.version < VersionId::Berlin {
+                } else if self.version < VersionId::Berlin {
                     U256::from(700)
-                }else{
+                } else {
                     self.is_account_access(address, substate)
                 };
                 //送金とアカウント作成の追加コスト
