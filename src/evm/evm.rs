@@ -90,7 +90,7 @@ impl Xi for EVM {
                 opcode = code[self.pc];
             }
 
-            println!("0x{:x}", opcode);
+            //println!("0x{:x}", opcode);
 
             //Z関数による安全性を確認
             if !self.is_safe(opcode, &substate, &state, &execution_environment) {
@@ -250,12 +250,14 @@ mod tests {
 
                 match result {
                     Ok(_) => {
+                        /*
                         let gas_used = test_data.exec.gas.saturating_sub(evm.gas);
                         let max_refund = gas_used / U256::from(2);
                         let raw_refund = U256::from(substate.a_reimburse.max(0) as u64);
                         let actual_refund = std::cmp::min(raw_refund, max_refund);
 
                         evm.gas = evm.gas.saturating_add(actual_refund);
+                        */
                     }
                     Err(None) => {
                         leviathan

@@ -95,7 +95,7 @@ impl TransactionExecution for LEVIATHAN {
             return Err((U256::ZERO, Vec::new()));
         }
         let sender_address = sender_address.unwrap();
-        println!("Transaction送信者: 0x{}", hex::encode(sender_address.0));        //アドレス
+        //println!("Transaction送信者: 0x{}", hex::encode(sender_address.0));        //アドレス
 
         //=======ステップ2===========
         //【Nonceの加算】

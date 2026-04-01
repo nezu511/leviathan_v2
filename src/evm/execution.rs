@@ -994,7 +994,7 @@ impl Ofunction for EVM {
                         if !substate.a_access.contains(&contract_address) {
                             substate.a_access.push(contract_address.clone())
                         }
-                        println!("CREATE:0x{}", hex::encode(contract_address.0));        //アドレス
+                        //println!("CREATE:0x{}", hex::encode(contract_address.0));        //アドレス
                         //Journalのmerge
                         leviathan.merge(child_leviathan);
                         //結果push

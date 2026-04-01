@@ -532,7 +532,6 @@ impl Gfunction for EVM {
                             2600
                         };
                     }
-
                     let total = create_cost + access_state_cost + 5000;
                     return U256::from(total);
                 }

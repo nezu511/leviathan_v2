@@ -74,7 +74,7 @@ impl ContractCreation for LEVIATHAN {
             return Err((U256::ZERO, None, None));
         }
 
-        println!("[Transaction] ContractCreation: 0x{}", hex::encode(contract_address.0));        //アドレス
+        //println!("[Transaction] ContractCreation: 0x{}", hex::encode(contract_address.0));        //アドレス
         //サブステートのアクセス済みアカウントに追加
         if !substate.a_access.contains(&contract_address) {
             substate.a_access.push(contract_address.clone())
