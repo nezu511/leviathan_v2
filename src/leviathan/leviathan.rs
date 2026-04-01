@@ -359,9 +359,9 @@ mod state_tests {
     }
     #[test]
     fn state_test_all_in_dir() {
-        // 🌟 ここにテストしたいディレクトリへのパスを指定します
-        //let test_dir = "testdata/GeneralStateTestsFiller/stCreateTest/LLL/byte";
-        let test_dir = "testdata/GeneralStateTestsFiller/stCreateTest/byte";
+        // ここにテストしたいディレクトリへのパスを指定します
+          let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
+        //let test_dir = "testdata/GeneralStateTestsFiller/stCreateTest/byte";
         //let test_dir = "testdata/GeneralStateTestsFiller/stMemoryTest";
 
         let paths = fs::read_dir(test_dir)
@@ -382,7 +382,7 @@ mod state_tests {
             total_files += 1;
             let file_name = path.file_name().unwrap().to_str().unwrap();
             println!("\n==================================================");
-            println!("📂 Loading File: {}", file_name);
+            println!(" Loading File: {}", file_name);
 
             let json_data = fs::read_to_string(&path)
                 .unwrap_or_else(|_| panic!("Failed to read JSON file: {}", file_name));
@@ -406,7 +406,7 @@ mod state_tests {
                     .map(|s| s.as_str())
                     .unwrap_or("Frontier");
                 let version = parse_version(network_str);
-                println!("⚙️ Selected Fork Version: {:?}", version);
+                println!("Selected Fork Version: {:?}", version);
 
                 let block_header = BlockHeader {
                     h_beneficiary: parse_address(&test_data.env.current_coinbase),
@@ -561,7 +561,7 @@ mod state_tests {
 
         println!("\n==================================================");
         println!(
-            "🏆 最終結果: {} ファイル中、{} / {} のテストケースをクリアしました！",
+            "最終結果: {} ファイル中、{} / {} のテストケースをクリアしました！",
             total_files, pass_cases_count, total_cases_count
         );
         println!("==================================================\n");
