@@ -209,7 +209,7 @@ impl Gfunction for EVM {
                 return total;
             }
 
-            0x31 | 0x3b  => {
+            0x31 | 0x3b => {
                 //BALANCE
                 //Address型に変換
                 let data = self.peek(0);
@@ -222,9 +222,9 @@ impl Gfunction for EVM {
                 //Address型に変換
                 if self.version < VersionId::Istanbul {
                     return U256::from(400);
-                }else if self.version  < VersionId::Berlin {
+                } else if self.version < VersionId::Berlin {
                     return U256::from(700);
-                }else{
+                } else {
                     let data = self.peek(0);
                     let cost = self.is_account_access(data, substate);
                     return U256::from(cost);
@@ -321,7 +321,7 @@ impl Gfunction for EVM {
                     let mut called_cost = 0usize;
                     let key_case = substate.a_access_storage.get(address);
                     let original_value = if key_case.is_none() {
-                        if self.version >= VersionId::Berlin{
+                        if self.version >= VersionId::Berlin {
                             called_cost = 2100; //Warm/Cold
                         }
                         current_value
@@ -340,27 +340,31 @@ impl Gfunction for EVM {
                         }
                     };
                     //Update Costを算出
-                    let update_cost = if current_value == new_value {   //変更なし
+                    let update_cost = if current_value == new_value {
+                        //変更なし
                         if self.version == VersionId::Constantinople {
                             200
-                        }else{
+                        } else {
                             100
                         }
                     } else {
-                        if current_value == original_value {    
-                            if original_value == U256::from(0) {    //0　→  0 →  0以外
+                        if current_value == original_value {
+                            if original_value == U256::from(0) {
+                                //0　→  0 →  0以外
                                 20000
-                            } else {    //0以外(a) →  0以外(a) →  0以外(b)
+                            } else {
+                                //0以外(a) →  0以外(a) →  0以外(b)
                                 if self.version == VersionId::Constantinople {
                                     5000
-                                }else{
+                                } else {
                                     2900
                                 }
                             }
-                        } else {    //*(a) → *(b) →  *(c)
+                        } else {
+                            //*(a) → *(b) →  *(c)
                             if self.version == VersionId::Constantinople {
                                 200
-                            }else{
+                            } else {
                                 100
                             }
                         }

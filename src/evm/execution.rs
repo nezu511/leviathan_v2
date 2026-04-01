@@ -793,39 +793,44 @@ impl Ofunction for EVM {
                         .unwrap_or(U256::ZERO);
                     if pre_value != value {
                         if val0 == pre_value {
-                            if val0 != U256::ZERO && value == U256::ZERO {  //0以外 →  0以外 → 0 :
+                            if val0 != U256::ZERO && value == U256::ZERO {
+                                //0以外 →  0以外 → 0 :
                                 if self.version == VersionId::Constantinople {
                                     substate.a_reimburse += 15000;
-                                }else{
+                                } else {
                                     substate.a_reimburse += 4800;
                                 }
                             }
                         } else {
-                            if val0 != U256::ZERO && pre_value == U256::ZERO { //0以外　→  0 →  0以外 : 返金の返金
+                            if val0 != U256::ZERO && pre_value == U256::ZERO {
+                                //0以外　→  0 →  0以外 : 返金の返金
                                 if self.version == VersionId::Constantinople {
                                     substate.a_reimburse -= 15000;
-                                }else{
+                                } else {
                                     substate.a_reimburse -= 4800;
                                 }
                             }
-                            if val0 != U256::ZERO && value == U256::ZERO {  // 0以外(a) →  0以外(b) → 0 :返金
+                            if val0 != U256::ZERO && value == U256::ZERO {
+                                // 0以外(a) →  0以外(b) → 0 :返金
                                 if self.version == VersionId::Constantinople {
                                     substate.a_reimburse += 15000;
-                                }else{
+                                } else {
                                     substate.a_reimburse += 4800;
                                 }
                             }
                             if val0 == value {
-                                if val0 == U256::ZERO {     //0 → 0以外 → 0
+                                if val0 == U256::ZERO {
+                                    //0 → 0以外 → 0
                                     if self.version == VersionId::Constantinople {
                                         substate.a_reimburse += 19800
-                                    }else{
+                                    } else {
                                         substate.a_reimburse += 19900;
                                     }
-                                } else {    //0以外(a) → *(aではない)  →  0以外(a)
+                                } else {
+                                    //0以外(a) → *(aではない)  →  0以外(a)
                                     if self.version == VersionId::Constantinople {
                                         substate.a_reimburse += 4800;
-                                    }else{
+                                    } else {
                                         substate.a_reimburse += 2800;
                                     }
                                 }
@@ -1471,7 +1476,7 @@ impl Ofunction for EVM {
                         self.push(U256::ZERO);
                     }
                 }
-            },
+            }
 
             0xfd => {
                 //REVERT
