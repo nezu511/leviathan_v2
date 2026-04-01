@@ -1,9 +1,9 @@
 {
-    "ReturnTest" : {
+    "CallContractToCreateContractNoCash" : {
         "env" : {
             "currentCoinbase" : "2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
             "currentDifficulty" : "0x020000",
-            "currentGasLimit" : "10000000",
+            "currentGasLimit" : "100000000",
             "currentNumber" : "1",
             "currentTimestamp" : "1000",
             "previousHash" : "5e20a0453cecd065ea59c37ac63e079ee08998b6045136a8ce6635c7912ec0b6"
@@ -17,32 +17,26 @@
                 },
                 "network" : ["Frontier"],
                 "result" : {
-                    "194f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                        "storage" : {
-                            "0x00" : "0x15"
-                        }
+                    "095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
+                        "nonce" : "0"
+                    },
+                    "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+                        "nonce" : "1"
                     }
                 }
             }
         ],
         "pre" : {
-            "194f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                "balance" : "0",
-                "code" : "{(CALL 2000 0xb94f5374fce5edbc8e2a8697c15331677e6ebf0b 0 30 1 31 1) [[0]](MLOAD 0) (RETURN 30 2)}",
+            "095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
+                "balance" : "10000",
+                "code" : "0x74600c60005566602060406000f060205260076039f36000526015600b620186a0f0600055",
                 "nonce" : "0",
                 "storage" : {
                 }
             },
             "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                "balance" : "1000000",
+                "balance" : "100000000",
                 "code" : "",
-                "nonce" : "0",
-                "storage" : {
-                }
-            },
-            "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                "balance" : "100000",
-                "code" : "{(MSTORE 0 0x15) (RETURN 31 1)}",
                 "nonce" : "0",
                 "storage" : {
                 }
@@ -50,15 +44,15 @@
         },
         "transaction" : {
             "data" : [
-                ""
+                "0x00"
             ],
             "gasLimit" : [
-                "300000"
+                "20000000"
             ],
             "gasPrice" : "1",
             "nonce" : "0",
             "secretKey" : "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8",
-            "to" : "194f5374fce5edbc8e2a8697c15331677e6ebf0b",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
             "value" : [
                 "0"
             ]
