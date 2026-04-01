@@ -209,12 +209,26 @@ impl Gfunction for EVM {
                 return total;
             }
 
-            0x31 | 0x3b | 0x3f => {
+            0x31 | 0x3b => {
                 //BALANCE
                 //Address型に変換
                 let data = self.peek(0);
                 let cost = self.is_account_access(data, substate);
                 return U256::from(cost);
+            }
+
+            0x3f => {
+                //BALANCE
+                //Address型に変換
+                if self.version < VersionId::Istanbul {
+                    return U256::from(400);
+                } else if self.version < VersionId::Berlin {
+                    return U256::from(700);
+                } else {
+                    let data = self.peek(0);
+                    let cost = self.is_account_access(data, substate);
+                    return U256::from(cost);
+                }
             }
 
             0x37 | 0x39 | 0x3e => {
@@ -297,7 +311,7 @@ impl Gfunction for EVM {
                 let current_value = state
                     .get_storage_value(&address, &key)
                     .unwrap_or(U256::from(0));
-                if self.version < VersionId::Istanbul {
+                if self.version < VersionId::Istanbul && self.version != VersionId::Constantinople {
                     if current_value.is_zero() && !new_value.is_zero() {
                         U256::from(20000)
                     } else {
@@ -307,29 +321,52 @@ impl Gfunction for EVM {
                     let mut called_cost = 0usize;
                     let key_case = substate.a_access_storage.get(address);
                     let original_value = if key_case.is_none() {
-                        called_cost = 2100; //called_cost2100を付加
+                        if self.version >= VersionId::Berlin {
+                            called_cost = 2100; //Warm/Cold
+                        }
                         current_value
                     } else {
                         let val1 = key_case.unwrap().get(&key);
                         if val1.is_none() {
-                            called_cost = 2100; //called_cost2100を付加
+                            if self.version >= VersionId::Berlin {
+                                called_cost = 2100; //Warm/Cold
+                            }
                             current_value
                         } else {
+                            if self.version >= VersionId::Berlin {
+                                called_cost = 100; //Warm/Cold
+                            }
                             val1.unwrap().clone()
                         }
                     };
                     //Update Costを算出
                     let update_cost = if current_value == new_value {
-                        100
+                        //変更なし
+                        if self.version == VersionId::Constantinople {
+                            200
+                        } else {
+                            100
+                        }
                     } else {
                         if current_value == original_value {
                             if original_value == U256::from(0) {
+                                //0　→  0 →  0以外
                                 20000
                             } else {
-                                2900
+                                //0以外(a) →  0以外(a) →  0以外(b)
+                                if self.version == VersionId::Constantinople {
+                                    5000
+                                } else {
+                                    2900
+                                }
                             }
                         } else {
-                            100
+                            //*(a) → *(b) →  *(c)
+                            if self.version == VersionId::Constantinople {
+                                200
+                            } else {
+                                100
+                            }
                         }
                     };
                     //トータルcostを算出

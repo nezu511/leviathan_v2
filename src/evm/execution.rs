@@ -779,7 +779,7 @@ impl Ofunction for EVM {
                     .unwrap();
 
                 //払い戻し
-                if self.version == VersionId::Frontier {
+                if self.version < VersionId::London && self.version != VersionId::Constantinople {
                     if !pre_value.is_zero() && value.is_zero() {
                         substate.a_reimburse += 15000;
                     }
@@ -794,20 +794,45 @@ impl Ofunction for EVM {
                     if pre_value != value {
                         if val0 == pre_value {
                             if val0 != U256::ZERO && value == U256::ZERO {
-                                substate.a_reimburse += 4800;
+                                //0以外 →  0以外 → 0 :
+                                if self.version == VersionId::Constantinople {
+                                    substate.a_reimburse += 15000;
+                                } else {
+                                    substate.a_reimburse += 4800;
+                                }
                             }
                         } else {
                             if val0 != U256::ZERO && pre_value == U256::ZERO {
-                                substate.a_reimburse -= 4800;
+                                //0以外　→  0 →  0以外 : 返金の返金
+                                if self.version == VersionId::Constantinople {
+                                    substate.a_reimburse -= 15000;
+                                } else {
+                                    substate.a_reimburse -= 4800;
+                                }
                             }
                             if val0 != U256::ZERO && value == U256::ZERO {
-                                substate.a_reimburse += 4800;
+                                // 0以外(a) →  0以外(b) → 0 :返金
+                                if self.version == VersionId::Constantinople {
+                                    substate.a_reimburse += 15000;
+                                } else {
+                                    substate.a_reimburse += 4800;
+                                }
                             }
                             if val0 == value {
                                 if val0 == U256::ZERO {
-                                    substate.a_reimburse += 19900;
+                                    //0 → 0以外 → 0
+                                    if self.version == VersionId::Constantinople {
+                                        substate.a_reimburse += 19800
+                                    } else {
+                                        substate.a_reimburse += 19900;
+                                    }
                                 } else {
-                                    substate.a_reimburse += 2800;
+                                    //0以外(a) → *(aではない)  →  0以外(a)
+                                    if self.version == VersionId::Constantinople {
+                                        substate.a_reimburse += 4800;
+                                    } else {
+                                        substate.a_reimburse += 2800;
+                                    }
                                 }
                             }
                         }
@@ -1319,6 +1344,138 @@ impl Ofunction for EVM {
                 let active_words = self.memory.len() / 32;
                 self.active_words = active_words;
                 return Some(false);
+            }
+
+            0xfa => {
+                //STATICCALL
+                let gas = self.pop(); //サブコールに割り当てる最大ガス
+                let to = self.pop(); //呼び出し先のアドレス
+                let to_address = Address::from_u256(to);
+                //println!("STATICCALL: 0x{}", hex::encode(to_address.0)); //アドレス
+                let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let in_size = self.pop().try_into().unwrap_or(usize::MAX);
+                let out_offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let out_size = self.pop().try_into().unwrap_or(usize::MAX);
+                //メモリ拡張
+                let in_end = if in_size == 0 {
+                    0
+                } else {
+                    in_offset.saturating_add(in_size)
+                };
+
+                let out_end = if out_size == 0 {
+                    0
+                } else {
+                    out_offset.saturating_add(out_size)
+                };
+                let max_end = in_end.max(out_end);
+                let mut data = Vec::<u8>::new();
+                if max_end > self.memory.len() {
+                    let words = max_end.saturating_add(31) / 32;
+                    self.memory.resize(words.saturating_mul(32), 0);
+                }
+                if in_size > 0 {
+                    let required_size = in_offset.saturating_add(in_size);
+                    let slice = &self.memory[in_offset..required_size];
+                    data = slice.to_vec();
+                } else {
+                    data = Vec::<u8>::new();
+                }
+                //事前チェック
+                if execution_environment.i_depth >= 1024 {
+                    self.push(U256::ZERO);
+                    return None;
+                }
+                //depthのインクリメント
+                let depth = execution_environment.i_depth + 1;
+                //子に渡すガスの計算
+                let gr = self.gas; //利用可能ガス
+                let gr = gr - (gr / U256::from(64)); //渡せる上限
+                let mut child_gas = if gr > gas {
+                    //スタックの指定値と渡せる上限を比較
+                    gas
+                } else {
+                    gr
+                };
+                //親のガスから，子に渡すベース分を引く
+                self.gas = self.gas.saturating_sub(child_gas);
+                //サブコールの実行
+                let mut child_leviathan = LEVIATHAN::new(self.version);
+                let result = child_leviathan.message_call(
+                    state,
+                    substate,
+                    execution_environment.i_address.clone(),
+                    execution_environment.i_origin.clone(),
+                    to_address.clone(),
+                    to_address.clone(),
+                    child_gas,
+                    execution_environment.i_gas_price,
+                    U256::ZERO,
+                    U256::ZERO,
+                    data,
+                    depth,
+                    false,
+                    execution_environment.i_block_header,
+                );
+                //実行後の処理
+                match result {
+                    Ok((return_gas, return_data, _)) => {
+                        //出力データのメモリ書き込み
+                        let return_size = return_data.len();
+                        let write_size = out_size.min(return_size); //書き込みサイズ
+                        if write_size > 0 {
+                            let required_size = out_offset.saturating_add(write_size);
+                            self.memory[out_offset..required_size]
+                                .copy_from_slice(&return_data[..write_size]);
+                            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+                            self.active_words = active_words;
+                        }
+                        //Returndata バッファの更新
+                        self.return_back = return_data;
+                        //ガスの精算
+                        self.gas = self.gas + return_gas;
+                        //アクセス済みリストの更新
+                        if !substate.a_access.contains(&to_address) {
+                            substate.a_access.push(to_address.clone())
+                        }
+                        //Journalのmerge
+                        leviathan.merge(child_leviathan);
+                        //結果push
+                        self.push(U256::from(1));
+                    }
+
+                    Err((return_gas, Some(return_data), _)) => {
+                        //出力データのメモリ書き込み
+                        let return_size = return_data.len();
+                        let write_size = out_size.min(return_size); //書き込みサイズ
+                        if write_size > 0 {
+                            let required_size = out_offset.saturating_add(write_size);
+                            self.memory[out_offset..required_size]
+                                .copy_from_slice(&return_data[..write_size]);
+                            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+                            self.active_words = active_words;
+                        }
+                        //Returndata バッファの更新
+                        self.return_back = return_data;
+                        //ガスの精算
+                        self.gas = self.gas + return_gas;
+                        //アクセス済みリストの更新
+                        if !substate.a_access.contains(&to_address) {
+                            substate.a_access.push(to_address.clone())
+                        }
+                        //結果push
+                        self.push(U256::ZERO);
+                    }
+
+                    Err((return_gas, None, _)) => {
+                        //アクセス済みリストの更新
+                        if !substate.a_access.contains(&to_address) {
+                            substate.a_access.push(to_address.clone())
+                        }
+                        //結果push
+                        self.push(U256::ZERO);
+                    }
+                }
             }
 
             0xfd => {
