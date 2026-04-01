@@ -1343,7 +1343,7 @@ impl Ofunction for EVM {
 
             0xff => {
                 //SELFDESTRUCT
-                if self.version > VersionId::London {
+                if self.version < VersionId::London {
                     substate.a_reimburse += 24000;
                 }
                 let from_address = &execution_environment.i_address;
