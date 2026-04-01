@@ -86,8 +86,8 @@ impl ContractCreation for LEVIATHAN {
             state.add_account(&contract_address, Account::new()); //アカウントを追加
             Action::Account_creation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
         }
-        Action::Add_nonce(contract_address.clone()).push(self, state); //ロールバック用
         if self.version >= VersionId::SpuriousDragon {
+            Action::Add_nonce(contract_address.clone()).push(self, state); //ロールバック用
             state.inc_nonce(&contract_address);
         }
         //送金する

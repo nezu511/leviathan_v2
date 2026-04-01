@@ -112,7 +112,7 @@ impl State for WorldState {
         let from_account = self
             .0
             .get_mut(from)
-            .expect("[dec_nonce]: アカウントが存在しない");
+            .expect("[send]: アカウントが存在しない");
         if from_account.balance >= eth {
             from_account.balance -= eth;
         } else {
@@ -121,7 +121,7 @@ impl State for WorldState {
         let to_account = self
             .0
             .get_mut(to)
-            .expect("[dec_nonce]: アカウントが存在しない");
+            .expect("[send]: アカウントが存在しない");
         to_account.balance += eth;
         return Ok(());
     }

@@ -1021,7 +1021,7 @@ impl Ofunction for EVM {
                 let gas = self.pop(); //サブコールに割り当てる最大ガス
                 let to = self.pop(); //呼び出し先のアドレス
                 let to_address = Address::from_u256(to);
-                println!("CALL: 0x{}", hex::encode(to_address.0)); //アドレス
+                //println!("CALL: 0x{}", hex::encode(to_address.0)); //アドレス
                 let value = self.pop();
                 let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
                 let in_size = self.pop().try_into().unwrap_or(usize::MAX);
