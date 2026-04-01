@@ -935,9 +935,6 @@ impl Ofunction for EVM {
                     let slice = &self.memory[offset..required_size];
                     data = slice.to_vec();
                 }
-                //コントラクト自身のNonceのインクリメント
-                Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
-                state.inc_nonce(&execution_environment.i_address);
                 //事前チェック
                 let my_balance = state
                     .get_balance(&execution_environment.i_address)
@@ -954,6 +951,9 @@ impl Ofunction for EVM {
                         return None;
                     }
                 }
+                //コントラクト自身のNonceのインクリメント
+                Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
+                state.inc_nonce(&execution_environment.i_address);
                 //depthのインクリメント
                 let depth = execution_environment.i_depth + 1;
                 //子に渡すガスの計算
@@ -994,7 +994,7 @@ impl Ofunction for EVM {
                         if !substate.a_access.contains(&contract_address) {
                             substate.a_access.push(contract_address.clone())
                         }
-                        //println!("CREATE:0x{}", hex::encode(contract_address.0));        //アドレス
+                        println!("CREATE:0x{}", hex::encode(contract_address.0));        //アドレス
                         //Journalのmerge
                         leviathan.merge(child_leviathan);
                         //結果push

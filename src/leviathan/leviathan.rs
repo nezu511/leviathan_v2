@@ -95,7 +95,7 @@ impl TransactionExecution for LEVIATHAN {
             return Err((U256::ZERO, Vec::new()));
         }
         let sender_address = sender_address.unwrap();
-        //println!("Transaction送信者: 0x{}", hex::encode(sender_address.0));        //アドレス
+        println!("Transaction送信者: 0x{}", hex::encode(sender_address.0));        //アドレス
 
         //=======ステップ2===========
         //【Nonceの加算】
@@ -357,8 +357,8 @@ mod state_tests {
     #[test]
     fn state_test_all_in_dir() {
         // ここにテストしたいディレクトリへのパスを指定します
-          let test_dir = "testdata/GeneralStateTestsFiller/stInitCodeTest/byte/";
-        //let test_dir = "testdata/GeneralStateTestsFiller/stCreateTest/byte";
+        let test_dir = "testdata/GeneralStateTestsFiller/stInitCodeTest/byte/";
+        //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
         //let test_dir = "testdata/GeneralStateTestsFiller/stMemoryTest";
 
         let paths = fs::read_dir(test_dir)

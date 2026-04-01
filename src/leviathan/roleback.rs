@@ -64,7 +64,7 @@ impl Action {
 
 impl RoleBack for LEVIATHAN {
     fn roleback(&mut self, state: &mut WorldState) -> Result<(), &'static str> {
-        println!("ロールバック起動");
+        //println!("ロールバック起動");
         //println!("{:?}", self.journal);
         while self.journal.len() > 0 {
             let action = self.journal.pop();
