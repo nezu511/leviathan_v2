@@ -9,7 +9,7 @@ use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{I256, U256};
+use alloy_primitives::{I256, U256, hex};
 use sha3::{Digest, Keccak256};
 
 pub struct LEVIATHAN {
@@ -95,6 +95,7 @@ impl TransactionExecution for LEVIATHAN {
             return Err((U256::ZERO, Vec::new()));
         }
         let sender_address = sender_address.unwrap();
+        //println!("Transaction送信者: 0x{}", hex::encode(sender_address.0));        //アドレス
 
         //=======ステップ2===========
         //【Nonceの加算】
@@ -155,7 +156,12 @@ impl TransactionExecution for LEVIATHAN {
         match result {
             Ok((gas, _, _)) => {
                 let used_gas = transaction.t_gas_limit.saturating_sub(gas);
-                let max_refund = used_gas / U256::from(5);
+                let max_refund = if self.version < VersionId::London {
+                    //返金の上限がフォークで異なる
+                    used_gas / U256::from(2)
+                } else {
+                    used_gas / U256::from(5)
+                };
                 let reimburse_u256 = U256::from(substate.a_reimburse.max(0) as u64);
                 let reimburse = std::cmp::min(max_refund, reimburse_u256);
                 let return_gas = gas.saturating_add(reimburse);
@@ -168,6 +174,10 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
+                println!(
+                    "マイナーアドレス: 0x{}",
+                    hex::encode(block_header.h_beneficiary.0)
+                ); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);
                 let f = transaction.t_price - block_header.h_basefee;
                 let reward = final_billed_gas.saturating_mul(f);
@@ -350,7 +360,9 @@ mod state_tests {
     #[test]
     fn state_test_all_in_dir() {
         // 🌟 ここにテストしたいディレクトリへのパスを指定します
+        //let test_dir = "testdata/GeneralStateTestsFiller/stCreateTest/LLL/byte";
         let test_dir = "testdata/GeneralStateTestsFiller/stCreateTest/byte";
+        //let test_dir = "testdata/GeneralStateTestsFiller/stMemoryTest";
 
         let paths = fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));

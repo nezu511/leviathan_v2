@@ -1,5 +1,8 @@
 {
-    "CREATE_EmptyContract" : {
+    "CreateOOGafterInitCodeReturndata2" : {
+	"_info" :{
+	    "comment" : "Call RETURNDATASIZE and RETURNDATACOPY after CREATE deploy a contract. correct returndata copy."
+	},
         "env" : {
             "currentCoinbase" : "2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
             "currentDifficulty" : "0x020000",
@@ -12,45 +15,38 @@
             {
                 "indexes" : {
                     "data" : -1,
-                    "gas" : -1,
+                    "gas" : 0,
                     "value" : -1
                 },
-                "network" : ["EIP158"],
+                "network" : ["Byzantium"],
                 "result" : {
-		    "f1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
-			"nonce" : "1"
-		    },
 		    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-			"storage" : {
-			    "0x00" : "0x08d5b6",
-			    "0x01" : "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40",
-			    "0x64" : "0x07bc62"
-			}
+		        "storage" : {
+		            "0x01" : "0"
+		        }
+		    },
+		    "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
+		        "shouldnotexist" : "1"
 		    }
                 }
             },
 	    {
                 "indexes" : {
                     "data" : -1,
-                    "gas" : -1,
+                    "gas" : 1,
                     "value" : -1
                 },
-                "network" : ["Frontier", "Homestead", "EIP150"],
+                "network" : ["Byzantium"],
                 "result" : {
-                        "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                            "storage" : {
-                                "0x00" : "0x08d5b6",
-                                "0x01" : "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40",
-                                "0x64" : "0x07bc62"
-                            }
-                        },
-                        "f1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
-                            "balance" : "0x00",
-                            "code" : "0x",
-                            "nonce" : "0x00",
-                            "storage" : {
-                            }
-                        }
+		    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+		        "storage" : {
+		            "0x01" : "0",
+			    "0x02" : "0x6460016001556000526005601bf3"
+		        }
+		    },
+		    "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
+		        "code" : "0x6001600155"
+		    }
                 }
             }
         ],
@@ -66,7 +62,7 @@
 	    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
                 "balance" : "0",
 		"nonce" : "0",
-		"code" : "{ [[0]](GAS) [[1]] (CREATE 0 0 32) [[100]] (GAS) }",
+		"code" : "0x6d6460016001556000526005601bf3600052600e60126000f0503d6001556000600060003e600051600255",
 		"storage": {
 		}
             }
@@ -76,7 +72,7 @@
                 ""
             ],
             "gasLimit" : [
-                "600000"
+                "54000", "95000"
             ],
             "gasPrice" : "1",
             "nonce" : "0",

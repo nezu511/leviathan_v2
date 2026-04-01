@@ -4,6 +4,7 @@ use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
+use crate::my_trait::leviathan_trait::State;
 use alloy_primitives::{I256, U256};
 
 pub struct EVM {
@@ -81,7 +82,6 @@ impl Xi for EVM {
 
         let code = execution_environment.i_byte.clone();
         let mut opcode = 0u8;
-
         loop {
             // opcodeを取り出す
             if code.len() <= self.pc {
@@ -89,6 +89,8 @@ impl Xi for EVM {
             } else {
                 opcode = code[self.pc];
             }
+
+            //println!("0x{:x}", opcode);
 
             //Z関数による安全性を確認
             if !self.is_safe(opcode, &substate, &state, &execution_environment) {
@@ -248,12 +250,14 @@ mod tests {
 
                 match result {
                     Ok(_) => {
+                        /*
                         let gas_used = test_data.exec.gas.saturating_sub(evm.gas);
                         let max_refund = gas_used / U256::from(2);
                         let raw_refund = U256::from(substate.a_reimburse.max(0) as u64);
                         let actual_refund = std::cmp::min(raw_refund, max_refund);
 
                         evm.gas = evm.gas.saturating_add(actual_refund);
+                        */
                     }
                     Err(None) => {
                         leviathan

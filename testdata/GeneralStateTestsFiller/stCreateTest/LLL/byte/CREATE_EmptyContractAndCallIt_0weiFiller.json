@@ -1,5 +1,5 @@
 {
-    "CREATE_EmptyContractAndCallIt_1wei" : {
+    "CREATE_EmptyContractAndCallIt_0wei" : {
         "env" : {
             "currentCoinbase" : "2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
             "currentDifficulty" : "0x020000",
@@ -23,13 +23,12 @@
 		            "0x01" : "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40",
 		            "0x02" : "0x07bc62",
 		            "0x03" : "0x01",
-		            "0x64" : "0x070255"
+		            "0x64" : "0x071c81"
 		        }
 		    },
 		    "f1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
-		        "balance" : "0x01",
-			"nonce" : "0x01"
-		     }
+			"nonce" : "1"
+		    }
                 }
             },
 	    {
@@ -46,13 +45,12 @@
 		            "0x01" : "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40",
 		            "0x02" : "0x07bc62",
 		            "0x03" : "0x01",
-		            "0x64" : "0x07057f"
+		            "0x64" : "0x071fab"
 		        }
 		    },
 		    "f1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
-		        "balance" : "0x01",
-			"nonce" : "0x00"
-		     }
+			"nonce" : "0"
+		    }
                 }
             },
 	    {
@@ -69,13 +67,12 @@
 		            "0x01" : "0xf1ecf98489fa9ed60a664fc4998db699cfa39d40",
 		            "0x02" : "0x07bc62",
 		            "0x03" : "0x01",
-		            "0x64" : "0x070255"
+		            "0x64" : "0x071c81"
 		        }
 		    },
 		    "f1ecf98489fa9ed60a664fc4998db699cfa39d40" : {
-		        "balance" : "0x01",
-			"nonce" : "0x00"
-		     }
+			"nonce" : "0"
+		    }
                 }
             }
         ],
@@ -89,9 +86,9 @@
                 }
             },
 	    "b94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
-                "balance" : "1",
+                "balance" : "0",
 		"nonce" : "0",
-		"code" : "{ [[0]](GAS) [[1]] (CREATE 0 0 32) [[2]](GAS) [[3]](CALL 60000 (SLOAD 1) 1 0 0 0 0) [[100]] (GAS) }",
+		"code" : "0x5a600055602060006000f06001555a6002556000600060006000600060015461ea60f16003555a606455",
 		"storage": {
 		}
             }
