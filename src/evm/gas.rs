@@ -511,7 +511,7 @@ impl Gfunction for EVM {
                 } else {
                     self.is_account_access(address, substate)
                 };
-                //送金とアカウント作成の追加コスト
+                //送金の追加コスト
                 let address = Address::from_u256(address);
                 let mut create_cost = U256::from(0);
                 if !value.is_zero() {

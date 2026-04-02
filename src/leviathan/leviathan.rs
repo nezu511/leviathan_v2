@@ -371,7 +371,7 @@ mod state_tests {
     #[test]
     fn state_test_all_in_dir() {
         // ここにテストしたいディレクトリへのパスを指定します
-        let test_dir = "compiled/GeneralStateTestsFiller/stCallCodes";
+        let test_dir = "compiled/GeneralStateTestsFiller/stCallDelegateCodesHomestead";
         //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
 
         let paths = fs::read_dir(test_dir)
