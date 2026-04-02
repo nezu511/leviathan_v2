@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::evm::evm::EVM;
-use crate::leviathan::structs::{ExecutionEnvironment, SubState};
+use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Xi, Zfunction};
 use crate::my_trait::leviathan_trait::State;
@@ -151,6 +151,10 @@ impl Zfunction for EVM {
         let op_info = SAFE_TABLE[opcode as usize];
         if op_info[0] == u8::MAX {
             return false;
+        }
+
+        if self.version < VersionId::Homestead && opcode == 0xf4 {
+            return false
         }
 
         //現在の命令が要求する要素数に対して，スタックの中身は足りるか？
