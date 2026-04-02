@@ -70,7 +70,7 @@
         "pre": {
             "095e7baea6a6c7c4c2dfeb977efac326af552d87": {
                 "balance": "1000000000000000000",
-                "code": "0x6000600060006000600073aaae7baea6a6c7c4c2dfeb977efac326af552aaa600035f160005500",
+                "code": "0x6000600060006000600073aaae7baea6a6c7c4c2dfeb977efac326af552aaa600035f1600055",
                 "nonce": "0",
                 "storage": {
                     "0x01": "0x01"
@@ -84,7 +84,7 @@
             },
             "aaae7baea6a6c7c4c2dfeb977efac326af552aaa": {
                 "balance": "1000000000000000000",
-                "code": "0x73095e7baea6a6c7c4c2dfeb977efac326af552d87ff00",
+                "code": "0x73095e7baea6a6c7c4c2dfeb977efac326af552d87ff",
                 "nonce": "0",
                 "storage": {
                     "0x01": "0x01"

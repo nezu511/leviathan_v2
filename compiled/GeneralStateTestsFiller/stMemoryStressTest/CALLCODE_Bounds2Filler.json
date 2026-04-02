@@ -33,13 +33,13 @@
             "1000000000000000000000000000000000000000": {
                 "balance": "0",
                 "// code": "(CALLCODE 0x7ffffffffffffff 0x1000000000000000000000000000000000000001 0 0 0xffffffffffffffff 0 0xffffffffffffffff)  (CALLCODE 0x7ffffffffffffff 0x1000000000000000000000000000000000000001 0 0 0xffffffffffffffffffffffffffffffff 0 0xffffffffffffffffffffffffffffffff) (CALLCODE 0x7ffffffffffffff 0x1000000000000000000000000000000000000001 0 0 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 0 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) (CALLCODE 0x7ffffffffffffff 0x1000000000000000000000000000000000000001 0 0xffffffffffffffff 0xffffffffffffffff 0xffffffffffffffff 0xffffffffffffffff) (CALLCODE 0x7ffffffffffffff 0x1000000000000000000000000000000000000001 0 0xffffffffffffffff 0xffffffffffffffff 0xffffffffffffffff 0xffffffffffffffff)  (CALLCODE 0x7ffffffffffffff 0x1000000000000000000000000000000000000001 0 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) (CALLCODE 0x7ffffffffffffff 0x1000000000000000000000000000000000000001 0 0xffffffffffffffffffffffffffffffff 0xffffffffffffffffffffffffffffffff 0xffffffffffffffffffffffffffffffff 0xffffffffffffffffffffffffffffffff) (CALLCODE 0x7ffffffffffffff 0x1000000000000000000000000000000000000001 0 0xffffffff 0xffffffff 0xffffffff 0xffffffff)",
-                "code": "0x630fffffff630fffffff630fffffff630fffffff60007310000000000000000000000000000000000000016707fffffffffffffff200",
+                "code": "0x630fffffff630fffffff630fffffff630fffffff60007310000000000000000000000000000000000000016707fffffffffffffff2",
                 "nonce": "0",
                 "storage": {}
             },
             "1000000000000000000000000000000000000001": {
                 "balance": "0",
-                "code": "0x60005460010160005500",
+                "code": "0x600054600101600055",
                 "nonce": "0",
                 "storage": {}
             },

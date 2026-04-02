@@ -28,7 +28,7 @@
         "pre": {
             "1000000000000000000000000000000000000000": {
                 "balance": "0",
-                "code": "0x6000545063ffffffff545067ffffffffffffffff54506fffffffffffffffffffffffffffffffff54507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff5400",
+                "code": "0x6000545063ffffffff545067ffffffffffffffff54506fffffffffffffffffffffffffffffffff54507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff54",
                 "nonce": "0",
                 "storage": {}
             },

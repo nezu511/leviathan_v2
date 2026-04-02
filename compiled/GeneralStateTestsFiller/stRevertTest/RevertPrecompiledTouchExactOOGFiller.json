@@ -897,35 +897,35 @@
         "pre": {
             "b94f5374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "0",
-                "code": "0x60006000602035600060006000355af200",
+                "code": "0x60006000602035600060006000355af2",
                 "nonce": "0",
                 "storage": {}
             },
             "1000000000000000000000000000000000000000": {
                 "//comment": "CALL precompiles and OOG",
                 "balance": "0",
-                "code": "0x60006000600060006000365af100",
+                "code": "0x60006000600060006000365af1",
                 "nonce": "0",
                 "storage": {}
             },
             "2000000000000000000000000000000000000000": {
                 "//comment": "DELEGATECALL precompiles and OOG",
                 "balance": "0",
-                "code": "0x6000600060006000365af400",
+                "code": "0x6000600060006000365af4",
                 "nonce": "0",
                 "storage": {}
             },
             "3000000000000000000000000000000000000000": {
                 "//comment": "CALLCODE precompiles and OOG",
                 "balance": "0",
-                "code": "0x60006000600060006000365af200",
+                "code": "0x60006000600060006000365af2",
                 "nonce": "0",
                 "storage": {}
             },
             "4000000000000000000000000000000000000000": {
                 "//comment": "STATICCALL precompiles and OOG",
                 "balance": "0",
-                "code": "0x6000600060006000365afa00",
+                "code": "0x6000600060006000365afa",
                 "nonce": "0",
                 "storage": {}
             },
