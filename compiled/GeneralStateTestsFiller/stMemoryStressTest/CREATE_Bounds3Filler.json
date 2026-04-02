@@ -31,7 +31,7 @@
         "pre": {
             "1000000000000000000000000000000000000000": {
                 "balance": "100",
-                "code": "0x7f6001600155601080600c6000396000f3006000355415600957005b60203560006000526035602053605560215367ffffffffffffffff60006001f0506fffffffffffffffffffffffffffffffff60006001f0507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff60006001f0506000630fffffff6001f050600063ffffffff6001f050600067ffffffffffffffff6001f05060006fffffffffffffffffffffffffffffffff6001f05060007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6001f050630fffffff630fffffff6001f05063ffffffff63ffffffff6001f05067ffffffffffffffff67ffffffffffffffff6001f0506fffffffffffffffffffffffffffffffff6fffffffffffffffffffffffffffffffff6001f0507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6001f000",
+                "code": "0x7f6001600155601080600c6000396000f3006000355415600957005b60203560006000526035602053605560215367ffffffffffffffff60006001f0506fffffffffffffffffffffffffffffffff60006001f0507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff60006001f0506000630fffffff6001f050600063ffffffff6001f050600067ffffffffffffffff6001f05060006fffffffffffffffffffffffffffffffff6001f05060007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6001f050630fffffff630fffffff6001f05063ffffffff63ffffffff6001f05067ffffffffffffffff67ffffffffffffffff6001f0506fffffffffffffffffffffffffffffffff6fffffffffffffffffffffffffffffffff6001f0507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6001f0",
                 "nonce": "0",
                 "storage": {}
             },

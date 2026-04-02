@@ -54,7 +54,7 @@
         "pre": {
             "1000000000000000000000000000000000000000": {
                 "balance": "0",
-                "code": "0x600163ffffffff55600167ffffffffffffffff5560016fffffffffffffffffffffffffffffffff5560017fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff5563ffffffff60205567ffffffffffffffff6040556fffffffffffffffffffffffffffffffff6080557fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6101005500",
+                "code": "0x600163ffffffff55600167ffffffffffffffff5560016fffffffffffffffffffffffffffffffff5560017fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff5563ffffffff60205567ffffffffffffffff6040556fffffffffffffffffffffffffffffffff6080557fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff61010055",
                 "nonce": "0",
                 "storage": {}
             },

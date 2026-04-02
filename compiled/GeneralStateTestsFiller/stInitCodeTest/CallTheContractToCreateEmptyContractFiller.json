@@ -89,7 +89,7 @@
         "pre": {
             "095e7baea6a6c7c4c2dfeb977efac326af552d87": {
                 "balance": "0",
-                "code": "0x602060006000f000",
+                "code": "0x602060006000f0",
                 "nonce": "0",
                 "storage": {}
             },

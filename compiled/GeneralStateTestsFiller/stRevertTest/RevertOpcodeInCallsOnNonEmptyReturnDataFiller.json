@@ -263,7 +263,7 @@
             },
             "094f5374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
-                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f150600060006000600060006000356203f7a0f1600a5500",
+                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f150600060006000600060006000356203f7a0f1600a55",
                 "nonce": "0",
                 "storage": {
                     "0x0a": "0xff"
@@ -271,45 +271,45 @@
             },
             "b0005374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
-                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f1506000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f16000553d60025500",
+                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f1506000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f16000553d600255",
                 "nonce": "0",
                 "storage": {}
             },
             "b1005374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
-                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f1506000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f26000553d60025500",
+                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f1506000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f26000553d600255",
                 "nonce": "0",
                 "storage": {}
             },
             "b2005374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
-                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f150600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f46000553d60025500",
+                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f150600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f46000553d600255",
                 "nonce": "0",
                 "storage": {}
             },
             "b3005374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
-                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f1506000600060006000600073b3305374fce5edbc8e2a8697c15331677e6ebf0b620186a0f16000553d60025500",
+                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f1506000600060006000600073b3305374fce5edbc8e2a8697c15331677e6ebf0b620186a0f16000553d600255",
                 "nonce": "0",
                 "storage": {}
             },
             "b3305374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
-                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f1506000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f16004553d60055500",
+                "code": "0x6000600060006000600073ffff5374fce5edbc8e2a8697c15331677e6ebf0b6000f1506000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f16004553d600555",
                 "nonce": "0",
                 "storage": {}
             },
             "c94f5374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
                 "//comment": "Recording it's called at [[1]], and reverting. The store into [[3]] should not be reached.",
-                "code": "0x600c60015560016000fd600d60035500",
+                "code": "0x600c60015560016000fd600d600355",
                 "nonce": "0",
                 "storage": {}
             },
             "ffff5374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
                 "// comment": "This should return 12 as a return value.  This sets the returndata buffer of the caller to be 64-byte long.",
-                "code": "0x600c60015260406000f300",
+                "code": "0x600c60015260406000f3",
                 "nonce": "0",
                 "storage": {}
             }

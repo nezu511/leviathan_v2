@@ -80,20 +80,20 @@
             },
             "094f5374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
-                "code": "0x6000600060006000600060003561ea60f1600a5500",
+                "code": "0x6000600060006000600060003561ea60f1600a55",
                 "nonce": "0",
                 "storage": {}
             },
             "b94f5374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
                 "// code": "!!! STRANGE:   CALL works, but if called from 094...  it wont work. even if gas is enough. seems to be OOG.",
-                "code": "0x6000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f1600055600e60025500",
+                "code": "0x6000600060006000600073c94f5374fce5edbc8e2a8697c15331677e6ebf0b61c350f1600055600e600255",
                 "nonce": "0",
                 "storage": {}
             },
             "c94f5374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "balance": "1",
-                "code": "0x600c60015560016000fd600d60035500",
+                "code": "0x600c60015560016000fd600d600355",
                 "nonce": "0",
                 "storage": {}
             }
