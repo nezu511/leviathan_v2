@@ -176,9 +176,9 @@ impl TransactionExecution for LEVIATHAN {
                 //マイナーへの支払い
                 //println!("マイナーアドレス: 0x{}",hex::encode(block_header.h_beneficiary.0)); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);
-                let f =  if self.version < VersionId::London {
+                let f = if self.version < VersionId::London {
                     transaction.t_price
-                }else{
+                } else {
                     transaction.t_price - block_header.h_basefee
                 };
                 let reward = final_billed_gas.saturating_mul(f);
@@ -207,9 +207,9 @@ impl TransactionExecution for LEVIATHAN {
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(gas);
-                let f =  if self.version < VersionId::London {
+                let f = if self.version < VersionId::London {
                     transaction.t_price
-                }else{
+                } else {
                     transaction.t_price - block_header.h_basefee
                 };
                 let reward = final_billed_gas.saturating_mul(f);

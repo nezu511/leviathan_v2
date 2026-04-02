@@ -452,7 +452,7 @@ impl Gfunction for EVM {
                     if state.is_empty(&address) {
                         create_cost = create_cost.saturating_add(U256::from(25000));
                     }
-                }else{
+                } else {
                     if !value.is_zero() {
                         create_cost = create_cost.saturating_add(U256::from(9000));
                         if state.is_empty(&address) {
@@ -467,12 +467,12 @@ impl Gfunction for EVM {
                 let mut result = U256::ZERO;
                 if self.version < VersionId::TangerineWhistle {
                     result = child_gas_limit;
-                }else{
+                } else {
                     let gr = self.gas.saturating_sub(base_cost);
-                    let gr = gr - ( gr / U256::from(64));
+                    let gr = gr - (gr / U256::from(64));
                     if gr > child_gas_limit {
                         result = child_gas_limit;
-                    }else{
+                    } else {
                         result = gr;
                     }
                 }
@@ -524,12 +524,12 @@ impl Gfunction for EVM {
                 let mut result = U256::ZERO;
                 if self.version < VersionId::TangerineWhistle {
                     result = child_gas_limit;
-                }else{
+                } else {
                     let gr = self.gas.saturating_sub(base_cost);
-                    let gr = gr - ( gr / U256::from(64));
+                    let gr = gr - (gr / U256::from(64));
                     if gr > child_gas_limit {
                         result = child_gas_limit;
-                    }else{
+                    } else {
                         result = gr;
                     }
                 }
@@ -581,12 +581,12 @@ impl Gfunction for EVM {
                 let mut result = U256::ZERO;
                 if self.version < VersionId::TangerineWhistle {
                     result = child_gas_limit;
-                }else{
+                } else {
                     let gr = self.gas.saturating_sub(base_cost);
-                    let gr = gr - ( gr / U256::from(64));
+                    let gr = gr - (gr / U256::from(64));
                     if gr > child_gas_limit {
                         result = child_gas_limit;
-                    }else{
+                    } else {
                         result = gr;
                     }
                 }
