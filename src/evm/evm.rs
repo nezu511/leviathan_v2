@@ -16,6 +16,7 @@ pub struct EVM {
     pub return_back: Vec<u8>,
     pub safe_jump: Vec<u8>,
     pub version: VersionId,
+    pub child_gas_mem: Option<U256>,
 }
 
 impl EVM {
@@ -49,6 +50,7 @@ impl EVM {
             return_back: Vec::new(),
             safe_jump: safe_jump,
             version: version,
+            child_gas_mem: None,
         }
     }
 
@@ -90,7 +92,7 @@ impl Xi for EVM {
                 opcode = code[self.pc];
             }
 
-            //println!("0x{:x}", opcode);
+            //println!("0x{:x}, rest_gas: {}", opcode, self.gas);
 
             //Z関数による安全性を確認
             if !self.is_safe(opcode, &substate, &state, &execution_environment) {

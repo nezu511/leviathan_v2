@@ -445,16 +445,39 @@ impl Gfunction for EVM {
                 //送金とアカウント作成の追加コスト
                 let address = Address::from_u256(address);
                 let mut create_cost = U256::ZERO;
-                if !value.is_zero() {
-                    create_cost = create_cost.saturating_add(U256::from(9000));
+                if self.version < VersionId::SpuriousDragon {
+                    if !value.is_zero() {
+                        create_cost = create_cost.saturating_add(U256::from(9000));
+                    }
                     if state.is_empty(&address) {
                         create_cost = create_cost.saturating_add(U256::from(25000));
+                    }
+                } else {
+                    if !value.is_zero() {
+                        create_cost = create_cost.saturating_add(U256::from(9000));
+                        if state.is_empty(&address) {
+                            create_cost = create_cost.saturating_add(U256::from(25000));
+                        }
                     }
                 }
                 let base_cost = ext_cost
                     .saturating_add(acc_cost)
                     .saturating_add(create_cost);
-                return base_cost;
+                //子に渡すガス
+                let mut result = U256::ZERO;
+                if self.version < VersionId::TangerineWhistle {
+                    result = child_gas_limit;
+                } else {
+                    let gr = self.gas.saturating_sub(base_cost);
+                    let gr = gr - (gr / U256::from(64));
+                    if gr > child_gas_limit {
+                        result = child_gas_limit;
+                    } else {
+                        result = gr;
+                    }
+                }
+                self.child_gas_mem = Some(result);
+                return result.saturating_add(base_cost);
             }
 
             0xf2 => {
@@ -481,7 +504,13 @@ impl Gfunction for EVM {
                 let max_end = args_end.max(ret_end);
                 let ext_cost = self.extension_cost(U256::ZERO, max_end);
                 //アドレスのアクセス状態
-                let acc_cost = self.is_account_access(address, substate);
+                let acc_cost = if self.version < VersionId::TangerineWhistle {
+                    U256::from(40)
+                } else if self.version < VersionId::Berlin {
+                    U256::from(700)
+                } else {
+                    self.is_account_access(address, substate)
+                };
                 //送金とアカウント作成の追加コスト
                 let address = Address::from_u256(address);
                 let mut create_cost = U256::from(0);
@@ -491,7 +520,21 @@ impl Gfunction for EVM {
                 let base_cost = ext_cost
                     .saturating_add(acc_cost)
                     .saturating_add(create_cost);
-                return base_cost;
+                //子に渡すガス
+                let mut result = U256::ZERO;
+                if self.version < VersionId::TangerineWhistle {
+                    result = child_gas_limit;
+                } else {
+                    let gr = self.gas.saturating_sub(base_cost);
+                    let gr = gr - (gr / U256::from(64));
+                    if gr > child_gas_limit {
+                        result = child_gas_limit;
+                    } else {
+                        result = gr;
+                    }
+                }
+                self.child_gas_mem = Some(result);
+                return result.saturating_add(base_cost);
             }
 
             0xf3 | 0xfd => {
@@ -525,10 +568,30 @@ impl Gfunction for EVM {
                 let max_end = args_end.max(ret_end);
                 let ext_cost = self.extension_cost(U256::ZERO, max_end);
                 //アドレスのアクセス状態
-                let acc_cost = self.is_account_access(address, substate);
+                let acc_cost = if self.version < VersionId::TangerineWhistle {
+                    U256::from(40)
+                } else if self.version < VersionId::Berlin {
+                    U256::from(700)
+                } else {
+                    self.is_account_access(address, substate)
+                };
 
                 let base_cost = ext_cost.saturating_add(acc_cost);
-                return base_cost;
+                //子に渡すガス
+                let mut result = U256::ZERO;
+                if self.version < VersionId::TangerineWhistle {
+                    result = child_gas_limit;
+                } else {
+                    let gr = self.gas.saturating_sub(base_cost);
+                    let gr = gr - (gr / U256::from(64));
+                    if gr > child_gas_limit {
+                        result = child_gas_limit;
+                    } else {
+                        result = gr;
+                    }
+                }
+                self.child_gas_mem = Some(result);
+                return result.saturating_add(base_cost);
             }
 
             0xf5 => {

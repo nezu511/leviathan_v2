@@ -95,7 +95,7 @@ impl TransactionExecution for LEVIATHAN {
             return Err((U256::ZERO, Vec::new()));
         }
         let sender_address = sender_address.unwrap();
-        println!("Transaction送信者: 0x{}", hex::encode(sender_address.0)); //アドレス
+        //println!("Transaction送信者: 0x{}", hex::encode(sender_address.0)); //アドレス
 
         //=======ステップ2===========
         //【Nonceの加算】
@@ -176,7 +176,11 @@ impl TransactionExecution for LEVIATHAN {
                 //マイナーへの支払い
                 //println!("マイナーアドレス: 0x{}",hex::encode(block_header.h_beneficiary.0)); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);
-                let f = transaction.t_price - block_header.h_basefee;
+                let f = if self.version < VersionId::London {
+                    transaction.t_price
+                } else {
+                    transaction.t_price - block_header.h_basefee
+                };
                 let reward = final_billed_gas.saturating_mul(f);
                 if state.is_empty(&block_header.h_beneficiary) {
                     //set_balance前の確認
@@ -184,6 +188,12 @@ impl TransactionExecution for LEVIATHAN {
                     Action::Account_creation(block_header.h_beneficiary.clone()).push(self, state); //アカウントが存在しない場合
                 }
                 state.set_balance(&block_header.h_beneficiary, reward);
+                //substate.a_desの処理
+                while !substate.a_des.is_empty() {
+                    let address = substate.a_des.pop().unwrap();
+                    state.delete_account(&address);
+                }
+
                 return Ok((final_billed_gas, substate.a_log.clone()));
             }
             Err((gas, _, _)) => {
@@ -197,7 +207,11 @@ impl TransactionExecution for LEVIATHAN {
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(gas);
-                let f = transaction.t_price - block_header.h_basefee;
+                let f = if self.version < VersionId::London {
+                    transaction.t_price
+                } else {
+                    transaction.t_price - block_header.h_basefee
+                };
                 let reward = final_billed_gas.saturating_mul(f);
                 if state.is_empty(&block_header.h_beneficiary) {
                     //set_balance前の確認

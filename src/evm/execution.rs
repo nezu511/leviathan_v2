@@ -29,6 +29,7 @@ impl Ofunction for EVM {
     ) -> Option<bool> {
         //ガスを消費
         let gas_cost = self.gas(opcode, substate, state, execution_environment);
+        //println!("消費ガス {}", gas_cost);
         self.gas = self.gas.saturating_sub(gas_cost);
 
         //プログラムカウンターを進める
@@ -1088,22 +1089,17 @@ impl Ofunction for EVM {
                 //depthのインクリメント
                 let depth = execution_environment.i_depth + 1;
                 //子に渡すガスの計算
-                let gr = self.gas; //利用可能ガス
-                let gr = gr - (gr / U256::from(64)); //渡せる上限
-                let mut child_gas = if gr > gas {
-                    //スタックの指定値と渡せる上限を比較
-                    gas
-                } else {
-                    gr
+                let Some(mut child_gas) = self.child_gas_mem else {
+                    self.push(U256::ZERO);
+                    return None;
                 };
-                //親のガスから，子に渡すベース分を引く
-                self.gas = self.gas.saturating_sub(child_gas);
-                let child_gas = if value > 0 {
+                if value > 0 {
                     //最終的な子に渡すガス
-                    child_gas.saturating_add(U256::from(2300)) //送金額が0よりも大きい
+                    child_gas = child_gas.saturating_add(U256::from(2300)); //送金額が0よりも大きい
                 } else {
-                    child_gas
-                };
+                    child_gas;
+                }
+                self.child_gas_mem = None;
                 //サブコールの実行
                 let mut child_leviathan = LEVIATHAN::new(self.version);
                 let result = child_leviathan.message_call(
@@ -1189,7 +1185,7 @@ impl Ofunction for EVM {
                 let gas = self.pop(); //サブコールに割り当てる最大ガス
                 let to = self.pop(); //コードを借りてくる対象のアカウントアドレス
                 let to_address = Address::from_u256(to);
-                //println!("CALL: 0x{}", hex::encode(to_address.0));        //アドレス
+                //println!("CALLCODE: 0x{}", hex::encode(to_address.0));        //アドレス
                 let value = self.pop();
                 let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
                 let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1231,22 +1227,17 @@ impl Ofunction for EVM {
                 //depthのインクリメント
                 let depth = execution_environment.i_depth + 1;
                 //子に渡すガスの計算
-                let gr = self.gas; //利用可能ガス
-                let gr = gr - (gr / U256::from(64)); //渡せる上限
-                let mut child_gas = if gr > gas {
-                    //スタックの指定値と渡せる上限を比較
-                    gas
-                } else {
-                    gr
+                let Some(mut child_gas) = self.child_gas_mem else {
+                    self.push(U256::ZERO);
+                    return None;
                 };
-                //親のガスから，子に渡すベース分を引く
-                self.gas = self.gas.saturating_sub(child_gas);
-                let child_gas = if value > 0 {
+                self.child_gas_mem = None;
+                if value > 0 {
                     //最終的な子に渡すガス
-                    child_gas.saturating_add(U256::from(2300)) //送金額が0よりも大きい
+                    child_gas = child_gas.saturating_add(U256::from(2300)); //送金額が0よりも大きい
                 } else {
-                    child_gas
-                };
+                    child_gas;
+                }
                 //サブコールの実行
                 let mut child_leviathan = LEVIATHAN::new(self.version);
                 let result = child_leviathan.message_call(
@@ -1389,16 +1380,11 @@ impl Ofunction for EVM {
                 //depthのインクリメント
                 let depth = execution_environment.i_depth + 1;
                 //子に渡すガスの計算
-                let gr = self.gas; //利用可能ガス
-                let gr = gr - (gr / U256::from(64)); //渡せる上限
-                let mut child_gas = if gr > gas {
-                    //スタックの指定値と渡せる上限を比較
-                    gas
-                } else {
-                    gr
+                let Some(child_gas) = self.child_gas_mem else {
+                    self.push(U256::ZERO);
+                    return None;
                 };
-                //親のガスから，子に渡すベース分を引く
-                self.gas = self.gas.saturating_sub(child_gas);
+                self.child_gas_mem = None;
                 //サブコールの実行
                 let mut child_leviathan = LEVIATHAN::new(self.version);
                 let result = child_leviathan.message_call(
@@ -1524,8 +1510,8 @@ impl Ofunction for EVM {
                         state.send_eth(from_address, &to_address, balance);
                     }
                     substate.a_des.push(from_address.clone());
-                    return Some(false);
                 }
+                return Some(false);
             }
 
             _ => todo!(),
