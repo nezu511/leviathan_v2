@@ -470,7 +470,7 @@ impl Gfunction for EVM {
                 } else {
                     let gr = self.gas.saturating_sub(base_cost);
                     let gr = gr - (gr / U256::from(64));
-                   if gr > child_gas_limit {
+                    if gr > child_gas_limit {
                         result = child_gas_limit;
                     } else {
                         result = gr;

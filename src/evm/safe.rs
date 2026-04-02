@@ -154,7 +154,7 @@ impl Zfunction for EVM {
         }
 
         if self.version < VersionId::Homestead && opcode == 0xf4 {
-            return false
+            return false;
         }
 
         //現在の命令が要求する要素数に対して，スタックの中身は足りるか？

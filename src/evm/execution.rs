@@ -1442,7 +1442,7 @@ impl Ofunction for EVM {
                         self.push(U256::ZERO);
                     }
                 }
-            },
+            }
 
             0xf3 => {
                 //RETURN
