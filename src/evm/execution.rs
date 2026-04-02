@@ -1019,7 +1019,7 @@ impl Ofunction for EVM {
                         if !substate.a_access.contains(&contract_address) {
                             substate.a_access.push(contract_address.clone())
                         }
-                        //println!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
+                        println!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
                         //Journalのmerge
                         leviathan.merge(child_leviathan);
                         //結果push
@@ -1046,7 +1046,7 @@ impl Ofunction for EVM {
                 let gas = self.pop(); //サブコールに割り当てる最大ガス
                 let to = self.pop(); //呼び出し先のアドレス
                 let to_address = Address::from_u256(to);
-                //println!("CALL: 0x{}", hex::encode(to_address.0)); //アドレス
+                println!("CALL: 0x{}", hex::encode(to_address.0)); //アドレス
                 let value = self.pop();
                 let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
                 let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1189,7 +1189,7 @@ impl Ofunction for EVM {
                 let gas = self.pop(); //サブコールに割り当てる最大ガス
                 let to = self.pop(); //コードを借りてくる対象のアカウントアドレス
                 let to_address = Address::from_u256(to);
-                //println!("CALL: 0x{}", hex::encode(to_address.0));        //アドレス
+                println!("CALLCODE: 0x{}", hex::encode(to_address.0));        //アドレス
                 let value = self.pop();
                 let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
                 let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1351,7 +1351,7 @@ impl Ofunction for EVM {
                 let gas = self.pop(); //サブコールに割り当てる最大ガス
                 let to = self.pop(); //呼び出し先のアドレス
                 let to_address = Address::from_u256(to);
-                //println!("STATICCALL: 0x{}", hex::encode(to_address.0)); //アドレス
+                println!("STATICCALL: 0x{}", hex::encode(to_address.0)); //アドレス
                 let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
                 let in_size = self.pop().try_into().unwrap_or(usize::MAX);
                 let out_offset = self.pop().try_into().unwrap_or(usize::MAX);
