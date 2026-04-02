@@ -446,6 +446,9 @@ impl Gfunction for EVM {
                 let address = Address::from_u256(address);
                 let mut create_cost = U256::ZERO;
                 if self.version < VersionId::SpuriousDragon {
+                    if !value.is_zero() {
+                        create_cost = create_cost.saturating_add(U256::from(9000));
+                    }
                     if state.is_empty(&address) {
                         create_cost = create_cost.saturating_add(U256::from(25000));
                     }
