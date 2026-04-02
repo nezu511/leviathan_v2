@@ -92,7 +92,7 @@ impl Xi for EVM {
                 opcode = code[self.pc];
             }
             
-            println!("0x{:x}, rest_gas: {}", opcode, self.gas);
+            //println!("0x{:x}, rest_gas: {}", opcode, self.gas);
 
             //Z関数による安全性を確認
             if !self.is_safe(opcode, &substate, &state, &execution_environment) {

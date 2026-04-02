@@ -3,7 +3,7 @@
 use crate::leviathan::structs::{ExecutionEnvironment, SubState};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::{I256, U256};
+use alloy_primitives::{I256, U256, hex};
 
 impl State for WorldState {
     fn is_empty(&self, address: &Address) -> bool {
@@ -152,6 +152,7 @@ impl State for WorldState {
     }
 
     fn add_account(&mut self, address: &Address, account: Account) {
+        //println!("作成された: 0x{}",hex::encode(address.0)); //アドレス
         self.0.insert(address.clone(), account);
     }
 
