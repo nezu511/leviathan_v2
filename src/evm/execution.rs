@@ -29,6 +29,7 @@ impl Ofunction for EVM {
     ) -> Option<bool> {
         //ガスを消費
         let gas_cost = self.gas(opcode, substate, state, execution_environment);
+        println!("消費ガス {}", gas_cost);
         self.gas = self.gas.saturating_sub(gas_cost);
 
         //プログラムカウンターを進める

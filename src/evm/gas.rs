@@ -445,10 +445,16 @@ impl Gfunction for EVM {
                 //送金とアカウント作成の追加コスト
                 let address = Address::from_u256(address);
                 let mut create_cost = U256::ZERO;
-                if !value.is_zero() {
-                    create_cost = create_cost.saturating_add(U256::from(9000));
+                if self.version < VersionId::SpuriousDragon {
                     if state.is_empty(&address) {
                         create_cost = create_cost.saturating_add(U256::from(25000));
+                    }
+                }else{
+                    if !value.is_zero() {
+                        create_cost = create_cost.saturating_add(U256::from(9000));
+                        if state.is_empty(&address) {
+                            create_cost = create_cost.saturating_add(U256::from(25000));
+                        }
                     }
                 }
                 let base_cost = ext_cost
