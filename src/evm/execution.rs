@@ -88,251 +88,13 @@ impl Ofunction for EVM {
 
             }
 
-            0x30 => {
-                //ADDRESS
-                let address = &execution_environment.i_address;
-                let val = address.to_u256();
-                self.push(val);
-            }
-
-            0x31 => {
-                //BALANCE
-                let val1 = self.pop();
-                let address = Address::from_u256(val1);
-                let balance = state.get_balance(&address);
-                match balance {
-                    Some(x) => self.push(x),
-                    None => self.push(U256::ZERO),
-                }
-                //SubStateの更新
-                if !substate.a_access.contains(&address) {
-                    substate.a_access.push(address.clone())
-                }
-            }
-
-            0x32 => {
-                //ORIGIN
-                let address = &execution_environment.i_origin;
-                let val = address.to_u256();
-                self.push(val);
-            }
-
-            0x33 => {
-                //CALLER
-                let address = &execution_environment.i_sender;
-                let val = address.to_u256();
-                self.push(val);
-            }
-
-            0x34 => {
-                //CALLVALUE
-                let val = execution_environment.i_value;
-                self.push(val);
-            }
-
-            0x35 => {
-                //CALLDATALOAD
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let data = &execution_environment.i_data;
-                let required_size = offset.saturating_add(32);
-                let mut buffer = [0u8; 32];
-                if offset >= data.len() {
-                    self.push(U256::ZERO)
-                } else if required_size > data.len() {
-                    buffer[..data.len() - offset].copy_from_slice(&data[offset..data.len()]);
-                } else {
-                    buffer[..].copy_from_slice(&data[offset..required_size]);
-                }
-                let val = U256::from_be_bytes(buffer);
-                self.push(val);
-            }
-
-            0x36 => {
-                //CALLDATASIZE
-                let data = &execution_environment.i_data;
-                self.push(U256::from(data.len()));
-            }
-
-            0x37 => {
-                //CALLDATACOPY
-                let data = &execution_environment.i_data;
-                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX); //メモリ
-                let offset = self.pop().try_into().unwrap_or(usize::MAX); //CALLDATA
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
-                //メモリ拡張
-                if size != 0 {
-                    let required_size = dest_offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = (required_size.saturating_add(31)) / 32;
-                        self.memory.resize(words * 32, 0);
-                    }
-                    //メモリに値を書き込む
-                    let mut slice = vec![0u8; size];
-                    let read_size = offset.saturating_add(size);
-                    if offset <= data.len() {
-                        if read_size > data.len() {
-                            let copy_len = data.len() - offset;
-                            slice[..copy_len].copy_from_slice(&data[offset..data.len()]);
-                        } else {
-                            slice.copy_from_slice(&data[offset..read_size]);
-                        }
-                    }
-                    self.memory[dest_offset..required_size].copy_from_slice(&slice);
-                }
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
-
-            0x38 => {
-                //CODESIZE
-                let size = execution_environment.i_byte.len();
-                self.push(U256::from(size));
-            }
-
-            0x39 => {
-                //CODECOPY
-                let data = &execution_environment.i_byte;
-                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
-                //メモリ拡張
-                if size != 0 {
-                    let required_size = dest_offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = (required_size.saturating_add(31)) / 32;
-                        self.memory.resize(words * 32, 0);
-                    }
-                    //メモリに値を書き込む
-                    let read_size = offset.saturating_add(size);
-                    if offset <= data.len() {
-                        if read_size > data.len() {
-                            let copy_len = data.len() - offset;
-                            self.memory[dest_offset..dest_offset + copy_len]
-                                .copy_from_slice(&data[offset..data.len()]);
-                        } else {
-                            self.memory[dest_offset..required_size]
-                                .copy_from_slice(&data[offset..read_size]);
-                        }
-                    }
-                }
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
-
-            0x3a => {
-                //GASPRICE
-                let price = execution_environment.i_gas_price;
-                self.push(price);
-            }
-
-            0x3b => {
-                //EXTCODESIZE
-                let val1 = self.pop();
-                let address = Address::from_u256(val1);
-                let result = state.get_code(&address);
-                match result {
-                    Some(x) => self.push(U256::from(x.len())),
-                    None => self.push(U256::ZERO),
-                }
-                //SubStateの更新
-                if !substate.a_access.contains(&address) {
-                    substate.a_access.push(address.clone())
-                }
-            }
-
-            0x3c => {
-                //EXTCODECOPY
-                let val1 = self.pop();
-                let address = Address::from_u256(val1);
-                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX); //メモリ
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
-                //コード取得
-                let result = state.get_code(&address);
-                let code = match result {
-                    Some(x) => x,
-                    None => Vec::<u8>::new(),
-                };
-                //メモリ拡張
-                if size != 0 {
-                    let required_size = dest_offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = (required_size.saturating_add(31)) / 32;
-                        self.memory.resize(words * 32, 0);
-                    }
-                    //メモリに値を書き込む
-                    let read_size = offset.saturating_add(size);
-                    if offset <= code.len() {
-                        if read_size > code.len() {
-                            let copy_len = code.len() - offset;
-                            self.memory[dest_offset..dest_offset + copy_len]
-                                .copy_from_slice(&code[offset..code.len()]);
-                        } else {
-                            self.memory[dest_offset..required_size]
-                                .copy_from_slice(&code[offset..read_size]);
-                        }
-                    }
-                }
-                //SubStateの更新
-                if !substate.a_access.contains(&address) {
-                    substate.a_access.push(address.clone())
-                }
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
-
-            0x3d => {
-                //RETURNDATASIZE
-                let size = self.return_back.len();
-                self.push(U256::from(size));
-            }
-
-            0x3e => {
-                //RETURNDATACOPY
-                let data = self.return_back.clone();
-                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
-                //メモリ拡張
-                if size != 0 {
-                    let required_size = dest_offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = (required_size.saturating_add(31)) / 32;
-                        self.memory.resize(words * 32, 0);
-                    }
-                    //メモリに値を書き込む
-                    let read_size = offset.saturating_add(size);
-                    self.memory[dest_offset..required_size]
-                        .copy_from_slice(&data[offset..read_size]);
-                }
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
-
-            0x3f => {
-                //EXTCODEHASH
-                let data = self.pop();
-                let address = Address::from_u256(data);
-                //コード取得
-                let result = state.get_code(&address);
-                match result {
-                    Some(x) => {
-                        let mut hasher = Keccak256::new();
-                        hasher.update(x);
-                        let result = hasher.finalize().try_into().unwrap();
-                        let val = U256::from_be_bytes(result);
-                        self.push(val);
-                    }
-                    None => self.push(U256::ZERO),
-                }
-                //SubStateの更新
-                if !substate.a_access.contains(&address) {
-                    substate.a_access.push(address.clone())
-                }
+            0x30 ..=0x3f => {
+                self.environmental_info_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
             }
 
             0x40 => {
@@ -409,59 +171,13 @@ impl Ofunction for EVM {
                 self.pop();
             }
 
-            0x51 => {
-                //MLOAD メモリから読み込む（32B)
-                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
-                let required_size = pointer.saturating_add(32);
-                //メモリ拡張
-                if required_size > self.memory.len() {
-                    let words = required_size.saturating_add(31) / 32;
-                    self.memory.resize(words.saturating_mul(32), 0);
-                }
-                let slice = &self.memory[pointer..required_size];
-                let mut tmp = [0u8; 32];
-                tmp[..].copy_from_slice(slice);
-                let val = U256::from_be_bytes(tmp);
-                self.push(val);
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
-
-            0x52 => {
-                //MSTORE メモリに保存(32)
-                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
-                let data = self.pop();
-                let required_size = pointer.saturating_add(32);
-                //メモリ拡張
-                if required_size > self.memory.len() {
-                    let words = required_size.saturating_add(31) / 32;
-                    self.memory.resize(words.saturating_mul(32), 0);
-                }
-                let slice = &mut self.memory[pointer..required_size];
-                let bytes: [u8; 32] = data.to_be_bytes();
-                slice.copy_from_slice(&bytes);
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
-
-            0x53 => {
-                //MSTORE8
-                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
-                let data = self.pop();
-                let required_size = pointer.saturating_add(1);
-                //メモリ拡張
-                if required_size > self.memory.len() {
-                    let words = required_size.saturating_add(31) / 32;
-                    self.memory.resize(words.saturating_mul(32), 0);
-                }
-                let slice = &mut self.memory[pointer..required_size];
-                let bytes: [u8; 32] = data.to_be_bytes();
-                slice.copy_from_slice(&bytes[31..32]);
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
+            0x51 ..=0x53 => {
+                self.memory_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
             }
 
             0x54 => {
@@ -1733,6 +1449,338 @@ impl Ofunction for EVM {
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
         self.active_words = active_words;
+    }
+
+
+    #[inline(never)]
+    fn environmental_info_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        match opcode {
+
+            0x30 => {
+                //ADDRESS
+                let address = &execution_environment.i_address;
+                let val = address.to_u256();
+                self.push(val);
+            }
+
+            0x31 => {
+                //BALANCE
+                let val1 = self.pop();
+                let address = Address::from_u256(val1);
+                let balance = state.get_balance(&address);
+                match balance {
+                    Some(x) => self.push(x),
+                    None => self.push(U256::ZERO),
+                }
+                //SubStateの更新
+                if !substate.a_access.contains(&address) {
+                    substate.a_access.push(address.clone())
+                }
+            }
+
+            0x32 => {
+                //ORIGIN
+                let address = &execution_environment.i_origin;
+                let val = address.to_u256();
+                self.push(val);
+            }
+
+            0x33 => {
+                //CALLER
+                let address = &execution_environment.i_sender;
+                let val = address.to_u256();
+                self.push(val);
+            }
+
+            0x34 => {
+                //CALLVALUE
+                let val = execution_environment.i_value;
+                self.push(val);
+            }
+
+            0x35 => {
+                //CALLDATALOAD
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let data = &execution_environment.i_data;
+                let required_size = offset.saturating_add(32);
+                let mut buffer = [0u8; 32];
+                if offset >= data.len() {
+                    self.push(U256::ZERO)
+                } else if required_size > data.len() {
+                    buffer[..data.len() - offset].copy_from_slice(&data[offset..data.len()]);
+                } else {
+                    buffer[..].copy_from_slice(&data[offset..required_size]);
+                }
+                let val = U256::from_be_bytes(buffer);
+                self.push(val);
+            }
+
+            0x36 => {
+                //CALLDATASIZE
+                let data = &execution_environment.i_data;
+                self.push(U256::from(data.len()));
+            }
+
+            0x37 => {
+                //CALLDATACOPY
+                let data = &execution_environment.i_data;
+                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX); //メモリ
+                let offset = self.pop().try_into().unwrap_or(usize::MAX); //CALLDATA
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //メモリ拡張
+                if size != 0 {
+                    let required_size = dest_offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = (required_size.saturating_add(31)) / 32;
+                        self.memory.resize(words * 32, 0);
+                    }
+                    //メモリに値を書き込む
+                    let mut slice = vec![0u8; size];
+                    let read_size = offset.saturating_add(size);
+                    if offset <= data.len() {
+                        if read_size > data.len() {
+                            let copy_len = data.len() - offset;
+                            slice[..copy_len].copy_from_slice(&data[offset..data.len()]);
+                        } else {
+                            slice.copy_from_slice(&data[offset..read_size]);
+                        }
+                    }
+                    self.memory[dest_offset..required_size].copy_from_slice(&slice);
+                }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
+            }
+
+            0x38 => {
+                //CODESIZE
+                let size = execution_environment.i_byte.len();
+                self.push(U256::from(size));
+            }
+
+            0x39 => {
+                //CODECOPY
+                let data = &execution_environment.i_byte;
+                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //メモリ拡張
+                if size != 0 {
+                    let required_size = dest_offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = (required_size.saturating_add(31)) / 32;
+                        self.memory.resize(words * 32, 0);
+                    }
+                    //メモリに値を書き込む
+                    let read_size = offset.saturating_add(size);
+                    if offset <= data.len() {
+                        if read_size > data.len() {
+                            let copy_len = data.len() - offset;
+                            self.memory[dest_offset..dest_offset + copy_len]
+                                .copy_from_slice(&data[offset..data.len()]);
+                        } else {
+                            self.memory[dest_offset..required_size]
+                                .copy_from_slice(&data[offset..read_size]);
+                        }
+                    }
+                }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
+            }
+
+            0x3a => {
+                //GASPRICE
+                let price = execution_environment.i_gas_price;
+                self.push(price);
+            }
+
+            0x3b => {
+                //EXTCODESIZE
+                let val1 = self.pop();
+                let address = Address::from_u256(val1);
+                let result = state.get_code(&address);
+                match result {
+                    Some(x) => self.push(U256::from(x.len())),
+                    None => self.push(U256::ZERO),
+                }
+                //SubStateの更新
+                if !substate.a_access.contains(&address) {
+                    substate.a_access.push(address.clone())
+                }
+            }
+
+            0x3c => {
+                //EXTCODECOPY
+                let val1 = self.pop();
+                let address = Address::from_u256(val1);
+                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX); //メモリ
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //コード取得
+                let result = state.get_code(&address);
+                let code = match result {
+                    Some(x) => x,
+                    None => Vec::<u8>::new(),
+                };
+                //メモリ拡張
+                if size != 0 {
+                    let required_size = dest_offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = (required_size.saturating_add(31)) / 32;
+                        self.memory.resize(words * 32, 0);
+                    }
+                    //メモリに値を書き込む
+                    let read_size = offset.saturating_add(size);
+                    if offset <= code.len() {
+                        if read_size > code.len() {
+                            let copy_len = code.len() - offset;
+                            self.memory[dest_offset..dest_offset + copy_len]
+                                .copy_from_slice(&code[offset..code.len()]);
+                        } else {
+                            self.memory[dest_offset..required_size]
+                                .copy_from_slice(&code[offset..read_size]);
+                        }
+                    }
+                }
+                //SubStateの更新
+                if !substate.a_access.contains(&address) {
+                    substate.a_access.push(address.clone())
+                }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
+            }
+
+            0x3d => {
+                //RETURNDATASIZE
+                let size = self.return_back.len();
+                self.push(U256::from(size));
+            }
+
+            0x3e => {
+                //RETURNDATACOPY
+                let data = self.return_back.clone();
+                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let offset = self.pop().try_into().unwrap_or(usize::MAX);
+                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                //メモリ拡張
+                if size != 0 {
+                    let required_size = dest_offset.saturating_add(size);
+                    if required_size > self.memory.len() {
+                        let words = (required_size.saturating_add(31)) / 32;
+                        self.memory.resize(words * 32, 0);
+                    }
+                    //メモリに値を書き込む
+                    let read_size = offset.saturating_add(size);
+                    self.memory[dest_offset..required_size]
+                        .copy_from_slice(&data[offset..read_size]);
+                }
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
+            }
+
+            0x3f => {
+                //EXTCODEHASH
+                let data = self.pop();
+                let address = Address::from_u256(data);
+                //コード取得
+                let result = state.get_code(&address);
+                match result {
+                    Some(x) => {
+                        let mut hasher = Keccak256::new();
+                        hasher.update(x);
+                        let result = hasher.finalize().try_into().unwrap();
+                        let val = U256::from_be_bytes(result);
+                        self.push(val);
+                    }
+                    None => self.push(U256::ZERO),
+                }
+                //SubStateの更新
+                if !substate.a_access.contains(&address) {
+                    substate.a_access.push(address.clone())
+                }
+            },
+            0_u8..=47_u8 | 64_u8..=u8::MAX => todo!()
+        }
+    }
+    
+
+    #[inline(never)]
+    fn memory_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+
+        match opcode {
+            0x51 => {
+                //MLOAD メモリから読み込む（32B)
+                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
+                let required_size = pointer.saturating_add(32);
+                //メモリ拡張
+                if required_size > self.memory.len() {
+                    let words = required_size.saturating_add(31) / 32;
+                    self.memory.resize(words.saturating_mul(32), 0);
+                }
+                let slice = &self.memory[pointer..required_size];
+                let mut tmp = [0u8; 32];
+                tmp[..].copy_from_slice(slice);
+                let val = U256::from_be_bytes(tmp);
+                self.push(val);
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
+            }
+
+            0x52 => {
+                //MSTORE メモリに保存(32)
+                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
+                let data = self.pop();
+                let required_size = pointer.saturating_add(32);
+                //メモリ拡張
+                if required_size > self.memory.len() {
+                    let words = required_size.saturating_add(31) / 32;
+                    self.memory.resize(words.saturating_mul(32), 0);
+                }
+                let slice = &mut self.memory[pointer..required_size];
+                let bytes: [u8; 32] = data.to_be_bytes();
+                slice.copy_from_slice(&bytes);
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
+            }
+
+            0x53 => {
+                //MSTORE8
+                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
+                let data = self.pop();
+                let required_size = pointer.saturating_add(1);
+                //メモリ拡張
+                if required_size > self.memory.len() {
+                    let words = required_size.saturating_add(31) / 32;
+                    self.memory.resize(words.saturating_mul(32), 0);
+                }
+                let slice = &mut self.memory[pointer..required_size];
+                let bytes: [u8; 32] = data.to_be_bytes();
+                slice.copy_from_slice(&bytes[31..32]);
+                //アクティブなword数を更新
+                let active_words = self.memory.len() / 32;
+                self.active_words = active_words;
+            },
+            0_u8..=80_u8 | 84_u8..=u8::MAX => todo!()
+        }
     }
 
     #[inline(never)]
