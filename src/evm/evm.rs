@@ -81,7 +81,7 @@ impl Xi for EVM {
         //Ok()：正常停止
         //Err(None) => Z関数による停止
         //Err(Some(Vec<u8>)) => REVERTによる停止
-
+        println!("Depth: {}", execution_environment.i_depth);
         let code = execution_environment.i_byte.clone();
         let mut opcode = 0u8;
         loop {

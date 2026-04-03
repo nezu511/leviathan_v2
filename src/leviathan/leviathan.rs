@@ -371,7 +371,7 @@ mod state_tests {
     #[test]
     fn state_test() {
         // ここにテストしたいディレクトリへのパスを指定します
-        let test_dir = "compiled/GeneralStateTestsFiller/stCreate2";
+        let test_dir = "require/stCreate2";
         //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
 
         let paths = fs::read_dir(test_dir)

@@ -965,7 +965,7 @@ impl Ofunction for EVM {
                 let my_balance = state
                     .get_balance(&execution_environment.i_address)
                     .unwrap_or(U256::from(0));
-                if my_balance < value || execution_environment.i_depth >= 1024 {
+                if my_balance < value {
                     //残高・コールデプスチェック
                     self.push(U256::ZERO);
                     return None;
@@ -1082,7 +1082,7 @@ impl Ofunction for EVM {
                 let my_balance = state
                     .get_balance(&execution_environment.i_address)
                     .unwrap_or(U256::from(0));
-                if my_balance < value || execution_environment.i_depth >= 1024 {
+                if my_balance < value {
                     self.push(U256::ZERO);
                     return None;
                 }
@@ -1220,7 +1220,7 @@ impl Ofunction for EVM {
                 let my_balance = state
                     .get_balance(&execution_environment.i_address)
                     .unwrap_or(U256::from(0));
-                if my_balance < value || execution_environment.i_depth >= 1024 {
+                if my_balance < value {
                     self.push(U256::ZERO);
                     return None;
                 }
@@ -1352,11 +1352,6 @@ impl Ofunction for EVM {
                 } else {
                     data = Vec::<u8>::new();
                 }
-                //事前チェック
-                if execution_environment.i_depth >= 1024 {
-                    self.push(U256::ZERO);
-                    return None;
-                }
                 //depthのインクリメント
                 let depth = execution_environment.i_depth + 1;
                 //子に渡すガスの計算
@@ -1445,7 +1440,7 @@ impl Ofunction for EVM {
             }
 
             0xf5 => {
-                //CREATE
+                //CREATE2
                 let value = self.pop();
                 let offset = self.pop().try_into().unwrap_or(usize::MAX);
                 let size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1465,7 +1460,7 @@ impl Ofunction for EVM {
                 let my_balance = state
                     .get_balance(&execution_environment.i_address)
                     .unwrap_or(U256::from(0));
-                if my_balance < value || execution_environment.i_depth >= 1024 {
+                if my_balance < value {
                     //残高・コールデプスチェック
                     self.push(U256::ZERO);
                     return None;
@@ -1520,7 +1515,7 @@ impl Ofunction for EVM {
                         if !substate.a_access.contains(&contract_address) {
                             substate.a_access.push(contract_address.clone())
                         }
-                        //println!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
+                        //println!("{}:CREATE2:0x{}", depth,hex::encode(contract_address.0)); //アドレス
                         //Journalのmerge
                         leviathan.merge(child_leviathan);
                         //結果push
@@ -1596,11 +1591,6 @@ impl Ofunction for EVM {
                     data = slice.to_vec();
                 } else {
                     data = Vec::<u8>::new();
-                }
-                //事前チェック
-                if execution_environment.i_depth >= 1024 {
-                    self.push(U256::ZERO);
-                    return None;
                 }
                 //depthのインクリメント
                 let depth = execution_environment.i_depth + 1;
