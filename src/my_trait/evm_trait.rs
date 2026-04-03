@@ -59,6 +59,19 @@ pub trait Ofunction {
 
     fn pop(&mut self) -> U256;
     fn push(&mut self, val: U256);
+
+
+
+    fn call_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+
+
 }
 
 pub trait Hfunction {
