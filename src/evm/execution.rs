@@ -69,160 +69,13 @@ impl Ofunction for EVM {
                     execution_environment)
             }
 
-
-            0x10 => {
-                //LT
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = if val1 < val2 {
-                    U256::from(1)
-                } else {
-                    U256::ZERO
-                };
-                self.push(result);
-            }
-
-            0x11 => {
-                //GT
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = if val1 > val2 {
-                    U256::from(1)
-                } else {
-                    U256::ZERO
-                };
-                self.push(result);
-            }
-
-            0x12 => {
-                //SLT
-                let val1 = I256::from_raw(self.pop());
-                let val2 = I256::from_raw(self.pop());
-                let result = if val1 < val2 {
-                    U256::from(1)
-                } else {
-                    U256::ZERO
-                };
-                self.push(result);
-            }
-
-            0x13 => {
-                //SGT
-                let val1 = I256::from_raw(self.pop());
-                let val2 = I256::from_raw(self.pop());
-                let result = if val1 > val2 {
-                    U256::from(1)
-                } else {
-                    U256::ZERO
-                };
-                self.push(result);
-            }
-
-            0x14 => {
-                //EQ
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = if val1 == val2 {
-                    U256::from(1)
-                } else {
-                    U256::ZERO
-                };
-                self.push(result);
-            }
-
-            0x15 => {
-                //ISZERO
-                let val1 = self.pop();
-                let result = if val1 == U256::ZERO {
-                    U256::from(1)
-                } else {
-                    U256::ZERO
-                };
-                self.push(result);
-            }
-
-            0x16 => {
-                //AND
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = val1.bitand(val2);
-                self.push(result);
-            }
-
-            0x17 => {
-                //OR
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = val1.bitor(val2);
-                self.push(result);
-            }
-
-            0x18 => {
-                //XOR
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = val1.bitxor(val2);
-                self.push(result);
-            }
-
-            0x19 => {
-                //NOT
-                let val1 = self.pop();
-                self.push(!val1);
-            }
-
-            0x1a => {
-                //BYTE
-                let val1 = self.pop();
-                let val2 = self.pop();
-                if val1 >= U256::from(32) {
-                    self.push(U256::ZERO);
-                } else {
-                    let val1_usize: usize = val1.try_into().unwrap();
-                    let data: [u8; 32] = val2.to_be_bytes();
-                    let result: u8 = data[val1_usize];
-                    self.push(U256::from(result));
-                }
-            }
-
-            0x1b => {
-                //SHL
-                let val1 = self.pop().try_into().unwrap_or(usize::MAX);
-                let val2 = self.pop();
-                if val1 >= 256 {
-                    self.push(U256::ZERO);
-                } else {
-                    let result = val2 << val1;
-                    self.push(result);
-                }
-            }
-
-            0x1c => {
-                //SHR
-                let val1 = self.pop().try_into().unwrap_or(usize::MAX);
-                let val2 = self.pop();
-                if val1 >= 256 {
-                    self.push(U256::ZERO);
-                } else {
-                    let result = val2 >> val1;
-                    self.push(result);
-                }
-            }
-
-            0x1d => {
-                //SAR
-                let val1 = self.pop().try_into().unwrap_or(usize::MAX);
-                let val2 = I256::from_raw(self.pop());
-                if val1 >= 256 {
-                    if val2 >= I256::ZERO {
-                        self.push(U256::ZERO);
-                    } else if val2 < I256::ZERO {
-                        self.push(I256::MINUS_ONE.into_raw());
-                    }
-                } else {
-                    let result = val2.asr(val1);
-                    self.push(result.into_raw());
-                }
+            0x10 ..=0x1d => {
+                self.comparison_bitwise_opcodes(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
             }
 
             0x20 => {
@@ -1781,6 +1634,174 @@ impl Ofunction for EVM {
                 }
             },
             0_u8 | 12_u8..=u8::MAX => todo!()
+        }
+    }
+
+    fn comparison_bitwise_opcodes(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+
+        match opcode {
+            0x10 => {
+                //LT
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = if val1 < val2 {
+                    U256::from(1)
+                } else {
+                    U256::ZERO
+                };
+                self.push(result);
+            }
+
+            0x11 => {
+                //GT
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = if val1 > val2 {
+                    U256::from(1)
+                } else {
+                    U256::ZERO
+                };
+                self.push(result);
+            }
+
+            0x12 => {
+                //SLT
+                let val1 = I256::from_raw(self.pop());
+                let val2 = I256::from_raw(self.pop());
+                let result = if val1 < val2 {
+                    U256::from(1)
+                } else {
+                    U256::ZERO
+                };
+                self.push(result);
+            }
+
+            0x13 => {
+                //SGT
+                let val1 = I256::from_raw(self.pop());
+                let val2 = I256::from_raw(self.pop());
+                let result = if val1 > val2 {
+                    U256::from(1)
+                } else {
+                    U256::ZERO
+                };
+                self.push(result);
+            }
+
+            0x14 => {
+                //EQ
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = if val1 == val2 {
+                    U256::from(1)
+                } else {
+                    U256::ZERO
+                };
+                self.push(result);
+            }
+
+            0x15 => {
+                //ISZERO
+                let val1 = self.pop();
+                let result = if val1 == U256::ZERO {
+                    U256::from(1)
+                } else {
+                    U256::ZERO
+                };
+                self.push(result);
+            }
+
+            0x16 => {
+                //AND
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.bitand(val2);
+                self.push(result);
+            }
+
+            0x17 => {
+                //OR
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.bitor(val2);
+                self.push(result);
+            }
+
+            0x18 => {
+                //XOR
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.bitxor(val2);
+                self.push(result);
+            }
+
+            0x19 => {
+                //NOT
+                let val1 = self.pop();
+                self.push(!val1);
+            }
+
+            0x1a => {
+                //BYTE
+                let val1 = self.pop();
+                let val2 = self.pop();
+                if val1 >= U256::from(32) {
+                    self.push(U256::ZERO);
+                } else {
+                    let val1_usize: usize = val1.try_into().unwrap();
+                    let data: [u8; 32] = val2.to_be_bytes();
+                    let result: u8 = data[val1_usize];
+                    self.push(U256::from(result));
+                }
+            }
+
+            0x1b => {
+                //SHL
+                let val1 = self.pop().try_into().unwrap_or(usize::MAX);
+                let val2 = self.pop();
+                if val1 >= 256 {
+                    self.push(U256::ZERO);
+                } else {
+                    let result = val2 << val1;
+                    self.push(result);
+                }
+            }
+
+            0x1c => {
+                //SHR
+                let val1 = self.pop().try_into().unwrap_or(usize::MAX);
+                let val2 = self.pop();
+                if val1 >= 256 {
+                    self.push(U256::ZERO);
+                } else {
+                    let result = val2 >> val1;
+                    self.push(result);
+                }
+            }
+
+            0x1d => {
+                //SAR
+                let val1 = self.pop().try_into().unwrap_or(usize::MAX);
+                let val2 = I256::from_raw(self.pop());
+                if val1 >= 256 {
+                    if val2 >= I256::ZERO {
+                        self.push(U256::ZERO);
+                    } else if val2 < I256::ZERO {
+                        self.push(I256::MINUS_ONE.into_raw());
+                    }
+                } else {
+                    let result = val2.asr(val1);
+                    self.push(result.into_raw());
+                }
+            },
+            0_u8..=15_u8 | 30_u8..=u8::MAX => todo!()
         }
     }
 }

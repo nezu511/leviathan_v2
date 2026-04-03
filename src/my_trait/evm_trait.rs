@@ -80,6 +80,14 @@ pub trait Ofunction {
         execution_environment: &ExecutionEnvironment,
     );
 
+    fn comparison_bitwise_opcodes(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
 }
 
 pub trait Hfunction {
