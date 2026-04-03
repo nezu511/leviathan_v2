@@ -369,7 +369,7 @@ mod state_tests {
         (v, r, s)
     }
     #[test]
-    fn state_test_all_in_dir() {
+    fn state_test() {
         // ここにテストしたいディレクトリへのパスを指定します
         let test_dir = "compiled/GeneralStateTestsFiller/stCreate2";
         //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
