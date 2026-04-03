@@ -60,127 +60,15 @@ impl Ofunction for EVM {
                 return Some(false);
             }
 
-            0x01 => {
-                //ADD
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = val1.wrapping_add(val2);
-                self.push(result);
+            0x01 ..=0x0b => {
+                self.arithmetic_opcodes(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
             }
 
-            0x02 => {
-                //MUL
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = val1.wrapping_mul(val2);
-                self.push(result);
-            }
-
-            0x03 => {
-                //SUB
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = val1.wrapping_sub(val2);
-                self.push(result);
-            }
-
-            0x04 => {
-                //DIV
-                let val1 = self.pop();
-                let val2 = self.pop();
-                if val2.is_zero() {
-                    self.push(U256::ZERO);
-                } else {
-                    let result = val1.wrapping_div(val2);
-                    self.push(result);
-                }
-            }
-
-            0x05 => {
-                //SDIV 符号付き!
-                let val1 = I256::from_raw(self.pop());
-                let val2 = I256::from_raw(self.pop());
-                if val2.is_zero() {
-                    self.push(U256::ZERO);
-                } else if val1 == I256::MIN && val2 == I256::MINUS_ONE {
-                    self.push(I256::MIN.into_raw());
-                } else {
-                    let result = val1.wrapping_div(val2);
-                    self.push(result.into_raw());
-                }
-            }
-
-            0x06 => {
-                //MOD
-                let val1 = self.pop();
-                let val2 = self.pop();
-                if val2.is_zero() {
-                    self.push(U256::ZERO);
-                } else {
-                    let result = val1.wrapping_rem(val2);
-                    self.push(result);
-                }
-            }
-
-            0x07 => {
-                //SMOD 符号付き!
-                let val1 = I256::from_raw(self.pop());
-                let val2 = I256::from_raw(self.pop());
-                if val2.is_zero() {
-                    self.push(U256::ZERO);
-                } else {
-                    let result = val1.wrapping_rem(val2);
-                    self.push(result.into_raw());
-                }
-            }
-
-            0x08 => {
-                //ADDMOD
-                let val1 = self.pop();
-                let rhs = self.pop();
-                let modulus = self.pop();
-                let result = val1.add_mod(rhs, modulus);
-                self.push(result);
-            }
-
-            0x09 => {
-                //MULMOD
-                let val1 = self.pop();
-                let rhs = self.pop();
-                let modulus = self.pop();
-                let result = val1.mul_mod(rhs, modulus);
-                self.push(result);
-            }
-
-            0x0a => {
-                //EXP
-                let val1 = self.pop();
-                let val2 = self.pop();
-                let result = val1.wrapping_pow(val2);
-                self.push(result);
-            }
-
-            0x0b => {
-                let b = self.pop();
-                let x = self.pop();
-                if b >= U256::from(31) {
-                    self.push(x);
-                } else {
-                    let b_usize: usize = b.try_into().unwrap();
-
-                    let sign_bit_index = (b_usize * 8) + 7;
-                    let shift_amount = (b_usize + 1) * 8;
-                    let mask: U256 = U256::MAX << shift_amount;
-
-                    if x.bit(sign_bit_index) {
-                        let result = x | mask;
-                        self.push(result);
-                    } else {
-                        let result = x & !mask;
-                        self.push(result);
-                    }
-                }
-            }
 
             0x10 => {
                 //LT
@@ -1758,6 +1646,141 @@ impl Ofunction for EVM {
                 //結果push
                 self.push(U256::ZERO);
             }
+        }
+    }
+
+    #[inline(never)]
+    fn arithmetic_opcodes(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        match opcode {
+            0x01 => {
+                //ADD
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.wrapping_add(val2);
+                self.push(result);
+            }
+
+            0x02 => {
+                //MUL
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.wrapping_mul(val2);
+                self.push(result);
+            }
+
+            0x03 => {
+                //SUB
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.wrapping_sub(val2);
+                self.push(result);
+            }
+
+            0x04 => {
+                //DIV
+                let val1 = self.pop();
+                let val2 = self.pop();
+                if val2.is_zero() {
+                    self.push(U256::ZERO);
+                } else {
+                    let result = val1.wrapping_div(val2);
+                    self.push(result);
+                }
+            }
+
+            0x05 => {
+                //SDIV 符号付き!
+                let val1 = I256::from_raw(self.pop());
+                let val2 = I256::from_raw(self.pop());
+                if val2.is_zero() {
+                    self.push(U256::ZERO);
+                } else if val1 == I256::MIN && val2 == I256::MINUS_ONE {
+                    self.push(I256::MIN.into_raw());
+                } else {
+                    let result = val1.wrapping_div(val2);
+                    self.push(result.into_raw());
+                }
+            }
+
+            0x06 => {
+                //MOD
+                let val1 = self.pop();
+                let val2 = self.pop();
+                if val2.is_zero() {
+                    self.push(U256::ZERO);
+                } else {
+                    let result = val1.wrapping_rem(val2);
+                    self.push(result);
+                }
+            }
+
+            0x07 => {
+                //SMOD 符号付き!
+                let val1 = I256::from_raw(self.pop());
+                let val2 = I256::from_raw(self.pop());
+                if val2.is_zero() {
+                    self.push(U256::ZERO);
+                } else {
+                    let result = val1.wrapping_rem(val2);
+                    self.push(result.into_raw());
+                }
+            }
+
+            0x08 => {
+                //ADDMOD
+                let val1 = self.pop();
+                let rhs = self.pop();
+                let modulus = self.pop();
+                let result = val1.add_mod(rhs, modulus);
+                self.push(result);
+            }
+
+            0x09 => {
+                //MULMOD
+                let val1 = self.pop();
+                let rhs = self.pop();
+                let modulus = self.pop();
+                let result = val1.mul_mod(rhs, modulus);
+                self.push(result);
+            }
+
+            0x0a => {
+                //EXP
+                let val1 = self.pop();
+                let val2 = self.pop();
+                let result = val1.wrapping_pow(val2);
+                self.push(result);
+            }
+
+            0x0b => {
+                let b = self.pop();
+                let x = self.pop();
+                if b >= U256::from(31) {
+                    self.push(x);
+                } else {
+                    let b_usize: usize = b.try_into().unwrap();
+
+                    let sign_bit_index = (b_usize * 8) + 7;
+                    let shift_amount = (b_usize + 1) * 8;
+                    let mask: U256 = U256::MAX << shift_amount;
+
+                    if x.bit(sign_bit_index) {
+                        let result = x | mask;
+                        self.push(result);
+                    } else {
+                        let result = x & !mask;
+                        self.push(result);
+                    }
+                }
+            },
+            0_u8 | 12_u8..=u8::MAX => todo!()
         }
     }
 }
