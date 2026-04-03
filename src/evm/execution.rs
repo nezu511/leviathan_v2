@@ -79,30 +79,13 @@ impl Ofunction for EVM {
             }
 
             0x20 => {
-                //KECCAK256
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
+                self.keccak256_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
 
-                let slice = if size == 0 {
-                    &[0u8; 0]
-                } else {
-                    //メモリ拡張
-                    let required_size = offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = (required_size.saturating_add(31)) / 32;
-                        self.memory.resize(words * 32, 0);
-                    }
-                    &self.memory[offset..required_size]
-                };
-                //keccak256準備
-                let mut hasher = Keccak256::new();
-                hasher.update(slice);
-                let result = hasher.finalize().try_into().unwrap();
-                let val = U256::from_be_bytes(result);
-                self.push(val);
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
             }
 
             0x30 => {
@@ -687,105 +670,16 @@ impl Ofunction for EVM {
             }
 
             0xf0 => {
-                //CREATE
-                let value = self.pop();
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
-                //メモリ読み取り
-                let mut data = Vec::<u8>::new();
-                if size > 0 {
-                    let required_size = offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = required_size.saturating_add(31) / 32;
-                        self.memory.resize(words.saturating_mul(32), 0);
-                    }
-                    let slice = &self.memory[offset..required_size];
-                    data = slice.to_vec();
-                }
-                //事前チェック
-                let my_balance = state
-                    .get_balance(&execution_environment.i_address)
-                    .unwrap_or(U256::from(0));
-                if my_balance < value {
-                    //残高・コールデプスチェック
-                    self.push(U256::ZERO);
-                    return None;
-                }
-                if self.version >= VersionId::Shanghai {
-                    //Initcodeのサイズ確認
-                    if data.len() > 49152 {
-                        self.push(U256::ZERO);
-                        return None;
-                    }
-                }
-                //コントラクト自身のNonceのインクリメント
-                Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
-                state.inc_nonce(&execution_environment.i_address);
-                //depthのインクリメント
-                let depth = execution_environment.i_depth + 1;
-                //子に渡すガスの計算
-                let mut child_gas = U256::from(0);
-                if self.version < VersionId::TangerineWhistle {
-                    child_gas = self.gas
-                } else {
-                    let gr = self.gas; //利用可能ガス
-                    child_gas = gr - (gr / U256::from(64)); //渡せる上限
-                }
-                self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
-                //サブコールの実行
-                let mut child_leviathan = LEVIATHAN::new(self.version);
-                let result = child_leviathan.contract_creation(
-                    state,
+                self.create_opcode(
+                    opcode,
+                    leviathan,
                     substate,
-                    execution_environment.i_address.clone(),
-                    execution_environment.i_origin.clone(),
-                    child_gas,
-                    execution_environment.i_gas_price,
-                    value,
-                    data,
-                    depth,
-                    None,
-                    execution_environment.i_permission,
-                    execution_environment.i_block_header,
-                );
-                //実行後の処理
-                match result {
-                    Ok((return_gas, return_data, Some(contract_address))) => {
-                        //ガスの精算
-                        self.gas += return_gas;
-                        //return_backの更新
-                        self.return_back = Vec::<u8>::new();
-                        //新しいコントラクトアドレス
-                        let contract_u256 = contract_address.to_u256();
-                        //アクセス済みリストの更新
-                        if !substate.a_access.contains(&contract_address) {
-                            substate.a_access.push(contract_address.clone())
-                        }
-                        //println!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
-                        //Journalのmerge
-                        leviathan.merge(child_leviathan);
-                        //結果push
-                        self.push(contract_u256);
-                    }
-
-                    Err((return_gas, Some(return_data), _)) => {
-                        //ガスの精算
-                        self.gas += return_gas;
-                        //return_backの更新
-                        self.return_back = return_data;
-                        self.push(U256::ZERO);
-                    }
-
-                    Err((return_gas, None, _)) => {
-                        //ガスの精算
-                        self.gas = self.gas + return_gas;
-                        self.push(U256::ZERO);
-                    }
-                    Ok((_, _, None)) => todo!(),
-                }
+                    state,
+                    execution_environment)
             }
 
             0xf1 => {
+                println!("① CALL分岐突入時: {} bytes", stacker::remaining_stack().unwrap_or(0));
                 self.call_opcode(
                     opcode,
                     leviathan,
@@ -1637,6 +1531,7 @@ impl Ofunction for EVM {
         }
     }
 
+    #[inline(never)]
     fn comparison_bitwise_opcodes(
         &mut self,
         opcode: u8,
@@ -1804,4 +1699,149 @@ impl Ofunction for EVM {
             0_u8..=15_u8 | 30_u8..=u8::MAX => todo!()
         }
     }
+
+    #[inline(never)]
+    fn keccak256_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //KECCAK256
+        let offset = self.pop().try_into().unwrap_or(usize::MAX);
+        let size = self.pop().try_into().unwrap_or(usize::MAX);
+
+        let slice = if size == 0 {
+            &[0u8; 0]
+        } else {
+            //メモリ拡張
+            let required_size = offset.saturating_add(size);
+            if required_size > self.memory.len() {
+                let words = (required_size.saturating_add(31)) / 32;
+                self.memory.resize(words * 32, 0);
+            }
+            &self.memory[offset..required_size]
+        };
+        //keccak256準備
+        let mut hasher = Keccak256::new();
+        hasher.update(slice);
+        let result = hasher.finalize().try_into().unwrap();
+        let val = U256::from_be_bytes(result);
+        self.push(val);
+        //アクティブなword数を更新
+        let active_words = self.memory.len() / 32;
+        self.active_words = active_words;
+    }
+
+    #[inline(never)]
+    fn create_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //CREATE
+        let value = self.pop();
+        let offset = self.pop().try_into().unwrap_or(usize::MAX);
+        let size = self.pop().try_into().unwrap_or(usize::MAX);
+        //メモリ読み取り
+        let mut data = Vec::<u8>::new();
+        if size > 0 {
+            let required_size = offset.saturating_add(size);
+            if required_size > self.memory.len() {
+                let words = required_size.saturating_add(31) / 32;
+                self.memory.resize(words.saturating_mul(32), 0);
+            }
+            let slice = &self.memory[offset..required_size];
+            data = slice.to_vec();
+        }
+        //事前チェック
+        let my_balance = state
+            .get_balance(&execution_environment.i_address)
+            .unwrap_or(U256::from(0));
+        if my_balance < value {
+            //残高・コールデプスチェック
+            self.push(U256::ZERO);
+            return;
+        }
+        if self.version >= VersionId::Shanghai {
+            //Initcodeのサイズ確認
+            if data.len() > 49152 {
+                self.push(U256::ZERO);
+                return;
+            }
+        }
+        //コントラクト自身のNonceのインクリメント
+        Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
+        state.inc_nonce(&execution_environment.i_address);
+        //depthのインクリメント
+        let depth = execution_environment.i_depth + 1;
+        //子に渡すガスの計算
+        let mut child_gas = U256::from(0);
+        if self.version < VersionId::TangerineWhistle {
+            child_gas = self.gas
+        } else {
+            let gr = self.gas; //利用可能ガス
+            child_gas = gr - (gr / U256::from(64)); //渡せる上限
+        }
+        self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
+                                                       //サブコールの実行
+        let mut child_leviathan = LEVIATHAN::new(self.version);
+        let result = child_leviathan.contract_creation(
+            state,
+            substate,
+            execution_environment.i_address.clone(),
+            execution_environment.i_origin.clone(),
+            child_gas,
+            execution_environment.i_gas_price,
+            value,
+            data,
+            depth,
+            None,
+            execution_environment.i_permission,
+            execution_environment.i_block_header,
+            );
+        //実行後の処理
+        match result {
+            Ok((return_gas, return_data, Some(contract_address))) => {
+                //ガスの精算
+                self.gas += return_gas;
+                //return_backの更新
+                self.return_back = Vec::<u8>::new();
+                //新しいコントラクトアドレス
+                let contract_u256 = contract_address.to_u256();
+                //アクセス済みリストの更新
+                if !substate.a_access.contains(&contract_address) {
+                    substate.a_access.push(contract_address.clone())
+                }
+                //println!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
+                //Journalのmerge
+                leviathan.merge(child_leviathan);
+                //結果push
+                self.push(contract_u256);
+            }
+
+            Err((return_gas, Some(return_data), _)) => {
+                //ガスの精算
+                self.gas += return_gas;
+                //return_backの更新
+                self.return_back = return_data;
+                self.push(U256::ZERO);
+            }
+
+            Err((return_gas, None, _)) => {
+                //ガスの精算
+                self.gas = self.gas + return_gas;
+                self.push(U256::ZERO);
+            }
+            Ok((_, _, None)) => todo!(),
+        }
+    }
+
+
+
 }

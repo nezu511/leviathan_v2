@@ -88,6 +88,24 @@ pub trait Ofunction {
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     );
+
+    fn keccak256_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+
+    fn create_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
 }
 
 pub trait Hfunction {

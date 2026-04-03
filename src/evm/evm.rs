@@ -82,6 +82,8 @@ impl Xi for EVM {
         //Err(None) => Z関数による停止
         //Err(Some(Vec<u8>)) => REVERTによる停止
         //println!("Depth: {}", execution_environment.i_depth);
+        println!("深さ{}", execution_environment.i_depth);
+        println!("③ 子の evm_run突入時: {} bytes", stacker::remaining_stack().unwrap_or(0));
         let code = execution_environment.i_byte.clone();
         let mut opcode = 0u8;
         loop {
@@ -92,7 +94,7 @@ impl Xi for EVM {
                 opcode = code[self.pc];
             }
 
-            //println!("0x{:x}, rest_gas: {}", opcode, self.gas);
+            println!("0x{:x}, rest_gas: {}", opcode, self.gas);
 
             //Z関数による安全性を確認
             if !self.is_safe(opcode, &substate, &state, &execution_environment) {
