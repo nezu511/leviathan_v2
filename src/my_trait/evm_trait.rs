@@ -62,14 +62,6 @@ pub trait Ofunction {
 
 
 
-    fn call_opcode(
-        &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
-        execution_environment: &ExecutionEnvironment,
-    );
 
     fn arithmetic_opcodes(
         &mut self,
@@ -125,6 +117,50 @@ pub trait Ofunction {
         execution_environment: &ExecutionEnvironment,
     );
 
+    fn call_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+
+    fn callcode_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+
+    fn delegatecall_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+
+    fn create2_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+
+    fn staticcall_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
 }
 
 pub trait Hfunction {
