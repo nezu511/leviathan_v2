@@ -39,7 +39,7 @@ impl MessageCall for LEVIATHAN {
         let is_too_deep = depth > 1024; // 深さ制限
         let is_insufficient_funds = eth > sender_balance; // 残高不足
         if is_too_deep || is_insufficient_funds {
-            return Err((U256::ZERO, None, None));
+            return Err((gas, None, None));
         }
         if !substate.a_access.contains(&recipient) {
             substate.a_access.push(recipient.clone())
@@ -49,7 +49,7 @@ impl MessageCall for LEVIATHAN {
         //残高の移動
         if eth != U256::ZERO {
             if state.is_empty(&sender) {
-                return Err((U256::ZERO, None, None));
+                return Err((gas, None, None));
             }
             if state.is_empty(&recipient) {
                 state.add_account(&recipient, Account::new()); //アカウントを追加

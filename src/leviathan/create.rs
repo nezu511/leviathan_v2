@@ -71,7 +71,7 @@ impl ContractCreation for LEVIATHAN {
         let is_insufficient_funds = eth > sender_balance; // 残高不足
 
         if is_collision || is_too_deep || is_insufficient_funds {
-            return Err((U256::ZERO, None, None));
+            return Err((gas, None, None));
         }
 
         //println!("[Transaction] ContractCreation: 0x{}", hex::encode(contract_address.0));        //アドレス
@@ -92,7 +92,7 @@ impl ContractCreation for LEVIATHAN {
         }
         //送金する
         if state.is_empty(&sender) {
-            return Err((U256::ZERO, None, None));
+            return Err((gas, None, None));
         }
         if state.is_empty(&contract_address) {
             state.add_account(&contract_address, Account::new()); //アカウントを追加
