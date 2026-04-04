@@ -139,111 +139,21 @@ impl Ofunction for EVM {
             }
 
             0x54 => {
-                //SLOAD
-                let key: U256 = self.pop();
-                let address = &execution_environment.i_address;
-                let value = state.get_storage_value(address, &key);
-                //アクセス済みストレージキーリストの追加
-                substate
-                    .a_access_storage
-                    .entry(address.clone())
-                    .or_default()
-                    .entry(key)
-                    .or_insert(value.unwrap_or(U256::ZERO));
-                match value {
-                    Some(x) => self.push(x),
-                    None => self.push(U256::ZERO),
-                }
+                self.sload_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
             }
 
             0x55 => {
-                //SSTORE
-                let key = self.pop();
-                let value = self.pop();
-                let address = &execution_environment.i_address;
-                //トランザクションが始まったときの一番最初の値を記録する
-                let pre_value = state.get_storage_value(address, &key).unwrap_or(U256::ZERO);
-                substate
-                    .a_access_storage
-                    .entry(address.clone())
-                    .or_default()
-                    .entry(key)
-                    .or_insert(pre_value);
-                let val0 = substate
-                    .a_access_storage
-                    .get(&address)
-                    .unwrap()
-                    .get(&key)
-                    .cloned()
-                    .unwrap();
-
-                //払い戻し
-                if self.version < VersionId::London && self.version != VersionId::Constantinople {
-                    if !pre_value.is_zero() && value.is_zero() {
-                        substate.a_reimburse += 15000;
-                    }
-                } else {
-                    let val0 = substate
-                        .a_access_storage
-                        .get(&address)
-                        .unwrap()
-                        .get(&key)
-                        .cloned()
-                        .unwrap_or(U256::ZERO);
-                    if pre_value != value {
-                        if val0 == pre_value {
-                            if val0 != U256::ZERO && value == U256::ZERO {
-                                //0以外 →  0以外 → 0 :
-                                if self.version == VersionId::Constantinople {
-                                    substate.a_reimburse += 15000;
-                                } else {
-                                    substate.a_reimburse += 4800;
-                                }
-                            }
-                        } else {
-                            if val0 != U256::ZERO && pre_value == U256::ZERO {
-                                //0以外　→  0 →  0以外 : 返金の返金
-                                if self.version == VersionId::Constantinople {
-                                    substate.a_reimburse -= 15000;
-                                } else {
-                                    substate.a_reimburse -= 4800;
-                                }
-                            }
-                            if val0 != U256::ZERO && value == U256::ZERO {
-                                // 0以外(a) →  0以外(b) → 0 :返金
-                                if self.version == VersionId::Constantinople {
-                                    substate.a_reimburse += 15000;
-                                } else {
-                                    substate.a_reimburse += 4800;
-                                }
-                            }
-                            if val0 == value {
-                                if val0 == U256::ZERO {
-                                    //0 → 0以外 → 0
-                                    if self.version == VersionId::Constantinople {
-                                        substate.a_reimburse += 19800
-                                    } else {
-                                        substate.a_reimburse += 19900;
-                                    }
-                                } else {
-                                    //0以外(a) → *(aではない)  →  0以外(a)
-                                    if self.version == VersionId::Constantinople {
-                                        substate.a_reimburse += 4800;
-                                    } else {
-                                        substate.a_reimburse += 2800;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                //ステートを書き換える (0なら削除、それ以外なら保存)
-                Action::Sstorage(address.clone(), key, U256::ZERO).push(leviathan, state);
-                if value == U256::ZERO {
-                    state.remove_storage(address, key);
-                } else {
-                    state.set_storage(address, key, value);
-                }
+                self.sstore_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
             }
 
             0x56 | 0x57 => (),
@@ -1357,6 +1267,130 @@ impl Ofunction for EVM {
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
         self.active_words = active_words;
+    }
+
+    #[inline(never)]
+    fn sload_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //SLOAD
+        let key: U256 = self.pop();
+        let address = &execution_environment.i_address;
+        let value = state.get_storage_value(address, &key);
+        //アクセス済みストレージキーリストの追加
+        substate
+            .a_access_storage
+            .entry(address.clone())
+            .or_default()
+            .entry(key)
+            .or_insert(value.unwrap_or(U256::ZERO));
+        match value {
+            Some(x) => self.push(x),
+            None => self.push(U256::ZERO),
+        }
+    }
+
+    #[inline(never)]
+    fn sstore_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //SSTORE
+        let key = self.pop();
+        let value = self.pop();
+        let address = &execution_environment.i_address;
+        //トランザクションが始まったときの一番最初の値を記録する
+        let pre_value = state.get_storage_value(address, &key).unwrap_or(U256::ZERO);
+        substate
+            .a_access_storage
+            .entry(address.clone())
+            .or_default()
+            .entry(key)
+            .or_insert(pre_value);
+        let val0 = substate
+            .a_access_storage
+            .get(&address)
+            .unwrap()
+            .get(&key)
+            .cloned()
+            .unwrap();
+
+        //払い戻し
+        if self.version < VersionId::London && self.version != VersionId::Constantinople {
+            if !pre_value.is_zero() && value.is_zero() {
+                substate.a_reimburse += 15000;
+            }
+        } else {
+            let val0 = substate
+                .a_access_storage
+                .get(&address)
+                .unwrap()
+                .get(&key)
+                .cloned()
+                .unwrap_or(U256::ZERO);
+            if pre_value != value {
+                if val0 == pre_value {
+                    if val0 != U256::ZERO && value == U256::ZERO {
+                        //0以外 →  0以外 → 0 :
+                        if self.version == VersionId::Constantinople {
+                            substate.a_reimburse += 15000;
+                        } else {
+                            substate.a_reimburse += 4800;
+                        }
+                    }
+                } else {
+                    if val0 != U256::ZERO && pre_value == U256::ZERO {
+                        //0以外　→  0 →  0以外 : 返金の返金
+                        if self.version == VersionId::Constantinople {
+                            substate.a_reimburse -= 15000;
+                        } else {
+                            substate.a_reimburse -= 4800;
+                        }
+                    }
+                    if val0 != U256::ZERO && value == U256::ZERO {
+                        // 0以外(a) →  0以外(b) → 0 :返金
+                        if self.version == VersionId::Constantinople {
+                            substate.a_reimburse += 15000;
+                        } else {
+                            substate.a_reimburse += 4800;
+                        }
+                    }
+                    if val0 == value {
+                        if val0 == U256::ZERO {
+                            //0 → 0以外 → 0
+                            if self.version == VersionId::Constantinople {
+                                substate.a_reimburse += 19800
+                            } else {
+                                substate.a_reimburse += 19900;
+                            }
+                        } else {
+                            //0以外(a) → *(aではない)  →  0以外(a)
+                            if self.version == VersionId::Constantinople {
+                                substate.a_reimburse += 4800;
+                            } else {
+                                substate.a_reimburse += 2800;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //ステートを書き換える (0なら削除、それ以外なら保存)
+        Action::Sstorage(address.clone(), key, U256::ZERO).push(leviathan, state);
+        if value == U256::ZERO {
+            state.remove_storage(address, key);
+        } else {
+            state.set_storage(address, key, value);
+        }
     }
 
     #[inline(never)]
