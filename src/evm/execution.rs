@@ -29,7 +29,6 @@ impl Ofunction for EVM {
     ) -> Option<bool> {
         //ガスを消費
         let gas_cost = self.gas(opcode, substate, state, execution_environment);
-        //println!("消費ガス {}", gas_cost);
         self.gas = self.gas.saturating_sub(gas_cost);
 
         //プログラムカウンターを進める
@@ -225,7 +224,6 @@ impl Ofunction for EVM {
             }
 
             0xf1 => {
-                println!("① CALL分岐突入時: {} bytes", stacker::remaining_stack().unwrap_or(0));
                 self.call_opcode(
                     opcode,
                     leviathan,
@@ -358,7 +356,6 @@ impl Ofunction for EVM {
         let gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
         let to_address = Address::from_u256(to);
-        //println!("CALL: 0x{}", hex::encode(to_address.0)); //アドレス
         let value = self.pop();
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -410,6 +407,15 @@ impl Ofunction for EVM {
             child_gas;
         }
         self.child_gas_mem = None;
+        //デバック出力
+        tracing::info!(
+            address =  format_args!("0x{}", hex::encode(to_address.0)),
+            value = %value,
+            data = %hex::encode(&data),
+            gas = %child_gas,
+            "CALL"
+            );
+
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
@@ -1506,7 +1512,16 @@ impl Ofunction for EVM {
             child_gas = gr - (gr / U256::from(64)); //渡せる上限
         }
         self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
-                                                       //サブコールの実行
+        
+        //Debug用
+        tracing::info!(
+            value = %value,
+            init_code = %hex::encode(&data),
+            gas = %child_gas,
+            "CREATE",
+            );
+
+        //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.contract_creation(
             state,
@@ -1535,7 +1550,7 @@ impl Ofunction for EVM {
                 if !substate.a_access.contains(&contract_address) {
                     substate.a_access.push(contract_address.clone())
                 }
-                //println!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
+                tracing::info!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -1614,7 +1629,14 @@ impl Ofunction for EVM {
             child_gas = gr - (gr / U256::from(64)); //渡せる上限
         }
         self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
-                                                       //サブコールの実行
+        //Debug用
+        tracing::info!(
+            value = %value,
+            init_code = %hex::encode(&data),
+            gas = %child_gas,
+            "CREATE2",
+            );
+        //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.contract_creation(
             state,
@@ -1643,7 +1665,7 @@ impl Ofunction for EVM {
                 if !substate.a_access.contains(&contract_address) {
                     substate.a_access.push(contract_address.clone())
                 }
-                //println!("{}:CREATE2:0x{}", depth,hex::encode(contract_address.0)); //アドレス
+                tracing::info!("{}:CREATE2:0x{}", depth,hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -1680,7 +1702,6 @@ impl Ofunction for EVM {
         let gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //コードを借りてくる対象のアカウントアドレス
         let to_address = Address::from_u256(to);
-        //println!("CALLCODE: 0x{}", hex::encode(to_address.0));        //アドレス
         let value = self.pop();
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1733,6 +1754,14 @@ impl Ofunction for EVM {
         } else {
             child_gas;
         }
+        //デバック用
+        tracing::info!(
+            address =  format_args!("0x{}", hex::encode(to_address.0)),
+            value = %value,
+            data = %hex::encode(&data),
+            gas = %child_gas,
+            "CALLCODE",
+            );
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
@@ -1827,7 +1856,6 @@ impl Ofunction for EVM {
         let gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
         let to_address = Address::from_u256(to);
-        //println!("CALL: 0x{}", hex::encode(to_address.0)); //アドレス
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
         let out_offset = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1865,6 +1893,13 @@ impl Ofunction for EVM {
             return;
         };
         self.child_gas_mem = None;
+        //デバック用
+        tracing::info!(
+            address =  format_args!("0x{}", hex::encode(to_address.0)),
+            data = %hex::encode(&data),
+            gas = %child_gas,
+            "DELEGATECALL",
+            );
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
@@ -1959,7 +1994,6 @@ impl Ofunction for EVM {
         let gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
         let to_address = Address::from_u256(to);
-        //println!("STATICCALL: 0x{}", hex::encode(to_address.0)); //アドレス
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
         let out_offset = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1997,6 +2031,13 @@ impl Ofunction for EVM {
             return;
         };
         self.child_gas_mem = None;
+        //デバック用
+        tracing::info!(
+            address =  format_args!("0x{}", hex::encode(to_address.0)),
+            data = %hex::encode(&data),
+            gas = %child_gas,
+            "STATICCALL",
+            );
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(

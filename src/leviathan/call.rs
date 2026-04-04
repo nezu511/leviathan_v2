@@ -34,7 +34,6 @@ impl MessageCall for LEVIATHAN {
         sudo: bool,
         block_header: &BlockHeader,
     ) -> Result<(U256, Vec<u8>, Option<Address>), (U256, Option<Vec<u8>>, Option<Address>)> {
-        println!("② message_call突入時: {} bytes", stacker::remaining_stack().unwrap_or(0));
         //事前チェック
         let sender_balance = state.get_balance(&sender).unwrap_or(U256::ZERO);
         let is_too_deep = depth > 1024; // 深さ制限
