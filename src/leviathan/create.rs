@@ -123,7 +123,7 @@ impl ContractCreation for LEVIATHAN {
         );
 
         //仮想マシンの実行
-        let mut evm = EVM::new(&execution_environment, self.version.clone());
+        let mut evm = Box::new(EVM::new(&execution_environment, self.version.clone()));
         evm.gas = gas;
         let result = evm.evm_run(self, state, substate, &mut execution_environment);
         //Ok()：正常停止

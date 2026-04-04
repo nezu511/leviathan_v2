@@ -515,7 +515,7 @@ impl Ofunction for EVM {
         }
         self.child_gas_mem = None;
         //サブコールの実行
-        let mut child_leviathan = LEVIATHAN::new(self.version);
+        let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
             state,
             substate,
@@ -555,7 +555,7 @@ impl Ofunction for EVM {
                     substate.a_access.push(to_address.clone())
                 }
                 //Journalのmerge
-                leviathan.merge(child_leviathan);
+                leviathan.merge(*child_leviathan);
                 //結果push
                 self.push(U256::from(1));
                 }
@@ -1456,7 +1456,7 @@ impl Ofunction for EVM {
         }
         self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
                                                        //サブコールの実行
-        let mut child_leviathan = LEVIATHAN::new(self.version);
+        let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.contract_creation(
             state,
             substate,
@@ -1486,7 +1486,7 @@ impl Ofunction for EVM {
                 }
                 //println!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
-                leviathan.merge(child_leviathan);
+                leviathan.merge(*child_leviathan);
                 //結果push
                 self.push(contract_u256);
             }
@@ -1564,7 +1564,7 @@ impl Ofunction for EVM {
         }
         self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
                                                        //サブコールの実行
-        let mut child_leviathan = LEVIATHAN::new(self.version);
+        let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.contract_creation(
             state,
             substate,
@@ -1594,7 +1594,7 @@ impl Ofunction for EVM {
                 }
                 //println!("{}:CREATE2:0x{}", depth,hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
-                leviathan.merge(child_leviathan);
+                leviathan.merge(*child_leviathan);
                 //結果push
                 self.push(contract_u256);
             }
@@ -1683,7 +1683,7 @@ impl Ofunction for EVM {
             child_gas;
         }
         //サブコールの実行
-        let mut child_leviathan = LEVIATHAN::new(self.version);
+        let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
             state,
             substate,
@@ -1722,7 +1722,7 @@ impl Ofunction for EVM {
                     substate.a_access.push(to_address.clone())
                 }
                 //Journalのmerge
-                leviathan.merge(child_leviathan);
+                leviathan.merge(*child_leviathan);
                 //結果push
                 self.push(U256::from(1));
             }
@@ -1815,7 +1815,7 @@ impl Ofunction for EVM {
         };
         self.child_gas_mem = None;
         //サブコールの実行
-        let mut child_leviathan = LEVIATHAN::new(self.version);
+        let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
             state,
             substate,
@@ -1854,7 +1854,7 @@ impl Ofunction for EVM {
                     substate.a_access.push(to_address.clone())
                 }
                 //Journalのmerge
-                leviathan.merge(child_leviathan);
+                leviathan.merge(*child_leviathan);
                 //結果push
                 self.push(U256::from(1));
             }
@@ -1947,7 +1947,7 @@ impl Ofunction for EVM {
         };
         self.child_gas_mem = None;
         //サブコールの実行
-        let mut child_leviathan = LEVIATHAN::new(self.version);
+        let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
             state,
             substate,
@@ -1986,7 +1986,7 @@ impl Ofunction for EVM {
                     substate.a_access.push(to_address.clone())
                 }
                 //Journalのmerge
-                leviathan.merge(child_leviathan);
+                leviathan.merge(*child_leviathan);
                 //結果push
                 self.push(U256::from(1));
             }

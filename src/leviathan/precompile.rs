@@ -16,6 +16,7 @@ use sha3::Keccak256;
 use std::collections::HashMap;
 
 impl CompiledContract for LEVIATHAN {
+    #[inline(never)]
     fn sha256(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 60 + 12 * ceil(|data| / 32)
         // 整数演算での切り上げ: (len + 31) / 32
@@ -38,7 +39,7 @@ impl CompiledContract for LEVIATHAN {
         // 5. 残ガスと出力データを返
         Ok((remaining_gas, result))
     }
-
+    #[inline(never)]
     fn precompile_ripemd160(
         gas: U256,
         data: &[u8],
@@ -71,6 +72,7 @@ impl CompiledContract for LEVIATHAN {
 
     // プリコンパイルコントラクト: Identity (Address 4)
     // Yellow Paper Appendix E (式230-233)
+    #[inline(never)]
     fn precompile_identity(
         gas: U256,
         data: &[u8],
