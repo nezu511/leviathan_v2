@@ -99,7 +99,7 @@ pub trait Ofunction {
         execution_environment: &ExecutionEnvironment,
     );
 
-    fn memory_opcode(
+    fn block_info_opcode(
         &mut self,
         opcode: u8,
         leviathan: &mut LEVIATHAN,
@@ -108,6 +108,32 @@ pub trait Ofunction {
         execution_environment: &ExecutionEnvironment,
     );
 
+    fn mload_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+
+    fn mstore_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+
+    fn mstore8_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
     fn create_opcode(
         &mut self,
         opcode: u8,
@@ -161,6 +187,16 @@ pub trait Ofunction {
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     );
+
+    fn log_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+  
 }
 
 pub trait Hfunction {

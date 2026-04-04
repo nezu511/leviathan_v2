@@ -97,82 +97,40 @@ impl Ofunction for EVM {
                     execution_environment)
             }
 
-            0x40 => {
-                //BLOCKHASH
-                let header = &execution_environment.i_block_header;
-                let num = self.pop();
-                let my_num = header.h_number;
-                if num > my_num.saturating_sub(U256::from(256)) {
-                    //この場合はそのブロックのハッシュ値を返す
-                } else {
-                    self.push(U256::ZERO);
-                }
+            0x40 ..=0x48 => {
+                self.block_info_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
             }
 
-            0x41 => {
-                //COINBASE
-                let header = &execution_environment.i_block_header;
-                let address = &header.h_beneficiary;
-                let val = address.to_u256();
-                self.push(val);
-            }
-
-            0x42 => {
-                //TIMESTAMP
-                let header = &execution_environment.i_block_header;
-                let val = header.h_timestamp;
-                self.push(val);
-            }
-
-            0x43 => {
-                //NUMBER
-                let header = &execution_environment.i_block_header;
-                let my_num = header.h_number;
-                self.push(my_num);
-            }
-
-            0x44 => {
-                //PREVRANDAO
-                let header = &execution_environment.i_block_header;
-                let val = header.h_prevrandao;
-                self.push(val);
-            }
-
-            0x45 => {
-                //GASLIMIT
-                let header = &execution_environment.i_block_header;
-                let val = header.h_gaslimit;
-                self.push(val);
-            }
-
-            0x46 => {
-                //CHAINID 未実装
-                self.push(U256::from(1));
-            }
-
-            0x47 => {
-                //SELFBALANSE
-                let address = &execution_environment.i_address;
-                let balance = state.get_balance(address);
-                match balance {
-                    Some(x) => self.push(x),
-                    None => self.push(U256::ZERO),
-                }
-            }
-
-            0x48 => {
-                //BASEFEE
-                let header = &execution_environment.i_block_header;
-                let val = header.h_basefee;
-                self.push(val);
-            }
 
             0x50 => {
                 self.pop();
             }
 
-            0x51 ..=0x53 => {
-                self.memory_opcode(
+            0x51 => {
+                self.mload_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
+            }
+
+            0x52 => {
+                self.mstore_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
+            }
+
+            0x53 => {
+                self.mstore8_opcode(
                     opcode,
                     leviathan,
                     substate,
@@ -353,36 +311,12 @@ impl Ofunction for EVM {
             }
 
             0xa0..=0xa4 => {
-                //LOG
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
-                //topic
-                let mut topic_n = opcode - 0xa0;
-                let mut topic = Vec::new();
-                while topic_n > 0 {
-                    let topi = self.pop();
-                    topic.push(topi);
-                    topic_n -= 1;
-                }
-
-                //メモリ読み取り
-                let mut data = Vec::<u8>::new();
-                if size > 0 {
-                    let required_size = offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = required_size.saturating_add(31) / 32;
-                        self.memory.resize(words.saturating_mul(32), 0);
-                    }
-                    let slice = &self.memory[offset..required_size];
-                    data = slice.to_vec();
-                }
-                //アドレス
-                let address = &execution_environment.i_address;
-                let log = Log::new(address.clone(), topic, data);
-                substate.a_log.push(log);
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
+                self.log_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
             }
 
             0xf0 => {
@@ -1262,9 +1196,91 @@ impl Ofunction for EVM {
         }
     }
     
+    #[inline(never)]
+    fn block_info_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        match opcode {
+            0x40 => {
+                //BLOCKHASH
+                let header = &execution_environment.i_block_header;
+                let num = self.pop();
+                let my_num = header.h_number;
+                if num > my_num.saturating_sub(U256::from(256)) {
+                    //この場合はそのブロックのハッシュ値を返す
+                } else {
+                    self.push(U256::ZERO);
+                }
+            }
+
+            0x41 => {
+                //COINBASE
+                let header = &execution_environment.i_block_header;
+                let address = &header.h_beneficiary;
+                let val = address.to_u256();
+                self.push(val);
+            }
+
+            0x42 => {
+                //TIMESTAMP
+                let header = &execution_environment.i_block_header;
+                let val = header.h_timestamp;
+                self.push(val);
+            }
+
+            0x43 => {
+                //NUMBER
+                let header = &execution_environment.i_block_header;
+                let my_num = header.h_number;
+                self.push(my_num);
+            }
+
+            0x44 => {
+                //PREVRANDAO
+                let header = &execution_environment.i_block_header;
+                let val = header.h_prevrandao;
+                self.push(val);
+            }
+
+            0x45 => {
+                //GASLIMIT
+                let header = &execution_environment.i_block_header;
+                let val = header.h_gaslimit;
+                self.push(val);
+            }
+
+            0x46 => {
+                //CHAINID 未実装
+                self.push(U256::from(1));
+            }
+
+            0x47 => {
+                //SELFBALANSE
+                let address = &execution_environment.i_address;
+                let balance = state.get_balance(address);
+                match balance {
+                    Some(x) => self.push(x),
+                    None => self.push(U256::ZERO),
+                }
+            }
+
+            0x48 => {
+                //BASEFEE
+                let header = &execution_environment.i_block_header;
+                let val = header.h_basefee;
+                self.push(val);
+            },
+            0_u8..=63_u8 | 73_u8..=u8::MAX => todo!()
+        }
+    }
 
     #[inline(never)]
-    fn memory_opcode(
+    fn mload_opcode(
         &mut self,
         opcode: u8,
         leviathan: &mut LEVIATHAN,
@@ -1273,64 +1289,117 @@ impl Ofunction for EVM {
         execution_environment: &ExecutionEnvironment,
     ) {
 
-        match opcode {
-            0x51 => {
-                //MLOAD メモリから読み込む（32B)
-                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
-                let required_size = pointer.saturating_add(32);
-                //メモリ拡張
-                if required_size > self.memory.len() {
-                    let words = required_size.saturating_add(31) / 32;
-                    self.memory.resize(words.saturating_mul(32), 0);
-                }
-                let slice = &self.memory[pointer..required_size];
-                let mut tmp = [0u8; 32];
-                tmp[..].copy_from_slice(slice);
-                let val = U256::from_be_bytes(tmp);
-                self.push(val);
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
-
-            0x52 => {
-                //MSTORE メモリに保存(32)
-                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
-                let data = self.pop();
-                let required_size = pointer.saturating_add(32);
-                //メモリ拡張
-                if required_size > self.memory.len() {
-                    let words = required_size.saturating_add(31) / 32;
-                    self.memory.resize(words.saturating_mul(32), 0);
-                }
-                let slice = &mut self.memory[pointer..required_size];
-                let bytes: [u8; 32] = data.to_be_bytes();
-                slice.copy_from_slice(&bytes);
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
-
-            0x53 => {
-                //MSTORE8
-                let pointer = self.pop().try_into().unwrap_or(usize::MAX);
-                let data = self.pop();
-                let required_size = pointer.saturating_add(1);
-                //メモリ拡張
-                if required_size > self.memory.len() {
-                    let words = required_size.saturating_add(31) / 32;
-                    self.memory.resize(words.saturating_mul(32), 0);
-                }
-                let slice = &mut self.memory[pointer..required_size];
-                let bytes: [u8; 32] = data.to_be_bytes();
-                slice.copy_from_slice(&bytes[31..32]);
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            },
-            0_u8..=80_u8 | 84_u8..=u8::MAX => todo!()
+        //MLOAD メモリから読み込む（32B)
+        let pointer = self.pop().try_into().unwrap_or(usize::MAX);
+        let required_size = pointer.saturating_add(32);
+        //メモリ拡張
+        if required_size > self.memory.len() {
+            let words = required_size.saturating_add(31) / 32;
+            self.memory.resize(words.saturating_mul(32), 0);
         }
+        let slice = &self.memory[pointer..required_size];
+        let mut tmp = [0u8; 32];
+        tmp[..].copy_from_slice(slice);
+        let val = U256::from_be_bytes(tmp);
+        self.push(val);
+        //アクティブなword数を更新
+        let active_words = self.memory.len() / 32;
+        self.active_words = active_words;
     }
+
+    #[inline(never)]
+    fn mstore_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //MSTORE メモリに保存(32)
+        let pointer = self.pop().try_into().unwrap_or(usize::MAX);
+        let data = self.pop();
+        let required_size = pointer.saturating_add(32);
+        //メモリ拡張
+        if required_size > self.memory.len() {
+            let words = required_size.saturating_add(31) / 32;
+            self.memory.resize(words.saturating_mul(32), 0);
+        }
+        let slice = &mut self.memory[pointer..required_size];
+        let bytes: [u8; 32] = data.to_be_bytes();
+        slice.copy_from_slice(&bytes);
+        //アクティブなword数を更新
+        let active_words = self.memory.len() / 32;
+        self.active_words = active_words;
+    }
+
+    #[inline(never)]
+    fn mstore8_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //MSTORE8
+        let pointer = self.pop().try_into().unwrap_or(usize::MAX);
+        let data = self.pop();
+        let required_size = pointer.saturating_add(1);
+        //メモリ拡張
+        if required_size > self.memory.len() {
+            let words = required_size.saturating_add(31) / 32;
+            self.memory.resize(words.saturating_mul(32), 0);
+        }
+        let slice = &mut self.memory[pointer..required_size];
+        let bytes: [u8; 32] = data.to_be_bytes();
+        slice.copy_from_slice(&bytes[31..32]);
+        //アクティブなword数を更新
+        let active_words = self.memory.len() / 32;
+        self.active_words = active_words;
+    }
+
+    #[inline(never)]
+    fn log_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //LOG
+        let offset = self.pop().try_into().unwrap_or(usize::MAX);
+        let size = self.pop().try_into().unwrap_or(usize::MAX);
+        //topic
+        let mut topic_n = opcode - 0xa0;
+        let mut topic = Vec::new();
+        while topic_n > 0 {
+            let topi = self.pop();
+            topic.push(topi);
+            topic_n -= 1;
+        }
+
+        //メモリ読み取り
+        let mut data = Vec::<u8>::new();
+        if size > 0 {
+            let required_size = offset.saturating_add(size);
+            if required_size > self.memory.len() {
+                let words = required_size.saturating_add(31) / 32;
+                self.memory.resize(words.saturating_mul(32), 0);
+            }
+            let slice = &self.memory[offset..required_size];
+            data = slice.to_vec();
+        }
+        //アドレス
+        let address = &execution_environment.i_address;
+        let log = Log::new(address.clone(), topic, data);
+        substate.a_log.push(log);
+        //アクティブなword数を更新
+        let active_words = self.memory.len() / 32;
+        self.active_words = active_words;
+    }
+
 
     #[inline(never)]
     fn create_opcode(
