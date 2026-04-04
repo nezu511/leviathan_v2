@@ -374,8 +374,8 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
-        let test_dir = "require/stCreate2";
-        //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
+        //let test_dir = "require/stCreate2";
+        let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
 
         let paths = fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));
@@ -409,167 +409,194 @@ mod state_tests {
                 .unwrap_or_else(|_| panic!("Failed to parse into StateTestSuite in {}", file_name));
 
             for (test_name, test_data) in suite.tests {
-                total_cases_count += 1;
                 println!("--------------------------------------------------");
                 println!("▶ Running STRICT State Test: {}", test_name);
 
-                let network_str = test_data.expect[0]
-                    .network
-                    .first()
-                    .map(|s| s.as_str())
-                    .unwrap_or("Frontier");
-                let version = parse_version(network_str);
-                println!("Selected Fork Version: {:?}", version);
+                // ▼ ここから大改修：expectの配列でループを回す！
+                for (expect_idx, expect_data) in test_data.expect.iter().enumerate() {
+                    total_cases_count += 1;
 
-                let block_header = BlockHeader {
-                    h_beneficiary: parse_address(&test_data.env.current_coinbase),
-                    h_timestamp: parse_u256(&test_data.env.current_timestamp),
-                    h_number: parse_u256(&test_data.env.current_number),
-                    h_prevrandao: parse_u256(&test_data.env.current_difficulty),
-                    h_gaslimit: parse_u256(&test_data.env.current_gas_limit),
-                    h_basefee: U256::ZERO,
-                };
+                    let network_str = expect_data
+                        .network
+                        .first()
+                        .map(|s| s.as_str())
+                        .unwrap_or("Frontier");
+                    let version = parse_version(network_str);
 
-                let mut world_state_map = HashMap::new();
-                for (addr_str, acc_data) in &test_data.pre {
-                    let mut storage = HashMap::new();
-                    if let Some(st) = &acc_data.storage {
-                        for (k, v) in st {
-                            storage.insert(parse_u256(k), parse_u256(v));
-                        }
-                    }
-
-                    let account = Account {
-                        nonce: acc_data
-                            .nonce
-                            .as_ref()
-                            .map(|n| parse_u256(n).try_into().unwrap_or(0))
-                            .unwrap_or(0),
-                        balance: acc_data
-                            .balance
-                            .as_ref()
-                            .map(|b| parse_u256(b))
-                            .unwrap_or(U256::ZERO),
-                        storage,
-                        code: acc_data
-                            .code
-                            .as_ref()
-                            .map(|c| parse_code(c))
-                            .unwrap_or_default(),
+                    // indexes の取得（存在しない場合や -1 の場合は 0 を使う）
+                    let (data_idx, gas_idx, value_idx) = match &expect_data.indexes {
+                        Some(idx) => (
+                            if idx.data < 0 { 0 } else { idx.data as usize },
+                            if idx.gas < 0 { 0 } else { idx.gas as usize },
+                            if idx.value < 0 { 0 } else { idx.value as usize },
+                        ),
+                        None => (0, 0, 0), // 昔のフォーマットへの後方互換性
                     };
-                    world_state_map.insert(parse_address(addr_str), account);
-                }
-                let mut state = WorldState(world_state_map);
 
-                let tx_data = parse_code(&test_data.transaction.data[0]);
-                let to_address = if test_data.transaction.to.is_empty() {
-                    None
-                } else {
-                    Some(parse_address(&test_data.transaction.to))
-                };
+                    println!("  [Matrix {}] Version: {:?}, DataIdx: {}, GasIdx: {}, ValueIdx: {}",
+                             expect_idx, version, data_idx, gas_idx, value_idx);
 
-                let nonce = parse_u256(&test_data.transaction.nonce);
-                let gas_price = parse_u256(&test_data.transaction.gas_price);
-                let gas_limit = parse_u256(&test_data.transaction.gas_limit[0]);
-                let value = parse_u256(&test_data.transaction.value[0]);
+                    // 🚨 超重要：テストの実行ごとに必ずWorldStateを初期状態から構築し直す！
+                    let mut world_state_map = HashMap::new();
+                    for (addr_str, acc_data) in &test_data.pre {
+                        let mut storage = HashMap::new();
+                        if let Some(st) = &acc_data.storage {
+                            for (k, v) in st {
+                                storage.insert(parse_u256(k), parse_u256(v));
+                            }
+                        }
 
-                let secret_key_hex = test_data.transaction.secret_key.trim_start_matches("0x");
+                        let account = Account {
+                            nonce: acc_data
+                                .nonce
+                                .as_ref()
+                                .map(|n| parse_u256(n).try_into().unwrap_or(0))
+                                .unwrap_or(0),
+                            balance: acc_data
+                                .balance
+                                .as_ref()
+                                .map(|b| parse_u256(b))
+                                .unwrap_or(U256::ZERO),
+                            storage,
+                            code: acc_data
+                                .code
+                                .as_ref()
+                                .map(|c| parse_code(c))
+                                .unwrap_or_default(),
+                        };
+                        world_state_map.insert(parse_address(addr_str), account);
+                    }
+                    let mut state = WorldState(world_state_map);
 
-                let (v, r, s) = sign_transaction(
-                    nonce,
-                    gas_price,
-                    gas_limit,
-                    to_address.clone(),
-                    value,
-                    &tx_data,
-                    secret_key_hex,
-                );
+                    let block_header = BlockHeader {
+                        h_beneficiary: parse_address(&test_data.env.current_coinbase),
+                        h_timestamp: parse_u256(&test_data.env.current_timestamp),
+                        h_number: parse_u256(&test_data.env.current_number),
+                        h_prevrandao: parse_u256(&test_data.env.current_difficulty),
+                        h_gaslimit: parse_u256(&test_data.env.current_gas_limit),
+                        h_basefee: U256::ZERO,
+                    };
 
-                let transaction = Transaction {
-                    data: tx_data,
-                    t_to: to_address,
-                    t_gas_limit: gas_limit,
-                    t_price: gas_price,
-                    t_value: value,
-                    t_nonce: nonce.try_into().unwrap_or(0),
-                    t_w: v,
-                    t_r: r,
-                    t_s: s,
-                };
+                    // パラメータを動的に取得する（配列の範囲外アクセスを防ぐ安全な取り出し方）
+                    let tx_data_str = test_data.transaction.data.get(data_idx)
+                        .unwrap_or_else(|| &test_data.transaction.data[0]);
+                    let tx_data = parse_code(tx_data_str);
 
-                let mut leviathan = LEVIATHAN::new(version);
+                    let gas_limit_str = test_data.transaction.gas_limit.get(gas_idx)
+                        .unwrap_or_else(|| &test_data.transaction.gas_limit[0]);
+                    let gas_limit = parse_u256(gas_limit_str);
 
-                let result = leviathan.execution(&mut state, transaction, &block_header);
+                    let value_str = test_data.transaction.value.get(value_idx)
+                        .unwrap_or_else(|| &test_data.transaction.value[0]);
+                    let value = parse_u256(value_str);
 
-                match result {
-                    Ok(_) => println!("  => Transaction Result: Success"),
-                    Err(_) => println!("  => Transaction Result: Exception Halt (Expected)"),
-                }
+                    let to_address = if test_data.transaction.to.is_empty() {
+                        None
+                    } else {
+                        Some(parse_address(&test_data.transaction.to))
+                    };
 
-                let expect_data = &test_data.expect[0];
-                for (addr_str, expected_acc) in &expect_data.result {
-                    let addr = parse_address(addr_str);
-                    let actual_acc_opt = state.0.get(&addr);
+                    let nonce = parse_u256(&test_data.transaction.nonce);
+                    let gas_price = parse_u256(&test_data.transaction.gas_price);
+                    let secret_key_hex = test_data.transaction.secret_key.trim_start_matches("0x");
 
-                    if let Some("1") = expected_acc.shouldnotexist.as_deref() {
-                        assert!(
-                            actual_acc_opt.is_none()
-                                || actual_acc_opt.unwrap().balance == U256::ZERO,
-                            "[{}] Address {} は存在してはいけません",
-                            test_name,
-                            addr_str
-                        );
-                        continue;
+                    let (v, r, s) = sign_transaction(
+                        nonce,
+                        gas_price,
+                        gas_limit,
+                        to_address.clone(),
+                        value,
+                        &tx_data,
+                        secret_key_hex,
+                    );
+
+                    let transaction = Transaction {
+                        data: tx_data,
+                        t_to: to_address,
+                        t_gas_limit: gas_limit,
+                        t_price: gas_price,
+                        t_value: value,
+                        t_nonce: nonce.try_into().unwrap_or(0),
+                        t_w: v,
+                        t_r: r,
+                        t_s: s,
+                    };
+
+                    let mut leviathan = LEVIATHAN::new(version);
+                    let result = leviathan.execution(&mut state, transaction, &block_header);
+
+                    match result {
+                        Ok(_) => println!("  => Transaction Result: Success"),
+                        Err(_) => println!("  => Transaction Result: Exception Halt (Expected)"),
                     }
 
-                    let actual_acc = actual_acc_opt
-                        .unwrap_or_else(|| panic!("Address {} がステートに存在しません", addr_str));
+                    // 検証フェーズ (expect_data.result を使う)
+                    for (addr_str, expected_acc) in &expect_data.result {
+                        let addr = parse_address(addr_str);
+                        let actual_acc_opt = state.0.get(&addr);
 
-                    if let Some(expected_balance_str) = &expected_acc.balance {
-                        let expected_balance = parse_u256(expected_balance_str);
-                        assert_eq!(
-                            actual_acc.balance, expected_balance,
-                            "[{}] Address {} の Balance が不一致",
-                            test_name, addr_str
-                        );
-                    }
+                        if let Some("1") = expected_acc.shouldnotexist.as_deref() {
+                            assert!(
+                                actual_acc_opt.is_none()
+                                    || actual_acc_opt.unwrap().balance == U256::ZERO,
+                                "[{}] Address {} は存在してはいけません",
+                                test_name,
+                                addr_str
+                            );
+                            continue;
+                        }
 
-                    if let Some(expected_nonce_str) = &expected_acc.nonce {
-                        let expected_nonce: u32 =
-                            parse_u256(expected_nonce_str).try_into().unwrap_or(0);
-                        assert_eq!(
-                            actual_acc.nonce, expected_nonce,
-                            "[{}] Address {} の Nonce が不一致",
-                            test_name, addr_str
-                        );
-                    }
+                        let actual_acc = actual_acc_opt
+                            .unwrap_or_else(|| panic!("Address {} がステートに存在しません", addr_str));
 
-                    if let Some(expected_code_str) = &expected_acc.code {
-                        let expected_code = parse_code(expected_code_str);
-                        assert_eq!(
-                            actual_acc.code, expected_code,
-                            "[{}] Address {} の Code が不一致",
-                            test_name, addr_str
-                        );
-                    }
-
-                    if let Some(expected_storage) = &expected_acc.storage {
-                        for (k, v) in expected_storage {
-                            let key = parse_u256(k);
-                            let expected_val = parse_u256(v);
-                            let actual_val = actual_acc.storage.get(&key).unwrap_or(&U256::ZERO);
-
+                        if let Some(expected_balance_str) = &expected_acc.balance {
+                            let expected_balance = parse_u256(expected_balance_str);
                             assert_eq!(
-                                *actual_val, expected_val,
-                                "[{}] Address {} の Storage[{}] が不一致",
-                                test_name, addr_str, k
+                                actual_acc.balance, expected_balance,
+                                "[{}] Address {} の Balance が不一致",
+                                test_name, addr_str
                             );
                         }
+
+                        if let Some(expected_nonce_str) = &expected_acc.nonce {
+                            let expected_nonce: u32 =
+                                parse_u256(expected_nonce_str).try_into().unwrap_or(0);
+                            assert_eq!(
+                                actual_acc.nonce, expected_nonce,
+                                "[{}] Address {} の Nonce が不一致",
+                                test_name, addr_str
+                            );
+                        }
+
+                        if let Some(expected_code_str) = &expected_acc.code {
+                            let expected_code = parse_code(expected_code_str);
+                            assert_eq!(
+                                actual_acc.code, expected_code,
+                                "[{}] Address {} の Code が不一致",
+                                test_name, addr_str
+                            );
+                        }
+
+                        if let Some(expected_storage) = &expected_acc.storage {
+                            for (k, v) in expected_storage {
+                                let key = parse_u256(k);
+                                let expected_val = parse_u256(v);
+                                let actual_val = actual_acc.storage.get(&key).unwrap_or(&U256::ZERO);
+
+                                assert_eq!(
+                                    *actual_val, expected_val,
+                                    "[{}] Address {} の Storage[{}] が不一致",
+                                    test_name, addr_str, k
+                                );
+                            }
+                        }
                     }
+                    println!("  Passed Matrix {}", expect_idx);
+                    pass_cases_count += 1;
                 }
-                println!("✅ Passed: {}", test_name);
-                pass_cases_count += 1;
+                println!("Passed All Matrices for: {}", test_name);
             }
+
         }
 
         println!("\n==================================================");

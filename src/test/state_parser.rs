@@ -51,4 +51,12 @@ pub struct TransactionData {
 pub struct ExpectData {
     pub network: Vec<String>,
     pub result: HashMap<String, AccountData>,
+    pub indexes: Option<TestIndexes>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TestIndexes {
+    pub data: i32,
+    pub gas: i32,
+    pub value: i32,
 }
