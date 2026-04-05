@@ -1413,6 +1413,7 @@ impl Ofunction for EVM {
         }
 
         let data = U256::from_be_bytes(buffer);
+        tracing::trace!("push {}", data);
         self.push(data);
     }
 
