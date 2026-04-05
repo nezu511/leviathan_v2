@@ -444,9 +444,9 @@ mod state_tests {
                     // indexes の取得（存在しない場合や -1 の場合は 0 を使う）
                     let (data_idx, gas_idx, value_idx) = match &expect_data.indexes {
                         Some(idx) => (
-                            if idx.data < 0 { 0 } else { idx.data as usize },
-                            if idx.gas < 0 { 0 } else { idx.gas as usize },
-                            if idx.value < 0 { 0 } else { idx.value as usize },
+                            if idx.data.first() < 0 { 0 } else { idx.data.first() as usize },
+                            if idx.gas.first() < 0 { 0 } else { idx.gas.first() as usize },
+                            if idx.value.first() < 0 { 0 } else { idx.value.first() as usize },
                         ),
                         None => (0, 0, 0), // 昔のフォーマットへの後方互換性
                     };
