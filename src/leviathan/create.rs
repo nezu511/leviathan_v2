@@ -66,7 +66,7 @@ impl ContractCreation for LEVIATHAN {
             .unwrap_or_else(|| Vec::new());
         let sender_balance = state.get_balance(&sender).unwrap_or(U256::ZERO);
 
-        let is_collision = nonce != 0 || !code.is_empty(); // アドレス衝突
+        let is_collision = nonce != 0 || !code.is_empty()|| !state.is_storage_empty(&contract_address); // アドレス衝突
         let is_too_deep = depth > 1024; // 深さ制限
         let is_insufficient_funds = eth > sender_balance; // 残高不足
 

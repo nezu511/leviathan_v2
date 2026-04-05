@@ -21,6 +21,13 @@ impl State for WorldState {
         return true;
     }
 
+    fn is_storage_empty(&self, address: &Address) -> bool{ //空だとtrue;
+        let Some(account) = self.0.get(address) else {
+        return true;
+        };
+        account.storage.is_empty()
+    }
+
     fn get_balance(&self, address: &Address) -> Option<U256> {
         if !self.0.contains_key(&address) {
             return None;

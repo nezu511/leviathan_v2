@@ -5,6 +5,8 @@ use alloy_primitives::{I256, U256};
 pub trait State {
     fn is_empty(&self, address: &Address) -> bool; //空だとtrue;
 
+    fn is_storage_empty(&self, address: &Address) -> bool; //空だとtrue;
+
     fn get_balance(&self, address: &Address) -> Option<U256>;
 
     fn get_code(&self, address: &Address) -> Option<Vec<u8>>;

@@ -451,10 +451,55 @@ mod state_tests {
                         None => (0, 0, 0), // 昔のフォーマットへの後方互換性
                     };
 
-                    println!("  [Matrix {}] Version: {:?}, DataIdx: {}, GasIdx: {}, ValueIdx: {}",
-                             expect_idx, version, data_idx, gas_idx, value_idx);
+                    let default_str = String::new();
+                    let tx_data_str = test_data.transaction.data.get(data_idx)
+                        .unwrap_or_else(|| test_data.transaction.data.first().unwrap_or(&default_str));
+                    let gas_limit_str = test_data.transaction.gas_limit.get(gas_idx)
+                        .unwrap_or_else(|| test_data.transaction.gas_limit.first().unwrap_or(&default_str));
+                    let value_str = test_data.transaction.value.get(value_idx)
+                        .unwrap_or_else(|| test_data.transaction.value.first().unwrap_or(&default_str));
 
-                    // 🚨 超重要：テストの実行ごとに必ずWorldStateを初期状態から構築し直す！
+                    // ターミナルへの詳細なログ出力
+                    println!("  [Matrix {}] Version: {:?}", expect_idx, version);
+                    let display_data = if tx_data_str.len() > 64 {
+                        format!("{}... (len: {})", &tx_data_str[..64], tx_data_str.len())
+                    } else {
+                        tx_data_str.to_string()
+                    };
+                    println!("    ├─ Data  [Idx {}]: {}", data_idx, display_data);
+                    println!("    ├─ Gas   [Idx {}]: {}", gas_idx, gas_limit_str);
+                    println!("    ├─ Value [Idx {}]: {}", value_idx, value_str);
+                    println!("    └─ Expected State:");
+
+                    for (addr_str, expected_acc) in &expect_data.result {
+                        println!("          Address: 0x{}", addr_str);
+                        if let Some("1") = expected_acc.shouldnotexist.as_deref() {
+                            println!("            - 存在しないこと (Should Not Exist)");
+                            continue;
+                        }
+                        if let Some(nonce) = &expected_acc.nonce {
+                            println!("            - Nonce:   {}", nonce);
+                        }
+                        if let Some(balance) = &expected_acc.balance {
+                            println!("            - Balance: {}", balance);
+                        }
+                        if let Some(code) = &expected_acc.code {
+                            let disp = if code.len() > 20 { format!("{}...", &code[..20]) } else { code.to_string() };
+                            println!("            - Code:    {}", disp);
+                        }
+                        if let Some(storage) = &expected_acc.storage {
+                            if storage.is_empty() {
+                                println!("            - Storage: {{}} (Empty)");
+                            } else {
+                                println!("            - Storage:");
+                                for (k, v) in storage {
+                                    println!("                [{}] == {}", k, v);
+                                }
+                            }
+                        }
+                    }
+
+                    //  超重要：テストの実行ごとに必ずWorldStateを初期状態から構築し直す！
                     let mut world_state_map = HashMap::new();
                     for (addr_str, acc_data) in &test_data.pre {
                         let mut storage = HashMap::new();
@@ -495,17 +540,8 @@ mod state_tests {
                         h_basefee: U256::ZERO,
                     };
 
-                    // パラメータを動的に取得する（配列の範囲外アクセスを防ぐ安全な取り出し方）
-                    let tx_data_str = test_data.transaction.data.get(data_idx)
-                        .unwrap_or_else(|| &test_data.transaction.data[0]);
                     let tx_data = parse_code(tx_data_str);
-
-                    let gas_limit_str = test_data.transaction.gas_limit.get(gas_idx)
-                        .unwrap_or_else(|| &test_data.transaction.gas_limit[0]);
                     let gas_limit = parse_u256(gas_limit_str);
-
-                    let value_str = test_data.transaction.value.get(value_idx)
-                        .unwrap_or_else(|| &test_data.transaction.value[0]);
                     let value = parse_u256(value_str);
 
                     let to_address = if test_data.transaction.to.is_empty() {
@@ -546,6 +582,46 @@ mod state_tests {
                     match result {
                         Ok(_) => println!("  => Transaction Result: Success"),
                         Err(_) => println!("  => Transaction Result: Exception Halt (Expected)"),
+                    }
+
+                    println!("    └─   Actual State (Full):");
+
+                    // アドレス順にソートして出力（比較しやすくするため）
+                    let mut addresses: Vec<_> = state.0.keys().collect();
+                    addresses.sort();
+
+                    for addr in addresses {
+                        let acc = state.0.get(addr).unwrap();
+
+                        // 残高が0かつNonceが0かつコードもストレージも空のアカウントは、
+                        // 実質「存在しない」のと同じなので、ノイズを減らすためにスキップしても良いですが、
+                        // 今回は「全部出す」という要望なので、あえてすべて出力します。
+
+                        println!("          Address: 0x{}", hex::encode(addr.0));
+                        println!("            - Nonce:   {}", acc.nonce);
+                        println!("            - Balance: {}", acc.balance);
+
+                        if !acc.code.is_empty() {
+                            let code_hex = hex::encode(&acc.code);
+                            let disp = if code_hex.len() > 32 {
+                                format!("{}... (len: {})", &code_hex[..32], code_hex.len())
+                            } else {
+                                code_hex
+                            };
+                            println!("            - Code:    0x{}", disp);
+                        }
+
+                        if !acc.storage.is_empty() {
+                            println!("            - Storage:");
+                            // ストレージキーもソートして出力
+                            let mut keys: Vec<_> = acc.storage.keys().collect();
+                            keys.sort();
+                            for k in keys {
+                                let v = acc.storage.get(k).unwrap();
+                                // キーと値を16進数で表示（デバッグしやすいため）
+                                println!("                [0x{:x}] == 0x{:x}", k, v);
+                            }
+                        }
                     }
 
                     // 検証フェーズ (expect_data.result を使う)

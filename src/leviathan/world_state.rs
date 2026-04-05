@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 pub struct WorldState(pub HashMap<Address, Account>);
 
-#[derive(Debug, Eq, Hash, PartialEq, Clone)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone, PartialOrd, Ord)]
 pub struct Address(pub [u8; 20]);
 
 impl Address {
