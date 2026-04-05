@@ -93,19 +93,18 @@ impl Xi for EVM {
                 opcode = code[self.pc];
             }
 
-            //println!("0x{:x}, rest_gas: {}", opcode, self.gas);
+            //Z関数による安全性を確認
+            if !self.is_safe(opcode, &substate, &state, &execution_environment) {
+                return Err(None); //例外的な停止
+            }
+            
+            //デバック用
             let consumption_gas = self.gas(opcode, &substate, &state, &execution_environment);
             tracing::trace!(
                 opcode = format_args!("0x{:x}", opcode),
                 self_gas = %self.gas,
                 consumption_gas = %consumption_gas,
                 );
-
-
-            //Z関数による安全性を確認
-            if !self.is_safe(opcode, &substate, &state, &execution_environment) {
-                return Err(None); //例外的な停止
-            }
 
             //O関数による状態遷移
             let result = self.execution(opcode, leviathan, substate, state, execution_environment);

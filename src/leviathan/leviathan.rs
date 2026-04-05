@@ -95,7 +95,6 @@ impl TransactionExecution for LEVIATHAN {
             return Err((U256::ZERO, Vec::new()));
         }
         let sender_address = sender_address.unwrap();
-        //println!("Transaction送信者: 0x{}", hex::encode(sender_address.0)); //アドレス
 
         //=======ステップ2===========
         //【Nonceの加算】
@@ -118,6 +117,15 @@ impl TransactionExecution for LEVIATHAN {
 
         //=======ステップ3===========
         let result = if transaction.t_to.is_none() {
+            //デバック出力
+            tracing::info!(
+                sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
+                data = %hex::encode(&transaction.data),
+                gas = %gas,
+                gas_price = %transaction.t_price,
+                send_eth = %transaction.t_value,
+                "Transaction [CREATE]"
+                );
             self.contract_creation(
                 state,
                 &mut substate,
@@ -134,6 +142,16 @@ impl TransactionExecution for LEVIATHAN {
             )
         } else {
             let to_address = transaction.t_to.unwrap();
+            //デバック出力
+            tracing::info!(
+                sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
+                to_address =  format_args!("0x{}", hex::encode(to_address.0)),
+                data = %hex::encode(&transaction.data),
+                gas = %gas,
+                gas_price = %transaction.t_price,
+                send_eth = %transaction.t_value,
+                "Transaction [CALL]"
+                );
             self.message_call(
                 state,
                 &mut substate,
@@ -374,8 +392,8 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
-        //let test_dir = "require/stCreate2";
-        let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
+        let test_dir = "require/stCreate2";
+        //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
 
         let paths = fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));
