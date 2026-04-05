@@ -89,7 +89,7 @@ impl State for WorldState {
             .0
             .get_mut(&address)
             .expect("アカウントが存在しない.事前にadd_account");
-        tracing::trace!("inc_nonce");
+        tracing::info!("[inc_nonce]アドレス:0x{}",hex::encode(address.0)); //アドレス
         account.nonce += 1
     }
 
@@ -98,7 +98,7 @@ impl State for WorldState {
             .0
             .get_mut(&address)
             .expect("[dec_nonce]: アカウントが存在しない");
-        account.nonce += 1
+        account.nonce -= 1
     }
 
     fn set_storage(&mut self, address: &Address, key: U256, value: U256) {
