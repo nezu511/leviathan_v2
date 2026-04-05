@@ -87,7 +87,7 @@ impl Ofunction for EVM {
 
             }
 
-            0x30 ..=0x34 | 0x36 | 0x38 | 0x3a..=0x3f=> {
+            0x30 ..=0x34 | 0x36 | 0x38 | 0x3a..=0x3b | 0x3d..=0x3f=> {
                 self.environmental_info_opcode(
                     opcode,
                     leviathan,
@@ -116,6 +116,15 @@ impl Ofunction for EVM {
 
             0x39 => {
                 self.codecopy_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
+            }
+            
+            0x3c => {
+                self.extcodecopy_opcode(
                     opcode,
                     leviathan,
                     substate,
@@ -957,47 +966,6 @@ impl Ofunction for EVM {
                 }
             }
 
-            0x3c => {
-                //EXTCODECOPY
-                let val1 = self.pop();
-                let address = Address::from_u256(val1);
-                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX); //メモリ
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
-                //コード取得
-                let result = state.get_code(&address);
-                let code = match result {
-                    Some(x) => x,
-                    None => Vec::<u8>::new(),
-                };
-                //メモリ拡張
-                if size != 0 {
-                    let required_size = dest_offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = (required_size.saturating_add(31)) / 32;
-                        self.memory.resize(words * 32, 0);
-                    }
-                    //メモリに値を書き込む
-                    let read_size = offset.saturating_add(size);
-                    if offset <= code.len() {
-                        if read_size > code.len() {
-                            let copy_len = code.len() - offset;
-                            self.memory[dest_offset..dest_offset + copy_len]
-                                .copy_from_slice(&code[offset..code.len()]);
-                        } else {
-                            self.memory[dest_offset..required_size]
-                                .copy_from_slice(&code[offset..read_size]);
-                        }
-                    }
-                }
-                //SubStateの更新
-                if !substate.a_access.contains(&address) {
-                    substate.a_access.push(address.clone())
-                }
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
 
             0x3d => {
                 //RETURNDATASIZE
@@ -1150,6 +1118,56 @@ impl Ofunction for EVM {
                         .copy_from_slice(&data[offset..read_size]);
                 }
             }
+        }
+        //アクティブなword数を更新
+        let active_words = self.memory.len() / 32;
+        self.active_words = active_words;
+    }
+
+    #[inline(never)]
+    fn extcodecopy_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //EXTCODECOPY
+        let val1 = self.pop();
+        let address = Address::from_u256(val1);
+        let dest_offset = self.pop().try_into().unwrap_or(usize::MAX); //メモリ
+        let offset = self.pop().try_into().unwrap_or(usize::MAX);
+        let size = self.pop().try_into().unwrap_or(usize::MAX);
+        //コード取得
+        let result = state.get_code(&address);
+        let code = match result {
+            Some(x) => x,
+            None => Vec::<u8>::new(),
+        };
+        //メモリ拡張
+        if size != 0 {
+            let required_size = dest_offset.saturating_add(size);
+            if required_size > self.memory.len() {
+                let words = (required_size.saturating_add(31)) / 32;
+                self.memory.resize(words * 32, 0);
+            }
+            //メモリに値を書き込む
+            let read_size = offset.saturating_add(size);
+            if offset <= code.len() {
+                if read_size > code.len() {
+                    let copy_len = code.len() - offset;
+                    self.memory[dest_offset..dest_offset + copy_len]
+                        .copy_from_slice(&code[offset..code.len()]);
+                } else {
+                    self.memory[dest_offset..required_size]
+                        .copy_from_slice(&code[offset..read_size]);
+                }
+            }
+        }
+        //SubStateの更新
+        if !substate.a_access.contains(&address) {
+            substate.a_access.push(address.clone())
         }
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
