@@ -59,6 +59,7 @@ impl ContractCreation for LEVIATHAN {
         let mut tmp = [0u8; 20];
         tmp.copy_from_slice(&result[12..32]);
         let contract_address = Address::new(tmp);
+        tracing::info!("【ContractCreation】:0x{}",hex::encode(contract_address.0)); //アドレス
 
         let nonce = state.get_nonce(&contract_address).unwrap_or(0);
         let code = state

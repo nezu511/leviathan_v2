@@ -89,6 +89,7 @@ impl State for WorldState {
             .0
             .get_mut(&address)
             .expect("アカウントが存在しない.事前にadd_account");
+        tracing::trace!("inc_nonce");
         account.nonce += 1
     }
 

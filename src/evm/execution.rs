@@ -1559,6 +1559,7 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, Some(return_data), _)) => {
+                tracing::info!("CREATE: REVERT");
                 //ガスの精算
                 self.gas += return_gas;
                 //return_backの更新
@@ -1567,6 +1568,7 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, None, _)) => {
+                tracing::info!("CREATE: 例外停止"); 
                 //ガスの精算
                 self.gas = self.gas + return_gas;
                 self.push(U256::ZERO);
@@ -1635,6 +1637,7 @@ impl Ofunction for EVM {
             value = %value,
             init_code = %hex::encode(&data),
             gas = %child_gas,
+            salt = %salt,
             "CREATE2",
             );
         //サブコールの実行
@@ -1674,6 +1677,7 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, Some(return_data), _)) => {
+                tracing::info!("CREATE2: Revert"); 
                 //ガスの精算
                 self.gas += return_gas;
                 //return_backの更新
@@ -1682,6 +1686,7 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, None, _)) => {
+                tracing::info!("CREATE2: 例外停止"); 
                 //ガスの精算
                 self.gas = self.gas + return_gas;
                 self.push(U256::ZERO);

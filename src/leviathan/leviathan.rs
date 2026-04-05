@@ -469,7 +469,7 @@ mod state_tests {
                     println!("    ├─ Data  [Idx {}]: {}", data_idx, display_data);
                     println!("    ├─ Gas   [Idx {}]: {}", gas_idx, gas_limit_str);
                     println!("    ├─ Value [Idx {}]: {}", value_idx, value_str);
-                    println!("    └─ Expected State:");
+                    println!("    ├─ Expected State:");
 
                     for (addr_str, expected_acc) in &expect_data.result {
                         println!("          Address: 0x{}", addr_str);
@@ -530,6 +530,37 @@ mod state_tests {
                         world_state_map.insert(parse_address(addr_str), account);
                     }
                     let mut state = WorldState(world_state_map);
+
+                    println!("    └─ Pre State (Before Tx):");
+                    let mut pre_addresses: Vec<_> = state.0.keys().collect();
+                    pre_addresses.sort_by_key(|addr| addr.0); // アドレスでソート
+
+                    for addr in pre_addresses {
+                        let acc = state.0.get(addr).unwrap();
+                        println!("          Address: 0x{}", hex::encode(addr.0));
+                        println!("            - Nonce:   {}", acc.nonce);
+                        println!("            - Balance: {}", acc.balance);
+
+                        if !acc.code.is_empty() {
+                            let code_hex = hex::encode(&acc.code);
+                            let disp = if code_hex.len() > 32 {
+                                format!("{}... (len: {})", &code_hex[..32], code_hex.len())
+                            } else {
+                                code_hex
+                            };
+                            println!("            - Code:    0x{}", disp);
+                        }
+
+                        if !acc.storage.is_empty() {
+                            println!("            - Storage:");
+                            let mut keys: Vec<_> = acc.storage.keys().collect();
+                            keys.sort();
+                            for k in keys {
+                                let v = acc.storage.get(k).unwrap();
+                                println!("                [0x{:x}] == 0x{:x}", k, v);
+                            }
+                        }
+                    }
 
                     let block_header = BlockHeader {
                         h_beneficiary: parse_address(&test_data.env.current_coinbase),
