@@ -87,7 +87,7 @@ impl Ofunction for EVM {
 
             }
 
-            0x30 ..=0x34 | 0x36 | 0x38 | 0x3a..=0x3b | 0x3d..=0x3f=> {
+            0x30 ..=0x34 | 0x36 | 0x38 | 0x3a | 0x3b | 0x3d | 0x3f => {
                 self.environmental_info_opcode(
                     opcode,
                     leviathan,
@@ -125,6 +125,15 @@ impl Ofunction for EVM {
             
             0x3c => {
                 self.extcodecopy_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
+            }
+
+            0x3e =>{
+                self.returndatacopy_opcode(
                     opcode,
                     leviathan,
                     substate,
@@ -973,28 +982,6 @@ impl Ofunction for EVM {
                 self.push(U256::from(size));
             }
 
-            0x3e => {
-                //RETURNDATACOPY
-                let data = self.return_back.clone();
-                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
-                //メモリ拡張
-                if size != 0 {
-                    let required_size = dest_offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = (required_size.saturating_add(31)) / 32;
-                        self.memory.resize(words * 32, 0);
-                    }
-                    //メモリに値を書き込む
-                    let read_size = offset.saturating_add(size);
-                    self.memory[dest_offset..required_size]
-                        .copy_from_slice(&data[offset..read_size]);
-                }
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
 
             0x3f => {
                 //EXTCODEHASH
@@ -1168,6 +1155,37 @@ impl Ofunction for EVM {
         //SubStateの更新
         if !substate.a_access.contains(&address) {
             substate.a_access.push(address.clone())
+        }
+        //アクティブなword数を更新
+        let active_words = self.memory.len() / 32;
+        self.active_words = active_words;
+    }
+
+    #[inline(never)]
+    fn returndatacopy_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //RETURNDATACOPY
+        let data = self.return_back.clone();
+        let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
+        let offset = self.pop().try_into().unwrap_or(usize::MAX);
+        let size = self.pop().try_into().unwrap_or(usize::MAX);
+        //メモリ拡張
+        if size != 0 {
+            let required_size = dest_offset.saturating_add(size);
+            if required_size > self.memory.len() {
+                let words = (required_size.saturating_add(31)) / 32;
+                self.memory.resize(words * 32, 0);
+            }
+            //メモリに値を書き込む
+            let read_size = offset.saturating_add(size);
+            self.memory[dest_offset..required_size]
+                .copy_from_slice(&data[offset..read_size]);
         }
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
