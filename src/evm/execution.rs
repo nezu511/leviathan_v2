@@ -1484,20 +1484,27 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         }
         //事前チェック
+        //・残高チェック
+        //・コールスタック深度
+        //・Initコードサイズ
         let my_balance = state
             .get_balance(&execution_environment.i_address)
             .unwrap_or(U256::from(0));
-        if my_balance < value {
-            //残高・コールデプスチェック
-            self.push(U256::ZERO);
-            return;
-        }
-        if self.version >= VersionId::Shanghai {
+        let is_balance = my_balance < value;    //残高チェック
+        let is_deepth  = execution_environment.i_depth >= 1024;
+        let is_code_size = if self.version >= VersionId::Shanghai {
             //Initcodeのサイズ確認
             if data.len() > 49152 {
-                self.push(U256::ZERO);
-                return;
+                true
+            }else{
+                false
             }
+        }else{
+            false
+        };
+        if is_balance || is_deepth || is_code_size {
+            self.push(U256::ZERO);
+            return;
         }
         //コントラクト自身のNonceのインクリメント
         Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
@@ -1603,20 +1610,27 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         }
         //事前チェック
+        //・残高チェック
+        //・コールスタック深度
+        //・Initコードサイズ
         let my_balance = state
             .get_balance(&execution_environment.i_address)
             .unwrap_or(U256::from(0));
-        if my_balance < value {
-            //残高・コールデプスチェック
-            self.push(U256::ZERO);
-            return;
-        }
-        if self.version >= VersionId::Shanghai {
+        let is_balance = my_balance < value;    //残高チェック
+        let is_deepth  = execution_environment.i_depth >= 1024;
+        let is_code_size = if self.version >= VersionId::Shanghai {
             //Initcodeのサイズ確認
             if data.len() > 49152 {
-                self.push(U256::ZERO);
-                return;
+                true
+            }else{
+                false
             }
+        }else{
+            false
+        };
+        if is_balance || is_deepth || is_code_size {
+            self.push(U256::ZERO);
+            return;
         }
         //コントラクト自身のNonceのインクリメント
         Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用

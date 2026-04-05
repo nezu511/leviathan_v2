@@ -60,18 +60,14 @@ impl ContractCreation for LEVIATHAN {
         tmp.copy_from_slice(&result[12..32]);
         let contract_address = Address::new(tmp);
         tracing::info!("【ContractCreation】:0x{}",hex::encode(contract_address.0)); //アドレス
-
+        
+        //事前チェックはcollisonのみ
         let nonce = state.get_nonce(&contract_address).unwrap_or(0);
         let code = state
             .get_code(&contract_address)
             .unwrap_or_else(|| Vec::new());
-        let sender_balance = state.get_balance(&sender).unwrap_or(U256::ZERO);
-
         let is_collision = nonce != 0 || !code.is_empty()|| !state.is_storage_empty(&contract_address); // アドレス衝突
-        let is_too_deep = depth > 1024; // 深さ制限
-        let is_insufficient_funds = eth > sender_balance; // 残高不足
-
-        if is_collision || is_too_deep || is_insufficient_funds {
+        if is_collision {
             return Err((gas, None, None));
         }
 
