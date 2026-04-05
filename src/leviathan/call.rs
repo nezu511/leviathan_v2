@@ -34,13 +34,6 @@ impl MessageCall for LEVIATHAN {
         sudo: bool,
         block_header: &BlockHeader,
     ) -> Result<(U256, Vec<u8>, Option<Address>), (U256, Option<Vec<u8>>, Option<Address>)> {
-        //事前チェック
-        let sender_balance = state.get_balance(&sender).unwrap_or(U256::ZERO);
-        let is_too_deep = depth > 1024; // 深さ制限
-        let is_insufficient_funds = eth > sender_balance; // 残高不足
-        if is_too_deep || is_insufficient_funds {
-            return Err((gas, None, None));
-        }
         if !substate.a_access.contains(&recipient) {
             substate.a_access.push(recipient.clone())
         }

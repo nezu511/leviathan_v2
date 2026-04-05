@@ -386,12 +386,16 @@ impl Ofunction for EVM {
             data = Vec::<u8>::new();
         }
         //事前チェック
+        //・残高チェック
+        //・コールスタック深度
         let my_balance = state
             .get_balance(&execution_environment.i_address)
             .unwrap_or(U256::from(0));
-        if my_balance < value {
+        let is_balance = my_balance < value;    //残高チェック
+        let is_deepth  = execution_environment.i_depth >= 1024;
+        if is_balance || is_deepth {
             self.push(U256::ZERO);
-            return
+            return;
         }
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
@@ -1753,10 +1757,14 @@ impl Ofunction for EVM {
             data = Vec::<u8>::new();
         }
         //事前チェック
+        //・残高チェック
+        //・コールスタック深度
         let my_balance = state
             .get_balance(&execution_environment.i_address)
             .unwrap_or(U256::from(0));
-        if my_balance < value {
+        let is_balance = my_balance < value;    //残高チェック
+        let is_deepth  = execution_environment.i_depth >= 1024;
+        if is_balance || is_deepth {
             self.push(U256::ZERO);
             return;
         }
@@ -1905,6 +1913,13 @@ impl Ofunction for EVM {
         } else {
             data = Vec::<u8>::new();
         }
+        //事前チェック
+        //・コールスタック深度
+        let is_deepth  = execution_environment.i_depth >= 1024;
+        if is_deepth {
+            self.push(U256::ZERO);
+            return;
+        }
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
         //子に渡すガスの計算
@@ -2042,6 +2057,14 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         } else {
             data = Vec::<u8>::new();
+        }
+        //事前チェック
+        //・残高チェック
+        //・コールスタック深度
+        let is_deepth  = execution_environment.i_depth >= 1024;
+        if is_deepth {
+            self.push(U256::ZERO);
+            return;
         }
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
