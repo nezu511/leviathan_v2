@@ -87,7 +87,7 @@ impl Ofunction for EVM {
 
             }
 
-            0x30 ..=0x34 | 0x36 | 0x38..=0x3f=> {
+            0x30 ..=0x34 | 0x36 | 0x38 | 0x3a..=0x3f=> {
                 self.environmental_info_opcode(
                     opcode,
                     leviathan,
@@ -107,6 +107,15 @@ impl Ofunction for EVM {
 
             0x37 => {
                 self.calldatacopy_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
+            }
+
+            0x39 => {
+                self.codecopy_opcode(
                     opcode,
                     leviathan,
                     substate,
@@ -926,36 +935,6 @@ impl Ofunction for EVM {
                 self.push(U256::from(size));
             }
 
-            0x39 => {
-                //CODECOPY
-                let data = &execution_environment.i_byte;
-                let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let size = self.pop().try_into().unwrap_or(usize::MAX);
-                //メモリ拡張
-                if size != 0 {
-                    let required_size = dest_offset.saturating_add(size);
-                    if required_size > self.memory.len() {
-                        let words = (required_size.saturating_add(31)) / 32;
-                        self.memory.resize(words * 32, 0);
-                    }
-                    //メモリに値を書き込む
-                    let read_size = offset.saturating_add(size);
-                    if offset <= data.len() {
-                        if read_size > data.len() {
-                            let copy_len = data.len() - offset;
-                            self.memory[dest_offset..dest_offset + copy_len]
-                                .copy_from_slice(&data[offset..data.len()]);
-                        } else {
-                            self.memory[dest_offset..required_size]
-                                .copy_from_slice(&data[offset..read_size]);
-                        }
-                    }
-                }
-                //アクティブなword数を更新
-                let active_words = self.memory.len() / 32;
-                self.active_words = active_words;
-            }
 
             0x3a => {
                 //GASPRICE
@@ -1132,6 +1111,45 @@ impl Ofunction for EVM {
                 }
             }
             self.memory[dest_offset..required_size].copy_from_slice(&slice);
+        }
+        //アクティブなword数を更新
+        let active_words = self.memory.len() / 32;
+        self.active_words = active_words;
+    }
+
+    #[inline(never)]
+    fn codecopy_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+        //CODECOPY
+        let data = &execution_environment.i_byte;
+        let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
+        let offset = self.pop().try_into().unwrap_or(usize::MAX);
+        let size = self.pop().try_into().unwrap_or(usize::MAX);
+        //メモリ拡張
+        if size != 0 {
+            let required_size = dest_offset.saturating_add(size);
+            if required_size > self.memory.len() {
+                let words = (required_size.saturating_add(31)) / 32;
+                self.memory.resize(words * 32, 0);
+            }
+            //メモリに値を書き込む
+            let read_size = offset.saturating_add(size);
+            if offset <= data.len() {
+                if read_size > data.len() {
+                    let copy_len = data.len() - offset;
+                    self.memory[dest_offset..dest_offset + copy_len]
+                        .copy_from_slice(&data[offset..data.len()]);
+                } else {
+                    self.memory[dest_offset..required_size]
+                        .copy_from_slice(&data[offset..read_size]);
+                }
+            }
         }
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
