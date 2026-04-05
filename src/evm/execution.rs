@@ -87,8 +87,17 @@ impl Ofunction for EVM {
 
             }
 
-            0x30 ..=0x3f => {
+            0x30 ..=0x34 | 0x36..=0x3f=> {
                 self.environmental_info_opcode(
+                    opcode,
+                    leviathan,
+                    substate,
+                    state,
+                    execution_environment)
+            }
+
+            0x35 => {
+                self.calldataload_opcode(
                     opcode,
                     leviathan,
                     substate,
@@ -894,22 +903,6 @@ impl Ofunction for EVM {
                 self.push(val);
             }
 
-            0x35 => {
-                //CALLDATALOAD
-                let offset = self.pop().try_into().unwrap_or(usize::MAX);
-                let data = &execution_environment.i_data;
-                let required_size = offset.saturating_add(32);
-                let mut buffer = [0u8; 32];
-                if offset >= data.len() {
-                    self.push(U256::ZERO)
-                } else if required_size > data.len() {
-                    buffer[..data.len() - offset].copy_from_slice(&data[offset..data.len()]);
-                } else {
-                    buffer[..].copy_from_slice(&data[offset..required_size]);
-                }
-                let val = U256::from_be_bytes(buffer);
-                self.push(val);
-            }
 
             0x36 => {
                 //CALLDATASIZE
@@ -1098,8 +1091,33 @@ impl Ofunction for EVM {
                     substate.a_access.push(address.clone())
                 }
             },
-            0_u8..=47_u8 | 64_u8..=u8::MAX => todo!()
+            0_u8..=47_u8 | 53_u8 | 64_u8..=u8::MAX => todo!(),
         }
+    }
+
+    #[inline(never)]
+    fn calldataload_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    ) {
+            //CALLDATALOAD
+            let offset = self.pop().try_into().unwrap_or(usize::MAX);
+            let data = &execution_environment.i_data;
+            let required_size = offset.saturating_add(32);
+            let mut buffer = [0u8; 32];
+            if offset >= data.len() {
+                self.push(U256::ZERO)
+            } else if required_size > data.len() {
+                buffer[..data.len() - offset].copy_from_slice(&data[offset..data.len()]);
+            } else {
+                buffer[..].copy_from_slice(&data[offset..required_size]);
+            }
+            let val = U256::from_be_bytes(buffer);
+            self.push(val);
     }
     
     #[inline(never)]

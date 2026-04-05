@@ -99,6 +99,16 @@ pub trait Ofunction {
         execution_environment: &ExecutionEnvironment,
     );
 
+
+    fn calldataload_opcode(
+        &mut self,
+        opcode: u8,
+        leviathan: &mut LEVIATHAN,
+        substate: &mut SubState,
+        state: &mut WorldState,
+        execution_environment: &ExecutionEnvironment,
+    );
+
     fn block_info_opcode(
         &mut self,
         opcode: u8,
