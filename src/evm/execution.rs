@@ -315,6 +315,13 @@ impl Ofunction for EVM {
             self.push(U256::ZERO);
             return;
         };
+        if value > 0 {
+            //最終的な子に渡すガス
+            child_gas = child_gas.saturating_add(U256::from(2300)); //送金額が0よりも大きい
+        } else {
+            child_gas;
+        }
+        self.child_gas_mem = None;
         //デバック出力
         tracing::info!(
         address =  format_args!("0x{}", hex::encode(to_address.0)),
@@ -340,14 +347,6 @@ impl Ofunction for EVM {
         }
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
-        //子に渡すガスの計算
-        if value > 0 {
-            //最終的な子に渡すガス
-            child_gas = child_gas.saturating_add(U256::from(2300)); //送金額が0よりも大きい
-        } else {
-            child_gas;
-        }
-        self.child_gas_mem = None;
 
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
@@ -1708,6 +1707,13 @@ impl Ofunction for EVM {
             self.push(U256::ZERO);
             return;
         };
+        self.child_gas_mem = None;
+        if value > 0 {
+            //最終的な子に渡すガス
+            child_gas = child_gas.saturating_add(U256::from(2300)); //送金額が0よりも大きい
+        } else {
+            child_gas;
+        }
         //デバック用
         tracing::info!(
         address =  format_args!("0x{}", hex::encode(to_address.0)),
@@ -1733,14 +1739,6 @@ impl Ofunction for EVM {
         }
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
-        //子に渡すガスの計算
-        self.child_gas_mem = None;
-        if value > 0 {
-            //最終的な子に渡すガス
-            child_gas = child_gas.saturating_add(U256::from(2300)); //送金額が0よりも大きい
-        } else {
-            child_gas;
-        }
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
