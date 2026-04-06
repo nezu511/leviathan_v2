@@ -283,8 +283,8 @@ mod state_tests {
             "EIP150" | "TangerineWhistle" => VersionId::TangerineWhistle,
             "EIP158" | "SpuriousDragon" => VersionId::SpuriousDragon,
             "Byzantium" => VersionId::Byzantium,
-            "Constantinople" | "ConstantinopleFix" => VersionId::Constantinople,
-            "Petersburg" => VersionId::Petersburg,
+            "Constantinople"  => VersionId::Constantinople,
+            "Petersburg" | "ConstantinopleFix" => VersionId::Petersburg,
             "Istanbul" => VersionId::Istanbul,
             "Berlin" => VersionId::Berlin,
             "London" => VersionId::London,
@@ -400,7 +400,7 @@ mod state_tests {
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
         let test_dir = "require/stCallCreateCallCodeTest";
-        //let test_dir = "require/stCreate2";
+        //let test_dir = "require/stCallCodes";
         //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
 
         let paths = fs::read_dir(test_dir)
