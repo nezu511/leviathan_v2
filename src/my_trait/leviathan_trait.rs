@@ -4,6 +4,8 @@ use alloy_primitives::{I256, U256};
 
 pub trait State {
     fn is_empty(&self, address: &Address) -> bool; //空だとtrue;
+    
+    fn is_dead(&self, address: &Address) -> bool; //DEADだとtrue
 
     fn is_storage_empty(&self, address: &Address) -> bool; //空だとtrue;
 
