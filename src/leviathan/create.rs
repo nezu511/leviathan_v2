@@ -173,7 +173,7 @@ impl ContractCreation for LEVIATHAN {
 
             Err(None) => {
                 //Z関数による停止
-                tracing::info!("[ContractCreation] Revert");
+                tracing::info!("[ContractCreation] 例外停止");
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                 return Err((U256::ZERO, None, None));
