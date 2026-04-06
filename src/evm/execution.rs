@@ -305,6 +305,10 @@ impl Ofunction for EVM {
         } else {
             data = Vec::<u8>::new();
         }
+        //アクセス済みリストの更新
+        if !substate.a_access.contains(&to_address) {
+            substate.a_access.push(to_address.clone())
+        }
         //事前チェック
         //・残高チェック
         //・コールスタック深度
@@ -376,10 +380,6 @@ impl Ofunction for EVM {
                 self.return_back = return_data;
                 //ガスの精算
                 self.gas = self.gas + return_gas;
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -400,19 +400,11 @@ impl Ofunction for EVM {
                 self.return_back = return_data;
                 //ガスの精算
                 self.gas = self.gas + return_gas;
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //結果push
                 self.push(U256::ZERO);
             }
 
             Err((return_gas, None, _)) => {
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //結果push
                 self.push(U256::ZERO);
             }
@@ -1702,6 +1694,10 @@ impl Ofunction for EVM {
         } else {
             data = Vec::<u8>::new();
         }
+        //アクセス済みリストの更新
+        if !substate.a_access.contains(&to_address) {
+            substate.a_access.push(to_address.clone())
+        }
         //事前チェック
         //・残高チェック
         //・コールスタック深度
@@ -1771,10 +1767,6 @@ impl Ofunction for EVM {
                 self.return_back = return_data;
                 //ガスの精算
                 self.gas = self.gas + return_gas;
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -1796,19 +1788,11 @@ impl Ofunction for EVM {
                 self.return_back = return_data;
                 //ガスの精算
                 self.gas = self.gas + return_gas;
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //結果push
                 self.push(U256::ZERO);
             }
 
             Err((return_gas, None, _)) => {
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //結果push
                 self.push(U256::ZERO);
             }
@@ -1856,6 +1840,10 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         } else {
             data = Vec::<u8>::new();
+        }
+        //アクセス済みリストの更新
+        if !substate.a_access.contains(&to_address) {
+            substate.a_access.push(to_address.clone())
         }
         //事前チェック
         //・コールスタック深度
@@ -1914,10 +1902,6 @@ impl Ofunction for EVM {
                 self.return_back = return_data;
                 //ガスの精算
                 self.gas = self.gas + return_gas;
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -1939,19 +1923,11 @@ impl Ofunction for EVM {
                 self.return_back = return_data;
                 //ガスの精算
                 self.gas = self.gas + return_gas;
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //結果push
                 self.push(U256::ZERO);
             }
 
             Err((return_gas, None, _)) => {
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //結果push
                 self.push(U256::ZERO);
             }
@@ -1999,6 +1975,10 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         } else {
             data = Vec::<u8>::new();
+        }
+        //アクセス済みリストの更新
+        if !substate.a_access.contains(&to_address) {
+            substate.a_access.push(to_address.clone())
         }
         //事前チェック
         //・残高チェック
@@ -2058,10 +2038,6 @@ impl Ofunction for EVM {
                 self.return_back = return_data;
                 //ガスの精算
                 self.gas = self.gas + return_gas;
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -2083,19 +2059,11 @@ impl Ofunction for EVM {
                 self.return_back = return_data;
                 //ガスの精算
                 self.gas = self.gas + return_gas;
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //結果push
                 self.push(U256::ZERO);
             }
 
             Err((return_gas, None, _)) => {
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&to_address) {
-                    substate.a_access.push(to_address.clone())
-                }
                 //結果push
                 self.push(U256::ZERO);
             }

@@ -399,7 +399,7 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
-        let test_dir = "require/stCallCodes";
+        let test_dir = "require/stCallCreateCallCodeTest";
         //let test_dir = "require/stCreate2";
         //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
 
