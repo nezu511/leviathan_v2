@@ -1715,7 +1715,7 @@ impl Ofunction for EVM {
         let is_balance = my_balance < value; //残高チェック
         let is_deepth = execution_environment.i_depth >= 1024;
         if is_balance || is_deepth {
-            self.gas = child_gas;
+            self.gas += child_gas;
             self.child_gas_mem = None;
             self.push(U256::ZERO);
             return;
