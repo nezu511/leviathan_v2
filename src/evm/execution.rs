@@ -309,6 +309,11 @@ impl Ofunction for EVM {
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
         }
+        //子に渡すガスの計算
+        let Some(mut child_gas) = self.child_gas_mem else {
+            self.push(U256::ZERO);
+            return;
+        };
         //事前チェック
         //・残高チェック
         //・コールスタック深度
@@ -318,16 +323,14 @@ impl Ofunction for EVM {
         let is_balance = my_balance < value; //残高チェック
         let is_deepth = execution_environment.i_depth >= 1024;
         if is_balance || is_deepth {
+            self.gas += child_gas;
+            self.child_gas_mem = None;
             self.push(U256::ZERO);
             return;
         }
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
         //子に渡すガスの計算
-        let Some(mut child_gas) = self.child_gas_mem else {
-            self.push(U256::ZERO);
-            return;
-        };
         if value > 0 {
             //最終的な子に渡すガス
             child_gas = child_gas.saturating_add(U256::from(2300)); //送金額が0よりも大きい
@@ -1698,6 +1701,11 @@ impl Ofunction for EVM {
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
         }
+        //子に渡すガスの計算
+        let Some(mut child_gas) = self.child_gas_mem else {
+            self.push(U256::ZERO);
+            return;
+        };
         //事前チェック
         //・残高チェック
         //・コールスタック深度
@@ -1707,16 +1715,14 @@ impl Ofunction for EVM {
         let is_balance = my_balance < value; //残高チェック
         let is_deepth = execution_environment.i_depth >= 1024;
         if is_balance || is_deepth {
+            self.gas = child_gas;
+            self.child_gas_mem = None;
             self.push(U256::ZERO);
             return;
         }
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
         //子に渡すガスの計算
-        let Some(mut child_gas) = self.child_gas_mem else {
-            self.push(U256::ZERO);
-            return;
-        };
         self.child_gas_mem = None;
         if value > 0 {
             //最終的な子に渡すガス
@@ -1841,6 +1847,11 @@ impl Ofunction for EVM {
         } else {
             data = Vec::<u8>::new();
         }
+        //子に渡すガスの計算
+        let Some(mut child_gas) = self.child_gas_mem else {
+            self.push(U256::ZERO);
+            return;
+        };
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
@@ -1849,16 +1860,14 @@ impl Ofunction for EVM {
         //・コールスタック深度
         let is_deepth = execution_environment.i_depth >= 1024;
         if is_deepth {
+            self.gas +=child_gas;
             self.push(U256::ZERO);
+            self.child_gas_mem = None;
             return;
         }
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
         //子に渡すガスの計算
-        let Some(child_gas) = self.child_gas_mem else {
-            self.push(U256::ZERO);
-            return;
-        };
         self.child_gas_mem = None;
         //デバック用
         tracing::info!(
@@ -1980,21 +1989,24 @@ impl Ofunction for EVM {
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
         }
+        //子に渡すガスの計算
+        let Some(child_gas) = self.child_gas_mem else {
+            self.push(U256::ZERO);
+            return;
+        };
         //事前チェック
         //・残高チェック
         //・コールスタック深度
         let is_deepth = execution_environment.i_depth >= 1024;
         if is_deepth {
+            self.gas += child_gas;
+            self.child_gas_mem = None;
             self.push(U256::ZERO);
             return;
         }
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
         //子に渡すガスの計算
-        let Some(child_gas) = self.child_gas_mem else {
-            self.push(U256::ZERO);
-            return;
-        };
         self.child_gas_mem = None;
         //デバック用
         tracing::info!(
