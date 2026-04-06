@@ -40,4 +40,6 @@ jobs:
 
       # 6. いよいよテスト実行！あなたのVMテストとStateTestがここで走る
       - name: Run tests
-        run: cargo test --verbose
+        env:
+          RUST_MIN_STACK: 16777216
+        run: cargo test --release
