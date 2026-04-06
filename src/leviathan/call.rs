@@ -55,7 +55,7 @@ impl MessageCall for LEVIATHAN {
         }
 
         //Execution Environmentの構築
-        let mut execution_environment = ExecutionEnvironment::new(
+        let mut execution_environment = Box::new(ExecutionEnvironment::new(
             recipient.clone(),
             origin.clone(),
             price,
@@ -66,7 +66,7 @@ impl MessageCall for LEVIATHAN {
             block_header,
             depth,
             sudo,
-        );
+        ));
 
         //プリコンパイル判定と実行の要件
         let contract_u256 = contract.to_u256();

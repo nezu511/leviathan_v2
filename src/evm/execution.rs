@@ -1616,10 +1616,12 @@ impl Ofunction for EVM {
         self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
         
         //Debug用
+        let rem_stack1 = stacker::remaining_stack().unwrap_or(0);
         tracing::info!(
             value = %value,
             init_code = %hex::encode(&data),
             gas = %child_gas,
+            rem_stack = rem_stack1,
             "CREATE",
             );
 
@@ -1741,11 +1743,13 @@ impl Ofunction for EVM {
         }
         self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
         //Debug用
+        let rem_stack2 = stacker::remaining_stack().unwrap_or(0);
         tracing::info!(
             value = %value,
             init_code = %hex::encode(&data),
             gas = %child_gas,
             salt = %salt,
+            rem_stack = rem_stack2,
             "CREATE2",
             );
         //サブコールの実行

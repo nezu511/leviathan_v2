@@ -601,7 +601,12 @@ impl Gfunction for EVM {
                 //拡張コスト
                 let ext_cost = self.extension_cost(offset, size);
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
-                let dynamic_cost = words.saturating_mul(U256::from(8));
+                let mut dynamic_cost = U256::ZERO;
+                if self.version < VersionId::Shanghai {
+                    dynamic_cost = words.saturating_mul(U256::from(6));
+                }else{
+                    dynamic_cost = words.saturating_mul(U256::from(8));
+                }
                 let total = dynamic_cost
                     .saturating_add(ext_cost)
                     .saturating_add(U256::from(32000));

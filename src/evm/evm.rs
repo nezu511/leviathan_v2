@@ -82,7 +82,12 @@ impl Xi for EVM {
         //Err(None) => Z関数による停止
         //Err(Some(Vec<u8>)) => REVERTによる停止
         //println!("Depth: {}", execution_environment.i_depth);
-        tracing::debug!("深さ: {}", execution_environment.i_depth);
+        let rem_stack3 = stacker::remaining_stack().unwrap_or(0);
+        tracing::debug!(
+            depth = execution_environment.i_depth,
+            rem_stack = rem_stack3,
+            "EVM突入"
+            );
         let code = execution_environment.i_byte.clone();
         let mut opcode = 0u8;
         loop {

@@ -105,7 +105,7 @@ impl ContractCreation for LEVIATHAN {
         state.set_code(&contract_address, Vec::<u8>::new());
 
         //Execution Environmentの構築
-        let mut execution_environment = ExecutionEnvironment::new(
+        let mut execution_environment = Box::new(ExecutionEnvironment::new(
             contract_address.clone(),
             origin.clone(),
             price,
@@ -116,7 +116,7 @@ impl ContractCreation for LEVIATHAN {
             block_header,
             depth,
             sudo,
-        );
+        ));
 
         //仮想マシンの実行
         let mut evm = Box::new(EVM::new(&execution_environment, self.version.clone()));
