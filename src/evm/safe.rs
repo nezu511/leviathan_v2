@@ -150,16 +150,23 @@ impl Zfunction for EVM {
         //SAFE_TABLEの値がu8::MAXは不正
         let op_info = SAFE_TABLE[opcode as usize];
         if op_info[0] == u8::MAX {
+            tracing::warn!("不正な命令の実行");
             return false;
         }
 
         if self.version < VersionId::Homestead && opcode == 0xf4 {
+            tracing::warn!("不正な命令の実行: フォーク依存的0xf4");
+            return false;
+        }
+        if self.version < VersionId::Constantinople && opcode == 0xf5 {
+            tracing::warn!("不正な命令の実行: フォーク依存的0xf5");
             return false;
         }
 
         //現在の命令が要求する要素数に対して，スタックの中身は足りるか？
         let pop_number = op_info[0] as usize;
         if self.stack.len() < pop_number {
+            tracing::warn!("スタックの中身が足りない");
             return false;
         }
 
@@ -167,12 +174,14 @@ impl Zfunction for EVM {
         let push_number = op_info[1] as usize;
         let stack_size = self.stack.len() + push_number - pop_number;
         if stack_size > 1024 {
+            tracing::warn!("スタックサイズが1024を超える");
             return false;
         }
 
         //命令のガスコストと現在の残ガスを比較
         let gas_cost = self.gas(opcode, substate, state, execution_environment);
         if self.gas < gas_cost {
+            tracing::warn!("残ガスが足りない");
             return false;
         }
 
@@ -180,6 +189,7 @@ impl Zfunction for EVM {
         if opcode == 0x56 {
             let distination = self.peek(0).try_into().unwrap_or(usize::MAX);
             if distination >= self.safe_jump.len() || self.safe_jump[distination] != 1 {
+                tracing::warn!("JUMP先は無効");
                 return false;
             }
         }
@@ -189,6 +199,7 @@ impl Zfunction for EVM {
             if flag != 0 {
                 let distination = self.peek(0).try_into().unwrap_or(usize::MAX);
                 if distination >= self.safe_jump.len() || self.safe_jump[distination] != 1 {
+                    tracing::warn!("JUMPI先は無効");
                     return false;
                 }
             }
@@ -196,6 +207,7 @@ impl Zfunction for EVM {
 
         //命令がSSTOREで残ガスが2300以下
         if opcode == 0x55 && self.gas <= U256::from(2300) {
+            tracing::warn!("SSTOREを実行するのにガスが2300以下");
             return false;
         }
 
@@ -205,6 +217,7 @@ impl Zfunction for EVM {
             let size = self.peek(2);
             let required_size = offset.saturating_add(size);
             if required_size > U256::from(self.return_back.len()) {
+                tracing::warn!("RETURNDATACOPYに関するルール違反");
                 return false;
             }
         }
@@ -221,8 +234,10 @@ impl Zfunction for EVM {
                     opcode == 0xa3 ||   //LOG
                     opcode == 0xa4
             {
+                tracing::warn!("ステート変更の権限違反");
                 return false;
             } else if opcode == 0xf1 && !self.peek(2).is_zero() {
+                tracing::warn!("ステート変更の権限違反");
                 return false;
             }
         }

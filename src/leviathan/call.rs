@@ -34,13 +34,6 @@ impl MessageCall for LEVIATHAN {
         sudo: bool,
         block_header: &BlockHeader,
     ) -> Result<(U256, Vec<u8>, Option<Address>), (U256, Option<Vec<u8>>, Option<Address>)> {
-        //事前チェック
-        let sender_balance = state.get_balance(&sender).unwrap_or(U256::ZERO);
-        let is_too_deep = depth >= 1024; // 深さ制限
-        let is_insufficient_funds = eth > sender_balance; // 残高不足
-        if is_too_deep || is_insufficient_funds {
-            return Err((U256::ZERO, None, None));
-        }
         if !substate.a_access.contains(&recipient) {
             substate.a_access.push(recipient.clone())
         }
@@ -49,7 +42,7 @@ impl MessageCall for LEVIATHAN {
         //残高の移動
         if eth != U256::ZERO {
             if state.is_empty(&sender) {
-                return Err((U256::ZERO, None, None));
+                return Err((gas, None, None));
             }
             if state.is_empty(&recipient) {
                 state.add_account(&recipient, Account::new()); //アカウントを追加
@@ -62,7 +55,7 @@ impl MessageCall for LEVIATHAN {
         }
 
         //Execution Environmentの構築
-        let mut execution_environment = ExecutionEnvironment::new(
+        let mut execution_environment = Box::new(ExecutionEnvironment::new(
             recipient.clone(),
             origin.clone(),
             price,
@@ -73,7 +66,7 @@ impl MessageCall for LEVIATHAN {
             block_header,
             depth,
             sudo,
-        );
+        ));
 
         //プリコンパイル判定と実行の要件
         let contract_u256 = contract.to_u256();
@@ -106,7 +99,7 @@ impl MessageCall for LEVIATHAN {
                 let exe_code = state.get_code(&contract).unwrap_or(Vec::new());
                 execution_environment.i_byte = exe_code;
                 //仮想マシンの実行
-                let mut evm = EVM::new(&execution_environment, self.version.clone());
+                let mut evm = Box::new(EVM::new(&execution_environment, self.version.clone()));
                 evm.gas = gas;
                 let result = evm.evm_run(self, state, substate, &mut execution_environment);
                 match result {
@@ -132,6 +125,7 @@ impl MessageCall for LEVIATHAN {
 
             Err((revert_gas, Some(revert_data))) => {
                 //REVERT
+                tracing::info!("[MessageCall] Revert");
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                 return Err((revert_gas, Some(revert_data), None));
@@ -139,6 +133,7 @@ impl MessageCall for LEVIATHAN {
 
             Err((gas, None)) => {
                 //Z関数による停止
+                tracing::info!("[MessageCall] 例外停止");
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                 return Err((U256::ZERO, None, None));

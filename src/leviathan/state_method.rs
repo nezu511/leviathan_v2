@@ -21,6 +21,14 @@ impl State for WorldState {
         return true;
     }
 
+    fn is_storage_empty(&self, address: &Address) -> bool {
+        //空だとtrue;
+        let Some(account) = self.0.get(address) else {
+            return true;
+        };
+        account.storage.is_empty()
+    }
+
     fn get_balance(&self, address: &Address) -> Option<U256> {
         if !self.0.contains_key(&address) {
             return None;
@@ -82,6 +90,7 @@ impl State for WorldState {
             .0
             .get_mut(&address)
             .expect("アカウントが存在しない.事前にadd_account");
+        tracing::info!("[inc_nonce]アドレス:0x{}", hex::encode(address.0)); //アドレス
         account.nonce += 1
     }
 
@@ -90,7 +99,7 @@ impl State for WorldState {
             .0
             .get_mut(&address)
             .expect("[dec_nonce]: アカウントが存在しない");
-        account.nonce += 1
+        account.nonce -= 1
     }
 
     fn set_storage(&mut self, address: &Address, key: U256, value: U256) {

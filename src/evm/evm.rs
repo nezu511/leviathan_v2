@@ -81,7 +81,13 @@ impl Xi for EVM {
         //Ok()：正常停止
         //Err(None) => Z関数による停止
         //Err(Some(Vec<u8>)) => REVERTによる停止
-
+        //println!("Depth: {}", execution_environment.i_depth);
+        let rem_stack3 = stacker::remaining_stack().unwrap_or(0);
+        tracing::debug!(
+            depth = execution_environment.i_depth,
+            rem_stack = rem_stack3,
+            "EVM突入"
+        );
         let code = execution_environment.i_byte.clone();
         let mut opcode = 0u8;
         loop {
@@ -92,12 +98,18 @@ impl Xi for EVM {
                 opcode = code[self.pc];
             }
 
-            println!("0x{:x}, rest_gas: {}", opcode, self.gas);
-
             //Z関数による安全性を確認
             if !self.is_safe(opcode, &substate, &state, &execution_environment) {
                 return Err(None); //例外的な停止
             }
+
+            //デバック用
+            let consumption_gas = self.gas(opcode, &substate, &state, &execution_environment);
+            tracing::trace!(
+            opcode = format_args!("0x{:x}", opcode),
+            self_gas = %self.gas,
+            consumption_gas = %consumption_gas,
+            );
 
             //O関数による状態遷移
             let result = self.execution(opcode, leviathan, substate, state, execution_environment);
@@ -156,6 +168,9 @@ mod tests {
 
     #[test]
     fn test_all_vm_tests() {
+        let _ = tracing_subscriber::fmt()
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+            .try_init();
         // 関数名も全体テスト用に変更
         // --- 変更点2: テストのルートディレクトリを指定 ---
         let test_dir_str = "test_data/VMTests";

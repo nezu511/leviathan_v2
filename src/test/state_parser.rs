@@ -11,8 +11,10 @@ pub struct StateTestSuite {
 #[derive(Deserialize, Debug)]
 pub struct StateTestCase {
     pub env: EnvData,
+    #[serde(default)]
     pub pre: HashMap<String, AccountData>,
     pub transaction: TransactionData,
+    #[serde(default)]
     pub expect: Vec<ExpectData>,
 }
 
@@ -43,6 +45,7 @@ pub struct TransactionData {
     pub gas_price: String,
     pub nonce: String,
     pub secret_key: String,
+    #[serde(default)]
     pub to: String,
     pub value: Vec<String>,
 }
@@ -51,4 +54,39 @@ pub struct TransactionData {
 pub struct ExpectData {
     pub network: Vec<String>,
     pub result: HashMap<String, AccountData>,
+    pub indexes: Option<TestIndexes>,
+}
+
+// ▼▼▼ `state_parser.rs` の一番下の部分をこれに置き換える ▼▼▼
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum IndexType {
+    Single(i32),     // "data": 0 のような単一の数字
+    Multi(Vec<i32>), // "data": [0, 2] のような配列
+}
+
+impl IndexType {
+    // どちらの型が来ても、とりあえず最初の1つ目の数字を取り出す便利関数
+    pub fn first(&self) -> i32 {
+        match self {
+            IndexType::Single(v) => *v,
+            IndexType::Multi(v) => v.first().copied().unwrap_or(0),
+        }
+    }
+}
+
+// 万が一省略された時のためのデフォルト値
+fn default_index() -> IndexType {
+    IndexType::Single(0)
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TestIndexes {
+    #[serde(default = "default_index")]
+    pub data: IndexType,
+    #[serde(default = "default_index")]
+    pub gas: IndexType,
+    #[serde(default = "default_index")]
+    pub value: IndexType,
 }
