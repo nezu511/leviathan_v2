@@ -1,11 +1,11 @@
-use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, Log, SubState, Transaction};
+use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use alloy_primitives::{I256, U256};
 
 pub trait State {
     fn is_empty(&self, address: &Address) -> bool; //空だとtrue;
     
-    fn is_dead(&self, address: &Address) -> bool; //DEADだとtrue
+    fn is_dead(&self, version: VersionId, address: &Address) -> bool; //DEADだとtrue
 
     fn is_storage_empty(&self, address: &Address) -> bool; //空だとtrue;
 

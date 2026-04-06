@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::leviathan::structs::{ExecutionEnvironment, SubState};
+use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::leviathan_trait::State;
 use alloy_primitives::{I256, U256, hex};
@@ -21,12 +21,21 @@ impl State for WorldState {
         return true;
     }
 
-    fn is_dead(&self, address: &Address) -> bool {
+    fn is_dead(&self, version:VersionId, address: &Address) -> bool {
         //DEADだとtrue
-        if !self.0.contains_key(address) || self.is_empty(address) {
-            return true;
+        if version < VersionId::SpuriousDragon {
+            if !self.0.contains_key(address) {
+                return true;
+            }else{
+                return false;
+            }
+        }else{
+            if !self.0.contains_key(address) || self.is_empty(address) {
+                return true;
+            }else{
+                return false;
+            }
         }
-        return false;
     }
 
     fn is_storage_empty(&self, address: &Address) -> bool {

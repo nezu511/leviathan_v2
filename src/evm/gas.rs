@@ -449,7 +449,7 @@ impl Gfunction for EVM {
                     if !value.is_zero() {
                         create_cost = create_cost.saturating_add(U256::from(9000));
                     }
-                    if state.is_empty(&address) {
+                    if state.is_dead(self.version, &address) {
                         create_cost = create_cost.saturating_add(U256::from(25000));
                     }
                 } else {
