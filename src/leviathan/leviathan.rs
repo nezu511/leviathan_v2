@@ -119,13 +119,13 @@ impl TransactionExecution for LEVIATHAN {
         let result = if transaction.t_to.is_none() {
             //デバック出力
             tracing::info!(
-                sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
-                data = %hex::encode(&transaction.data),
-                gas = %gas,
-                gas_price = %transaction.t_price,
-                send_eth = %transaction.t_value,
-                "Transaction [CREATE]"
-                );
+            sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
+            data = %hex::encode(&transaction.data),
+            gas = %gas,
+            gas_price = %transaction.t_price,
+            send_eth = %transaction.t_value,
+            "Transaction [CREATE]"
+            );
             self.contract_creation(
                 state,
                 &mut substate,
@@ -144,14 +144,14 @@ impl TransactionExecution for LEVIATHAN {
             let to_address = transaction.t_to.unwrap();
             //デバック出力
             tracing::info!(
-                sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
-                to_address =  format_args!("0x{}", hex::encode(to_address.0)),
-                data = %hex::encode(&transaction.data),
-                gas = %gas,
-                gas_price = %transaction.t_price,
-                send_eth = %transaction.t_value,
-                "Transaction [CALL]"
-                );
+            sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
+            to_address =  format_args!("0x{}", hex::encode(to_address.0)),
+            data = %hex::encode(&transaction.data),
+            gas = %gas,
+            gas_price = %transaction.t_price,
+            send_eth = %transaction.t_value,
+            "Transaction [CALL]"
+            );
             self.message_call(
                 state,
                 &mut substate,
@@ -444,20 +444,49 @@ mod state_tests {
                     // indexes の取得（存在しない場合や -1 の場合は 0 を使う）
                     let (data_idx, gas_idx, value_idx) = match &expect_data.indexes {
                         Some(idx) => (
-                            if idx.data.first() < 0 { 0 } else { idx.data.first() as usize },
-                            if idx.gas.first() < 0 { 0 } else { idx.gas.first() as usize },
-                            if idx.value.first() < 0 { 0 } else { idx.value.first() as usize },
+                            if idx.data.first() < 0 {
+                                0
+                            } else {
+                                idx.data.first() as usize
+                            },
+                            if idx.gas.first() < 0 {
+                                0
+                            } else {
+                                idx.gas.first() as usize
+                            },
+                            if idx.value.first() < 0 {
+                                0
+                            } else {
+                                idx.value.first() as usize
+                            },
                         ),
                         None => (0, 0, 0), // 昔のフォーマットへの後方互換性
                     };
 
                     let default_str = String::new();
-                    let tx_data_str = test_data.transaction.data.get(data_idx)
-                        .unwrap_or_else(|| test_data.transaction.data.first().unwrap_or(&default_str));
-                    let gas_limit_str = test_data.transaction.gas_limit.get(gas_idx)
-                        .unwrap_or_else(|| test_data.transaction.gas_limit.first().unwrap_or(&default_str));
-                    let value_str = test_data.transaction.value.get(value_idx)
-                        .unwrap_or_else(|| test_data.transaction.value.first().unwrap_or(&default_str));
+                    let tx_data_str =
+                        test_data.transaction.data.get(data_idx).unwrap_or_else(|| {
+                            test_data.transaction.data.first().unwrap_or(&default_str)
+                        });
+                    let gas_limit_str = test_data
+                        .transaction
+                        .gas_limit
+                        .get(gas_idx)
+                        .unwrap_or_else(|| {
+                            test_data
+                                .transaction
+                                .gas_limit
+                                .first()
+                                .unwrap_or(&default_str)
+                        });
+                    let value_str =
+                        test_data
+                            .transaction
+                            .value
+                            .get(value_idx)
+                            .unwrap_or_else(|| {
+                                test_data.transaction.value.first().unwrap_or(&default_str)
+                            });
 
                     // ターミナルへの詳細なログ出力
                     println!("  [Matrix {}] Version: {:?}", expect_idx, version);
@@ -484,7 +513,11 @@ mod state_tests {
                             println!("            - Balance: {}", balance);
                         }
                         if let Some(code) = &expected_acc.code {
-                            let disp = if code.len() > 20 { format!("{}...", &code[..20]) } else { code.to_string() };
+                            let disp = if code.len() > 20 {
+                                format!("{}...", &code[..20])
+                            } else {
+                                code.to_string()
+                            };
                             println!("            - Code:    {}", disp);
                         }
                         if let Some(storage) = &expected_acc.storage {
@@ -671,8 +704,9 @@ mod state_tests {
                             continue;
                         }
 
-                        let actual_acc = actual_acc_opt
-                            .unwrap_or_else(|| panic!("Address {} がステートに存在しません", addr_str));
+                        let actual_acc = actual_acc_opt.unwrap_or_else(|| {
+                            panic!("Address {} がステートに存在しません", addr_str)
+                        });
 
                         if let Some(expected_balance_str) = &expected_acc.balance {
                             let expected_balance = parse_u256(expected_balance_str);
@@ -706,7 +740,8 @@ mod state_tests {
                             for (k, v) in expected_storage {
                                 let key = parse_u256(k);
                                 let expected_val = parse_u256(v);
-                                let actual_val = actual_acc.storage.get(&key).unwrap_or(&U256::ZERO);
+                                let actual_val =
+                                    actual_acc.storage.get(&key).unwrap_or(&U256::ZERO);
 
                                 assert_eq!(
                                     *actual_val, expected_val,
@@ -721,7 +756,6 @@ mod state_tests {
                 }
                 println!("Passed All Matrices for: {}", test_name);
             }
-
         }
 
         println!("\n==================================================");

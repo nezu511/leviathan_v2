@@ -604,7 +604,7 @@ impl Gfunction for EVM {
                 let mut dynamic_cost = U256::ZERO;
                 if self.version < VersionId::Shanghai {
                     dynamic_cost = words.saturating_mul(U256::from(6));
-                }else{
+                } else {
                     dynamic_cost = words.saturating_mul(U256::from(8));
                 }
                 let total = dynamic_cost

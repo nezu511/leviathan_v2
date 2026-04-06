@@ -125,7 +125,7 @@ impl MessageCall for LEVIATHAN {
 
             Err((revert_gas, Some(revert_data))) => {
                 //REVERT
-                tracing::info!("[MessageCall] Revert"); 
+                tracing::info!("[MessageCall] Revert");
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                 return Err((revert_gas, Some(revert_data), None));
@@ -133,7 +133,7 @@ impl MessageCall for LEVIATHAN {
 
             Err((gas, None)) => {
                 //Z関数による停止
-                tracing::info!("[MessageCall] 例外停止"); 
+                tracing::info!("[MessageCall] 例外停止");
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                 return Err((U256::ZERO, None, None));

@@ -62,8 +62,8 @@ pub struct ExpectData {
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum IndexType {
-    Single(i32),       // "data": 0 のような単一の数字
-    Multi(Vec<i32>),   // "data": [0, 2] のような配列
+    Single(i32),     // "data": 0 のような単一の数字
+    Multi(Vec<i32>), // "data": [0, 2] のような配列
 }
 
 impl IndexType {

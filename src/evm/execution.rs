@@ -59,146 +59,70 @@ impl Ofunction for EVM {
                 return Some(false);
             }
 
-            0x01 ..=0x0b => {
-                self.arithmetic_opcodes(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
+            0x01..=0x0b => {
+                self.arithmetic_opcodes(opcode, leviathan, substate, state, execution_environment)
             }
 
-            0x10 ..=0x1d => {
-                self.comparison_bitwise_opcodes(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0x10..=0x1d => self.comparison_bitwise_opcodes(
+                opcode,
+                leviathan,
+                substate,
+                state,
+                execution_environment,
+            ),
 
             0x20 => {
-                self.keccak256_opcode(
+                self.keccak256_opcode(opcode, leviathan, substate, state, execution_environment)
+            }
+
+            0x30..=0x34 | 0x36 | 0x38 | 0x3a | 0x3b | 0x3d | 0x3f => self
+                .environmental_info_opcode(
                     opcode,
                     leviathan,
                     substate,
                     state,
-                    execution_environment)
-
-            }
-
-            0x30 ..=0x34 | 0x36 | 0x38 | 0x3a | 0x3b | 0x3d | 0x3f => {
-                self.environmental_info_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+                    execution_environment,
+                ),
 
             0x35 => {
-                self.calldataload_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
+                self.calldataload_opcode(opcode, leviathan, substate, state, execution_environment)
             }
 
             0x37 => {
-                self.calldatacopy_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
+                self.calldatacopy_opcode(opcode, leviathan, substate, state, execution_environment)
             }
 
-            0x39 => {
-                self.codecopy_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
-            
+            0x39 => self.codecopy_opcode(opcode, leviathan, substate, state, execution_environment),
+
             0x3c => {
-                self.extcodecopy_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
+                self.extcodecopy_opcode(opcode, leviathan, substate, state, execution_environment)
             }
 
-            0x3e =>{
-                self.returndatacopy_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0x3e => self.returndatacopy_opcode(
+                opcode,
+                leviathan,
+                substate,
+                state,
+                execution_environment,
+            ),
 
-            0x40 ..=0x48 => {
-                self.block_info_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
+            0x40..=0x48 => {
+                self.block_info_opcode(opcode, leviathan, substate, state, execution_environment)
             }
-
 
             0x50 => {
                 self.pop();
             }
 
-            0x51 => {
-                self.mload_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0x51 => self.mload_opcode(opcode, leviathan, substate, state, execution_environment),
 
-            0x52 => {
-                self.mstore_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0x52 => self.mstore_opcode(opcode, leviathan, substate, state, execution_environment),
 
-            0x53 => {
-                self.mstore8_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0x53 => self.mstore8_opcode(opcode, leviathan, substate, state, execution_environment),
 
-            0x54 => {
-                self.sload_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0x54 => self.sload_opcode(opcode, leviathan, substate, state, execution_environment),
 
-            0x55 => {
-                self.sstore_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0x55 => self.sstore_opcode(opcode, leviathan, substate, state, execution_environment),
 
             0x56 | 0x57 => (),
 
@@ -227,12 +151,7 @@ impl Ofunction for EVM {
             }
 
             0x60..=0x7f => {
-                self.push_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
+                self.push_opcode(opcode, leviathan, substate, state, execution_environment)
             }
 
             0x80..=0x8f => {
@@ -251,58 +170,20 @@ impl Ofunction for EVM {
             }
 
             0xa0..=0xa4 => {
-                self.log_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
+                self.log_opcode(opcode, leviathan, substate, state, execution_environment)
             }
 
-            0xf0 => {
-                self.create_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0xf0 => self.create_opcode(opcode, leviathan, substate, state, execution_environment),
 
-            0xf1 => {
-                self.call_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0xf1 => self.call_opcode(opcode, leviathan, substate, state, execution_environment),
 
-            0xf2 => {
-                self.callcode_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0xf2 => self.callcode_opcode(opcode, leviathan, substate, state, execution_environment),
 
             0xf4 => {
-                self.delegatecall_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
+                self.delegatecall_opcode(opcode, leviathan, substate, state, execution_environment)
             }
 
-            0xf5 => {
-                self.create2_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
-            }
+            0xf5 => self.create2_opcode(opcode, leviathan, substate, state, execution_environment),
 
             0xf3 => {
                 //RETURN
@@ -325,12 +206,7 @@ impl Ofunction for EVM {
             }
 
             0xfa => {
-                self.staticcall_opcode(
-                    opcode,
-                    leviathan,
-                    substate,
-                    state,
-                    execution_environment)
+                self.staticcall_opcode(opcode, leviathan, substate, state, execution_environment)
             }
 
             0xfd => {
@@ -388,7 +264,6 @@ impl Ofunction for EVM {
         return None;
     }
 
-
     #[inline(never)]
     fn call_opcode(
         &mut self,
@@ -436,8 +311,8 @@ impl Ofunction for EVM {
         let my_balance = state
             .get_balance(&execution_environment.i_address)
             .unwrap_or(U256::from(0));
-        let is_balance = my_balance < value;    //残高チェック
-        let is_deepth  = execution_environment.i_depth >= 1024;
+        let is_balance = my_balance < value; //残高チェック
+        let is_deepth = execution_environment.i_depth >= 1024;
         if is_balance || is_deepth {
             self.push(U256::ZERO);
             return;
@@ -447,7 +322,7 @@ impl Ofunction for EVM {
         //子に渡すガスの計算
         let Some(mut child_gas) = self.child_gas_mem else {
             self.push(U256::ZERO);
-            return ;
+            return;
         };
         if value > 0 {
             //最終的な子に渡すガス
@@ -458,12 +333,12 @@ impl Ofunction for EVM {
         self.child_gas_mem = None;
         //デバック出力
         tracing::info!(
-            address =  format_args!("0x{}", hex::encode(to_address.0)),
-            value = %value,
-            data = %hex::encode(&data),
-            gas = %child_gas,
-            "CALL"
-            );
+        address =  format_args!("0x{}", hex::encode(to_address.0)),
+        value = %value,
+        data = %hex::encode(&data),
+        gas = %child_gas,
+        "CALL"
+        );
 
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
@@ -509,7 +384,7 @@ impl Ofunction for EVM {
                 leviathan.merge(*child_leviathan);
                 //結果push
                 self.push(U256::from(1));
-                }
+            }
             Err((return_gas, Some(return_data), _)) => {
                 //出力データのメモリ書き込み
                 let return_size = return_data.len();
@@ -676,8 +551,8 @@ impl Ofunction for EVM {
                         self.push(result);
                     }
                 }
-            },
-            0_u8 | 12_u8..=u8::MAX => todo!()
+            }
+            0_u8 | 12_u8..=u8::MAX => todo!(),
         }
     }
 
@@ -690,7 +565,6 @@ impl Ofunction for EVM {
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
-
         match opcode {
             0x10 => {
                 //LT
@@ -845,8 +719,8 @@ impl Ofunction for EVM {
                     let result = val2.asr(val1);
                     self.push(result.into_raw());
                 }
-            },
-            0_u8..=15_u8 | 30_u8..=u8::MAX => todo!()
+            }
+            0_u8..=15_u8 | 30_u8..=u8::MAX => todo!(),
         }
     }
 
@@ -885,7 +759,6 @@ impl Ofunction for EVM {
         self.active_words = active_words;
     }
 
-
     #[inline(never)]
     fn environmental_info_opcode(
         &mut self,
@@ -896,7 +769,6 @@ impl Ofunction for EVM {
         execution_environment: &ExecutionEnvironment,
     ) {
         match opcode {
-
             0x30 => {
                 //ADDRESS
                 let address = &execution_environment.i_address;
@@ -939,20 +811,17 @@ impl Ofunction for EVM {
                 self.push(val);
             }
 
-
             0x36 => {
                 //CALLDATASIZE
                 let data = &execution_environment.i_data;
                 self.push(U256::from(data.len()));
             }
 
-
             0x38 => {
                 //CODESIZE
                 let size = execution_environment.i_byte.len();
                 self.push(U256::from(size));
             }
-
 
             0x3a => {
                 //GASPRICE
@@ -975,13 +844,11 @@ impl Ofunction for EVM {
                 }
             }
 
-
             0x3d => {
                 //RETURNDATASIZE
                 let size = self.return_back.len();
                 self.push(U256::from(size));
             }
-
 
             0x3f => {
                 //EXTCODEHASH
@@ -1003,7 +870,7 @@ impl Ofunction for EVM {
                 if !substate.a_access.contains(&address) {
                     substate.a_access.push(address.clone())
                 }
-            },
+            }
             _ => todo!(),
         }
     }
@@ -1017,20 +884,20 @@ impl Ofunction for EVM {
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
-            //CALLDATALOAD
-            let offset = self.pop().try_into().unwrap_or(usize::MAX);
-            let data = &execution_environment.i_data;
-            let required_size = offset.saturating_add(32);
-            let mut buffer = [0u8; 32];
-            if offset >= data.len() {
-                self.push(U256::ZERO)
-            } else if required_size > data.len() {
-                buffer[..data.len() - offset].copy_from_slice(&data[offset..data.len()]);
-            } else {
-                buffer[..].copy_from_slice(&data[offset..required_size]);
-            }
-            let val = U256::from_be_bytes(buffer);
-            self.push(val);
+        //CALLDATALOAD
+        let offset = self.pop().try_into().unwrap_or(usize::MAX);
+        let data = &execution_environment.i_data;
+        let required_size = offset.saturating_add(32);
+        let mut buffer = [0u8; 32];
+        if offset >= data.len() {
+            self.push(U256::ZERO)
+        } else if required_size > data.len() {
+            buffer[..data.len() - offset].copy_from_slice(&data[offset..data.len()]);
+        } else {
+            buffer[..].copy_from_slice(&data[offset..required_size]);
+        }
+        let val = U256::from_be_bytes(buffer);
+        self.push(val);
     }
 
     #[inline(never)]
@@ -1184,14 +1051,13 @@ impl Ofunction for EVM {
             }
             //メモリに値を書き込む
             let read_size = offset.saturating_add(size);
-            self.memory[dest_offset..required_size]
-                .copy_from_slice(&data[offset..read_size]);
+            self.memory[dest_offset..required_size].copy_from_slice(&data[offset..read_size]);
         }
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
         self.active_words = active_words;
     }
-    
+
     #[inline(never)]
     fn block_info_opcode(
         &mut self,
@@ -1270,8 +1136,8 @@ impl Ofunction for EVM {
                 let header = &execution_environment.i_block_header;
                 let val = header.h_basefee;
                 self.push(val);
-            },
-            0_u8..=63_u8 | 73_u8..=u8::MAX => todo!()
+            }
+            0_u8..=63_u8 | 73_u8..=u8::MAX => todo!(),
         }
     }
 
@@ -1284,7 +1150,6 @@ impl Ofunction for EVM {
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
-
         //MLOAD メモリから読み込む（32B)
         let pointer = self.pop().try_into().unwrap_or(usize::MAX);
         let required_size = pointer.saturating_add(32);
@@ -1552,7 +1417,6 @@ impl Ofunction for EVM {
         self.active_words = active_words;
     }
 
-
     #[inline(never)]
     fn create_opcode(
         &mut self,
@@ -1584,16 +1448,12 @@ impl Ofunction for EVM {
         let my_balance = state
             .get_balance(&execution_environment.i_address)
             .unwrap_or(U256::from(0));
-        let is_balance = my_balance < value;    //残高チェック
-        let is_deepth  = execution_environment.i_depth >= 1024;
+        let is_balance = my_balance < value; //残高チェック
+        let is_deepth = execution_environment.i_depth >= 1024;
         let is_code_size = if self.version >= VersionId::Shanghai {
             //Initcodeのサイズ確認
-            if data.len() > 49152 {
-                true
-            }else{
-                false
-            }
-        }else{
+            if data.len() > 49152 { true } else { false }
+        } else {
             false
         };
         if is_balance || is_deepth || is_code_size {
@@ -1614,16 +1474,16 @@ impl Ofunction for EVM {
             child_gas = gr - (gr / U256::from(64)); //渡せる上限
         }
         self.gas = self.gas.saturating_sub(child_gas); //親からガスを徴収
-        
+
         //Debug用
         let rem_stack1 = stacker::remaining_stack().unwrap_or(0);
         tracing::info!(
-            value = %value,
-            init_code = %hex::encode(&data),
-            gas = %child_gas,
-            rem_stack = rem_stack1,
-            "CREATE",
-            );
+        value = %value,
+        init_code = %hex::encode(&data),
+        gas = %child_gas,
+        rem_stack = rem_stack1,
+        "CREATE",
+        );
 
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
@@ -1640,7 +1500,7 @@ impl Ofunction for EVM {
             None,
             execution_environment.i_permission,
             execution_environment.i_block_header,
-            );
+        );
         //実行後の処理
         match result {
             Ok((return_gas, return_data, Some(contract_address))) => {
@@ -1671,7 +1531,7 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, None, _)) => {
-                tracing::info!("CREATE: 例外停止"); 
+                tracing::info!("CREATE: 例外停止");
                 //ガスの精算
                 self.gas = self.gas + return_gas;
                 self.push(U256::ZERO);
@@ -1712,16 +1572,12 @@ impl Ofunction for EVM {
         let my_balance = state
             .get_balance(&execution_environment.i_address)
             .unwrap_or(U256::from(0));
-        let is_balance = my_balance < value;    //残高チェック
-        let is_deepth  = execution_environment.i_depth >= 1024;
+        let is_balance = my_balance < value; //残高チェック
+        let is_deepth = execution_environment.i_depth >= 1024;
         let is_code_size = if self.version >= VersionId::Shanghai {
             //Initcodeのサイズ確認
-            if data.len() > 49152 {
-                true
-            }else{
-                false
-            }
-        }else{
+            if data.len() > 49152 { true } else { false }
+        } else {
             false
         };
         if is_balance || is_deepth || is_code_size {
@@ -1745,13 +1601,13 @@ impl Ofunction for EVM {
         //Debug用
         let rem_stack2 = stacker::remaining_stack().unwrap_or(0);
         tracing::info!(
-            value = %value,
-            init_code = %hex::encode(&data),
-            gas = %child_gas,
-            salt = %salt,
-            rem_stack = rem_stack2,
-            "CREATE2",
-            );
+        value = %value,
+        init_code = %hex::encode(&data),
+        gas = %child_gas,
+        salt = %salt,
+        rem_stack = rem_stack2,
+        "CREATE2",
+        );
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.contract_creation(
@@ -1767,7 +1623,7 @@ impl Ofunction for EVM {
             Some(salt),
             execution_environment.i_permission,
             execution_environment.i_block_header,
-            );
+        );
         //実行後の処理
         match result {
             Ok((return_gas, return_data, Some(contract_address))) => {
@@ -1781,7 +1637,7 @@ impl Ofunction for EVM {
                 if !substate.a_access.contains(&contract_address) {
                     substate.a_access.push(contract_address.clone())
                 }
-                tracing::info!("CREATE2:0x{}",hex::encode(contract_address.0)); //アドレス
+                tracing::info!("CREATE2:0x{}", hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -1789,7 +1645,7 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, Some(return_data), _)) => {
-                tracing::info!("CREATE2: Revert"); 
+                tracing::info!("CREATE2: Revert");
                 //ガスの精算
                 self.gas += return_gas;
                 //return_backの更新
@@ -1798,7 +1654,7 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, None, _)) => {
-                tracing::info!("CREATE2: 例外停止"); 
+                tracing::info!("CREATE2: 例外停止");
                 //ガスの精算
                 self.gas = self.gas + return_gas;
                 self.push(U256::ZERO);
@@ -1856,8 +1712,8 @@ impl Ofunction for EVM {
         let my_balance = state
             .get_balance(&execution_environment.i_address)
             .unwrap_or(U256::from(0));
-        let is_balance = my_balance < value;    //残高チェック
-        let is_deepth  = execution_environment.i_depth >= 1024;
+        let is_balance = my_balance < value; //残高チェック
+        let is_deepth = execution_environment.i_depth >= 1024;
         if is_balance || is_deepth {
             self.push(U256::ZERO);
             return;
@@ -1878,12 +1734,12 @@ impl Ofunction for EVM {
         }
         //デバック用
         tracing::info!(
-            address =  format_args!("0x{}", hex::encode(to_address.0)),
-            value = %value,
-            data = %hex::encode(&data),
-            gas = %child_gas,
-            "CALLCODE",
-            );
+        address =  format_args!("0x{}", hex::encode(to_address.0)),
+        value = %value,
+        data = %hex::encode(&data),
+        gas = %child_gas,
+        "CALLCODE",
+        );
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
@@ -1901,7 +1757,7 @@ impl Ofunction for EVM {
             depth,
             execution_environment.i_permission,
             execution_environment.i_block_header,
-            );
+        );
         //実行後の処理
         match result {
             Ok((return_gas, return_data, _)) => {
@@ -2009,7 +1865,7 @@ impl Ofunction for EVM {
         }
         //事前チェック
         //・コールスタック深度
-        let is_deepth  = execution_environment.i_depth >= 1024;
+        let is_deepth = execution_environment.i_depth >= 1024;
         if is_deepth {
             self.push(U256::ZERO);
             return;
@@ -2024,11 +1880,11 @@ impl Ofunction for EVM {
         self.child_gas_mem = None;
         //デバック用
         tracing::info!(
-            address =  format_args!("0x{}", hex::encode(to_address.0)),
-            data = %hex::encode(&data),
-            gas = %child_gas,
-            "DELEGATECALL",
-            );
+        address =  format_args!("0x{}", hex::encode(to_address.0)),
+        data = %hex::encode(&data),
+        gas = %child_gas,
+        "DELEGATECALL",
+        );
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
@@ -2046,7 +1902,7 @@ impl Ofunction for EVM {
             depth,
             execution_environment.i_permission,
             execution_environment.i_block_header,
-            );
+        );
         //実行後の処理
         match result {
             Ok((return_gas, return_data, _)) => {
@@ -2155,7 +2011,7 @@ impl Ofunction for EVM {
         //事前チェック
         //・残高チェック
         //・コールスタック深度
-        let is_deepth  = execution_environment.i_depth >= 1024;
+        let is_deepth = execution_environment.i_depth >= 1024;
         if is_deepth {
             self.push(U256::ZERO);
             return;
@@ -2170,11 +2026,11 @@ impl Ofunction for EVM {
         self.child_gas_mem = None;
         //デバック用
         tracing::info!(
-            address =  format_args!("0x{}", hex::encode(to_address.0)),
-            data = %hex::encode(&data),
-            gas = %child_gas,
-            "STATICCALL",
-            );
+        address =  format_args!("0x{}", hex::encode(to_address.0)),
+        data = %hex::encode(&data),
+        gas = %child_gas,
+        "STATICCALL",
+        );
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
@@ -2192,7 +2048,7 @@ impl Ofunction for EVM {
             depth,
             false,
             execution_environment.i_block_header,
-            );
+        );
         //実行後の処理
         match result {
             Ok((return_gas, return_data, _)) => {
@@ -2255,5 +2111,4 @@ impl Ofunction for EVM {
             }
         }
     }
-
 }

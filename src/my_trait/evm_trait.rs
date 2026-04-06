@@ -60,9 +60,6 @@ pub trait Ofunction {
     fn pop(&mut self) -> U256;
     fn push(&mut self, val: U256);
 
-
-
-
     fn arithmetic_opcodes(
         &mut self,
         opcode: u8,
@@ -98,7 +95,6 @@ pub trait Ofunction {
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     );
-
 
     fn calldataload_opcode(
         &mut self,
@@ -270,7 +266,6 @@ pub trait Ofunction {
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     );
-  
 }
 
 pub trait Hfunction {
