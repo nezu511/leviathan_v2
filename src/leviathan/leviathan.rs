@@ -192,7 +192,10 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
-                tracing::info!("マイナーアドレス: 0x{}",hex::encode(block_header.h_beneficiary.0)); //アドレス
+                tracing::info!(
+                    "マイナーアドレス: 0x{}",
+                    hex::encode(block_header.h_beneficiary.0)
+                ); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);
                 let f = if self.version < VersionId::London {
                     transaction.t_price
@@ -224,7 +227,10 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
-                tracing::info!("マイナーアドレス: 0x{}",hex::encode(block_header.h_beneficiary.0)); //アドレス
+                tracing::info!(
+                    "マイナーアドレス: 0x{}",
+                    hex::encode(block_header.h_beneficiary.0)
+                ); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(gas);
                 let f = if self.version < VersionId::London {
                     transaction.t_price
