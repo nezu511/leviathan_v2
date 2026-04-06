@@ -85,6 +85,7 @@ impl Xi for EVM {
         let rem_stack3 = stacker::remaining_stack().unwrap_or(0);
         tracing::debug!(
             depth = execution_environment.i_depth,
+            self_gas = %self.gas,
             rem_stack = rem_stack3,
             "EVM突入"
         );
