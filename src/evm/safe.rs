@@ -181,7 +181,7 @@ impl Zfunction for EVM {
         //命令のガスコストと現在の残ガスを比較
         let gas_cost = self.gas(opcode, substate, state, execution_environment);
         if self.gas < gas_cost {
-            tracing::warn!("残ガスが足りない");
+            tracing::warn!("[is_safe]残ガスが足りない");
             return false;
         }
 
@@ -206,9 +206,11 @@ impl Zfunction for EVM {
         }
 
         //命令がSSTOREで残ガスが2300以下
-        if opcode == 0x55 && self.gas <= U256::from(2300) {
-            tracing::warn!("SSTOREを実行するのにガスが2300以下");
-            return false;
+        if self.version >= VersionId::Istanbul {
+            if opcode == 0x55 && self.gas <= U256::from(2300) {
+                tracing::warn!("SSTOREを実行するのにガスが2300以下");
+                return false;
+            }
         }
 
         //RETURNDATACOPYに関するルール

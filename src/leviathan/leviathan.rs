@@ -192,7 +192,10 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
-                //println!("マイナーアドレス: 0x{}",hex::encode(block_header.h_beneficiary.0)); //アドレス
+                tracing::info!(
+                    "マイナーアドレス: 0x{}",
+                    hex::encode(block_header.h_beneficiary.0)
+                ); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);
                 let f = if self.version < VersionId::London {
                     transaction.t_price
@@ -224,6 +227,10 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
+                tracing::info!(
+                    "マイナーアドレス: 0x{}",
+                    hex::encode(block_header.h_beneficiary.0)
+                ); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(gas);
                 let f = if self.version < VersionId::London {
                     transaction.t_price
@@ -392,7 +399,8 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
-        let test_dir = "require/stCreate2";
+        let test_dir = "require/stCallCodes";
+        //let test_dir = "require/stCreate2";
         //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
 
         let paths = fs::read_dir(test_dir)

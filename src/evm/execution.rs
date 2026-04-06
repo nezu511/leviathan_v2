@@ -409,8 +409,6 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, None, _)) => {
-                //ガスの精算
-                self.gas = self.gas + return_gas;
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&to_address) {
                     substate.a_access.push(to_address.clone())
@@ -1533,7 +1531,6 @@ impl Ofunction for EVM {
             Err((return_gas, None, _)) => {
                 tracing::info!("CREATE: 例外停止");
                 //ガスの精算
-                self.gas = self.gas + return_gas;
                 self.push(U256::ZERO);
             }
             Ok((_, _, None)) => todo!(),
@@ -1656,7 +1653,6 @@ impl Ofunction for EVM {
             Err((return_gas, None, _)) => {
                 tracing::info!("CREATE2: 例外停止");
                 //ガスの精算
-                self.gas = self.gas + return_gas;
                 self.push(U256::ZERO);
             }
             Ok((_, _, None)) => todo!(),
@@ -1809,8 +1805,6 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, None, _)) => {
-                //ガスの精算
-                self.gas = self.gas + return_gas;
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&to_address) {
                     substate.a_access.push(to_address.clone())
@@ -1954,8 +1948,6 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, None, _)) => {
-                //ガスの精算
-                self.gas = self.gas + return_gas;
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&to_address) {
                     substate.a_access.push(to_address.clone())
@@ -2100,8 +2092,6 @@ impl Ofunction for EVM {
             }
 
             Err((return_gas, None, _)) => {
-                //ガスの精算
-                self.gas = self.gas + return_gas;
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&to_address) {
                     substate.a_access.push(to_address.clone())
