@@ -273,6 +273,7 @@ impl Ofunction for EVM {
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
+        //CALL
         let gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
         let to_address = Address::from_u256(to);
@@ -314,6 +315,14 @@ impl Ofunction for EVM {
             self.push(U256::ZERO);
             return;
         };
+        //デバック出力
+        tracing::info!(
+        address =  format_args!("0x{}", hex::encode(to_address.0)),
+        value = %value,
+        data = %hex::encode(&data),
+        gas = %child_gas,
+        "CALL"
+        );
         //事前チェック
         //・残高チェック
         //・コールスタック深度
@@ -326,6 +335,7 @@ impl Ofunction for EVM {
             self.gas += child_gas;
             self.child_gas_mem = None;
             self.push(U256::ZERO);
+            tracing::warn!("[CALL] 事前チェックで例外停止");
             return;
         }
         //depthのインクリメント
@@ -338,14 +348,6 @@ impl Ofunction for EVM {
             child_gas;
         }
         self.child_gas_mem = None;
-        //デバック出力
-        tracing::info!(
-        address =  format_args!("0x{}", hex::encode(to_address.0)),
-        value = %value,
-        data = %hex::encode(&data),
-        gas = %child_gas,
-        "CALL"
-        );
 
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
@@ -1706,6 +1708,14 @@ impl Ofunction for EVM {
             self.push(U256::ZERO);
             return;
         };
+        //デバック用
+        tracing::info!(
+        address =  format_args!("0x{}", hex::encode(to_address.0)),
+        value = %value,
+        data = %hex::encode(&data),
+        gas = %child_gas,
+        "CALLCODE",
+        );
         //事前チェック
         //・残高チェック
         //・コールスタック深度
@@ -1717,6 +1727,7 @@ impl Ofunction for EVM {
         if is_balance || is_deepth {
             self.gas += child_gas;
             self.child_gas_mem = None;
+            tracing::warn!("[CALLCODE] 事前チェックで例外停止");
             self.push(U256::ZERO);
             return;
         }
@@ -1730,14 +1741,6 @@ impl Ofunction for EVM {
         } else {
             child_gas;
         }
-        //デバック用
-        tracing::info!(
-        address =  format_args!("0x{}", hex::encode(to_address.0)),
-        value = %value,
-        data = %hex::encode(&data),
-        gas = %child_gas,
-        "CALLCODE",
-        );
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
@@ -1856,19 +1859,6 @@ impl Ofunction for EVM {
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
         }
-        //事前チェック
-        //・コールスタック深度
-        let is_deepth = execution_environment.i_depth >= 1024;
-        if is_deepth {
-            self.gas +=child_gas;
-            self.push(U256::ZERO);
-            self.child_gas_mem = None;
-            return;
-        }
-        //depthのインクリメント
-        let depth = execution_environment.i_depth + 1;
-        //子に渡すガスの計算
-        self.child_gas_mem = None;
         //デバック用
         tracing::info!(
         address =  format_args!("0x{}", hex::encode(to_address.0)),
@@ -1876,6 +1866,20 @@ impl Ofunction for EVM {
         gas = %child_gas,
         "DELEGATECALL",
         );
+        //事前チェック
+        //・コールスタック深度
+        let is_deepth = execution_environment.i_depth >= 1024;
+        if is_deepth {
+            self.gas +=child_gas;
+            self.child_gas_mem = None;
+            tracing::warn!("[DELEGATECALL] 事前チェックで例外停止");
+            self.push(U256::ZERO);
+            return;
+        }
+        //depthのインクリメント
+        let depth = execution_environment.i_depth + 1;
+        //子に渡すガスの計算
+        self.child_gas_mem = None;
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
@@ -1994,20 +1998,6 @@ impl Ofunction for EVM {
             self.push(U256::ZERO);
             return;
         };
-        //事前チェック
-        //・残高チェック
-        //・コールスタック深度
-        let is_deepth = execution_environment.i_depth >= 1024;
-        if is_deepth {
-            self.gas += child_gas;
-            self.child_gas_mem = None;
-            self.push(U256::ZERO);
-            return;
-        }
-        //depthのインクリメント
-        let depth = execution_environment.i_depth + 1;
-        //子に渡すガスの計算
-        self.child_gas_mem = None;
         //デバック用
         tracing::info!(
         address =  format_args!("0x{}", hex::encode(to_address.0)),
@@ -2015,6 +2005,21 @@ impl Ofunction for EVM {
         gas = %child_gas,
         "STATICCALL",
         );
+        //事前チェック
+        //・残高チェック
+        //・コールスタック深度
+        let is_deepth = execution_environment.i_depth >= 1024;
+        if is_deepth {
+            self.gas += child_gas;
+            self.child_gas_mem = None;
+            tracing::warn!("[STATICCALL] 事前チェックで例外停止");
+            self.push(U256::ZERO);
+            return;
+        }
+        //depthのインクリメント
+        let depth = execution_environment.i_depth + 1;
+        //子に渡すガスの計算
+        self.child_gas_mem = None;
         //サブコールの実行
         let mut child_leviathan = Box::new(LEVIATHAN::new(self.version));
         let result = child_leviathan.message_call(
