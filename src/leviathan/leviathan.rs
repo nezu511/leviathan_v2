@@ -401,7 +401,7 @@ mod state_tests {
         // ここにテストしたいディレクトリへのパスを指定します
         let test_dir = "require/stCreateTest";
         //let test_dir = "require/stCallCodes";
-        //let test_dir = "testdata/GeneralStateTestsFiller/CompleteTest";
+        //let test_dir = "require/stCreate2";
 
         let paths = fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));
