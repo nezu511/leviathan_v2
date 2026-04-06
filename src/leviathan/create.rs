@@ -68,7 +68,8 @@ impl ContractCreation for LEVIATHAN {
             .unwrap_or_else(|| Vec::new());
         let is_collision = nonce != 0 || !code.is_empty()|| !state.is_storage_empty(&contract_address); // アドレス衝突
         if is_collision {
-            return Err((gas, None, None));
+            tracing::warn!("[ContractCreaion]　collisionによる例外停止");
+            return Err((U256::ZERO, None, None));
         }
 
         //サブステートのアクセス済みアカウントに追加
@@ -130,6 +131,7 @@ impl ContractCreation for LEVIATHAN {
             Ok(output) => {
                 //不正なプレフィックス
                 if output.len() > 0 && output[0] == 0xefu8 {
+                    tracing::info!("[ContractCreation] 例外停止:不正なプレフィックス"); 
                     self.roleback(state); //Roleback実行
                     substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                     return Err((U256::ZERO, None, None));
@@ -137,6 +139,7 @@ impl ContractCreation for LEVIATHAN {
 
                 //コードのサイズ制限
                 if output.len() > 24576 {
+                    tracing::info!("[ContractCreation] 例外停止:コードサイズ制限"); 
                     self.roleback(state); //Roleback実行
                     substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                     return Err((U256::ZERO, None, None));
@@ -146,6 +149,7 @@ impl ContractCreation for LEVIATHAN {
                 let deposit_gas = 200 * output.len();
                 let rest_gas = evm.return_gas();
                 if U256::from(deposit_gas) > rest_gas {
+                    tracing::info!("[ContractCreation] 例外停止:コードデプロイ費用不足"); 
                     self.roleback(state); //Roleback実行
                     substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                     return Err((U256::ZERO, None, None));
@@ -159,6 +163,7 @@ impl ContractCreation for LEVIATHAN {
 
             Err(Some(revert_data)) => {
                 //REVERT
+                tracing::info!("[ContractCreation] Revert"); 
                 let revert_gas = evm.return_gas(); //ガス返却
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
@@ -167,6 +172,7 @@ impl ContractCreation for LEVIATHAN {
 
             Err(None) => {
                 //Z関数による停止
+                tracing::info!("[ContractCreation] Revert"); 
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                 return Err((U256::ZERO, None, None));
