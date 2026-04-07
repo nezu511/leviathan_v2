@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::leviathan::structs::{ExecutionEnvironment, SubState};
+use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::leviathan_trait::State;
 use alloy_primitives::{I256, U256, hex};
@@ -21,6 +21,27 @@ impl State for WorldState {
         return true;
     }
 
+    fn is_dead(&self, version:VersionId, address: &Address) -> bool {
+        //DEADだとtrue
+        if version < VersionId::SpuriousDragon {
+            if !self.0.contains_key(address) {
+                return true;
+            }else{
+                return false;
+            }
+        }else{
+            if !self.0.contains_key(address) || self.is_empty(address) {
+                return true;
+            }else{
+                return false;
+            }
+        }
+    }
+
+    fn is_physically_exist(&self, address: &Address) -> bool { //存在してたらtrue
+        self.0.contains_key(address)
+    }
+                                                               
     fn is_storage_empty(&self, address: &Address) -> bool {
         //空だとtrue;
         let Some(account) = self.0.get(address) else {
@@ -79,7 +100,7 @@ impl State for WorldState {
         let account = self
             .0
             .get_mut(&address)
-            .expect("アカウントが存在しない.事前にadd_account");
+            .expect("[set_balance]アカウントが存在しない.事前にadd_account");
         account.balance += value;
     }
 
@@ -89,7 +110,7 @@ impl State for WorldState {
         let account = self
             .0
             .get_mut(&address)
-            .expect("アカウントが存在しない.事前にadd_account");
+            .expect("[inc_nonce]アカウントが存在しない.事前にadd_account");
         tracing::info!("[inc_nonce]アドレス:0x{}", hex::encode(address.0)); //アドレス
         account.nonce += 1
     }
@@ -161,7 +182,7 @@ impl State for WorldState {
     }
 
     fn add_account(&mut self, address: &Address, account: Account) {
-        //println!("作成された: 0x{}",hex::encode(address.0)); //アドレス
+        tracing::info!("add_accout: 0x{}", hex::encode(address.0));
         self.0.insert(address.clone(), account);
     }
 
