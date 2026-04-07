@@ -4,7 +4,7 @@ use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
-    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId
+    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId,
 };
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
@@ -39,7 +39,6 @@ impl MessageCall for LEVIATHAN {
         }
         self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
 
-
         //残高の移動
         if eth != U256::ZERO {
             if state.is_empty(&sender) {
@@ -55,7 +54,8 @@ impl MessageCall for LEVIATHAN {
                 Action::Send_eth(sender.clone(), recipient.clone(), eth).push(self, state); //ロールバック用
                 state.send_eth(&sender, &recipient, eth); //残高の移動
             }
-        }else if self.version < VersionId::SpuriousDragon {     //Ethereumの初期はvalue=0であっても無条件でアカウントを作成
+        } else if self.version < VersionId::SpuriousDragon {
+            //Ethereumの初期はvalue=0であっても無条件でアカウントを作成
             if state.is_empty(&recipient) {
                 if !state.is_physically_exist(&recipient) {
                     state.add_account(&recipient, Account::new()); //アカウントを追加

@@ -950,10 +950,10 @@ impl Ofunction for EVM {
         let offset = self.pop().try_into().unwrap_or(usize::MAX);
         let size = self.pop().try_into().unwrap_or(usize::MAX);
         tracing::info!(
-        dest_offset = dest_offset,
-        offset = offset,
-        size = size,
-        "CODECOPY"
+            dest_offset = dest_offset,
+            offset = offset,
+            size = size,
+            "CODECOPY"
         );
         //メモリ拡張
         if size != 0 {
@@ -1876,7 +1876,7 @@ impl Ofunction for EVM {
         //・コールスタック深度
         let is_deepth = execution_environment.i_depth >= 1024;
         if is_deepth {
-            self.gas +=child_gas;
+            self.gas += child_gas;
             self.child_gas_mem = None;
             tracing::warn!("[DELEGATECALL] 事前チェックで例外停止");
             self.push(U256::ZERO);
