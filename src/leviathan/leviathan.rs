@@ -39,6 +39,7 @@ impl TransactionExecution for LEVIATHAN {
         transaction: Transaction,
         block_header: &BlockHeader,
     ) -> Result<(U256, Vec<Log>), (U256, Vec<Log>)> {
+        tracing::info!("version: {:?}", self.version);
         //=======ステップ1===========
         //【初期ガスの計算】
         let base_gas = U256::from(21000); //基本料金

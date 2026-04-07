@@ -231,12 +231,19 @@ impl Ofunction for EVM {
 
             0xff => {
                 //SELFDESTRUCT
-                if self.version < VersionId::London {
-                    substate.a_reimburse += 24000;
-                }
                 let from_address = &execution_environment.i_address;
+                if self.version < VersionId::London {
+                    if !substate.a_des.contains(&from_address) {
+                        substate.a_reimburse += 24000;
+                    }
+                }
                 let val1 = self.pop();
                 let to_address = Address::from_u256(val1);
+                //デバック用
+                tracing::info!(
+                    recipient =  format_args!("0x{}", hex::encode(to_address.0)),
+                    "SELFDESTRUCT"
+                );
                 let balance = state.get_balance(&from_address).unwrap();
                 if from_address.clone() == to_address {
                     Action::Set_balance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
@@ -382,6 +389,10 @@ impl Ofunction for EVM {
                     let active_words = self.memory.len() / 32; //アクティブなword数を更新
                     self.active_words = active_words;
                 }
+                tracing::info!(
+                    return_gas = %return_gas,
+                    "[CALL] normal end:"
+                    );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
