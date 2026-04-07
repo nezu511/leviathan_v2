@@ -39,6 +39,7 @@ impl TransactionExecution for LEVIATHAN {
         transaction: Transaction,
         block_header: &BlockHeader,
     ) -> Result<(U256, Vec<Log>), (U256, Vec<Log>)> {
+        tracing::info!("version: {:?}", self.version);
         //=======ステップ1===========
         //【初期ガスの計算】
         let base_gas = U256::from(21000); //基本料金
@@ -409,7 +410,7 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
-        let test_dir = "require/stMemoryTest";
+        let test_dir = "require/stRefundTest";
         //let test_dir = "require/stCallCodes";
         //let test_dir = "require/stCreate2";
 

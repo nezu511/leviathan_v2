@@ -182,7 +182,7 @@ impl Gfunction for EVM {
                 let byte = (bit + 7) / 8;
                 let byte_u256 = U256::from(byte);
 
-                if self.version == VersionId::Frontier {
+                if self.version < VersionId::SpuriousDragon {
                     let result = byte_u256
                         .saturating_mul(U256::from(10))
                         .saturating_add(U256::from(10));
@@ -209,12 +209,34 @@ impl Gfunction for EVM {
                 return total;
             }
 
-            0x31 | 0x3b => {
+            0x31 => {
                 //BALANCE
-                //Address型に変換
-                let data = self.peek(0);
-                let cost = self.is_account_access(data, substate);
-                return U256::from(cost);
+                if self.version < VersionId::TangerineWhistle {
+                    return U256::from(20);
+                } else if self.version < VersionId::Istanbul {
+                    return U256::from(400);
+                } else if self.version < VersionId::Berlin {
+                    return U256::from(700);
+                } else {
+                    //Address型に変換
+                    let data = self.peek(0);
+                    let cost = self.is_account_access(data, substate);
+                    return U256::from(cost);
+                }
+            }
+
+            0x3b => {
+                //EXTCODESIZE
+                if self.version < VersionId::TangerineWhistle {
+                    return U256::from(20);
+                } else if self.version < VersionId::Berlin {
+                    return U256::from(700);
+                } else {
+                    //Address型に変換
+                    let data = self.peek(0);
+                    let cost = self.is_account_access(data, substate);
+                    return U256::from(cost);
+                }
             }
 
             0x3f => {

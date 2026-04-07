@@ -47,7 +47,7 @@ static SAFE_TABLE: [[u8; 2]; 256] = {
 
     // Environmental Information
     table[0x30] = [0, 1]; // ADDRESS
-    table[0x31] = [2, 1]; // BALANCE
+    table[0x31] = [1, 1]; // BALANCE
     table[0x32] = [0, 1]; // ORIGIN
     table[0x33] = [0, 1]; // CALLER
     table[0x34] = [0, 1]; // CALLVALUE
@@ -170,7 +170,7 @@ impl Zfunction for EVM {
         //現在の命令が要求する要素数に対して，スタックの中身は足りるか？
         let pop_number = op_info[0] as usize;
         if self.stack.len() < pop_number {
-            tracing::warn!("スタックの中身が足りない");
+            tracing::warn!("スタックの中身が足りない: 0x{:x}", opcode);
             return false;
         }
 
