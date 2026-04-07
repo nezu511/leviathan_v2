@@ -949,6 +949,12 @@ impl Ofunction for EVM {
         let dest_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let offset = self.pop().try_into().unwrap_or(usize::MAX);
         let size = self.pop().try_into().unwrap_or(usize::MAX);
+        tracing::info!(
+            dest_offset = dest_offset,
+            offset = offset,
+            size = size,
+            "CODECOPY"
+        );
         //メモリ拡張
         if size != 0 {
             let required_size = dest_offset.saturating_add(size);
@@ -957,17 +963,17 @@ impl Ofunction for EVM {
                 self.memory.resize(words * 32, 0);
             }
             //メモリに値を書き込む
+            let mut slice = vec![0u8; size];
             let read_size = offset.saturating_add(size);
             if offset <= data.len() {
                 if read_size > data.len() {
                     let copy_len = data.len() - offset;
-                    self.memory[dest_offset..dest_offset + copy_len]
-                        .copy_from_slice(&data[offset..data.len()]);
+                    slice[..copy_len].copy_from_slice(&data[offset..data.len()]);
                 } else {
-                    self.memory[dest_offset..required_size]
-                        .copy_from_slice(&data[offset..read_size]);
+                    slice.copy_from_slice(&data[offset..read_size]);
                 }
             }
+            self.memory[dest_offset..required_size].copy_from_slice(&slice);
         }
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
@@ -991,7 +997,7 @@ impl Ofunction for EVM {
         let size = self.pop().try_into().unwrap_or(usize::MAX);
         //コード取得
         let result = state.get_code(&address);
-        let code = match result {
+        let data = match result {
             Some(x) => x,
             None => Vec::<u8>::new(),
         };
@@ -1003,17 +1009,17 @@ impl Ofunction for EVM {
                 self.memory.resize(words * 32, 0);
             }
             //メモリに値を書き込む
+            let mut slice = vec![0u8; size];
             let read_size = offset.saturating_add(size);
-            if offset <= code.len() {
-                if read_size > code.len() {
-                    let copy_len = code.len() - offset;
-                    self.memory[dest_offset..dest_offset + copy_len]
-                        .copy_from_slice(&code[offset..code.len()]);
+            if offset <= data.len() {
+                if read_size > data.len() {
+                    let copy_len = data.len() - offset;
+                    slice[..copy_len].copy_from_slice(&data[offset..data.len()]);
                 } else {
-                    self.memory[dest_offset..required_size]
-                        .copy_from_slice(&code[offset..read_size]);
+                    slice.copy_from_slice(&data[offset..read_size]);
                 }
             }
+            self.memory[dest_offset..required_size].copy_from_slice(&slice);
         }
         //SubStateの更新
         if !substate.a_access.contains(&address) {
@@ -1870,7 +1876,7 @@ impl Ofunction for EVM {
         //・コールスタック深度
         let is_deepth = execution_environment.i_depth >= 1024;
         if is_deepth {
-            self.gas +=child_gas;
+            self.gas += child_gas;
             self.child_gas_mem = None;
             tracing::warn!("[DELEGATECALL] 事前チェックで例外停止");
             self.push(U256::ZERO);

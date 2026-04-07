@@ -186,12 +186,12 @@ impl Zfunction for EVM {
         let gas_cost = self.gas(opcode, substate, state, execution_environment);
         if self.gas < gas_cost {
             tracing::warn!(
-                depth = execution_environment.i_depth,
-                opcode = format_args!("0x{:x}",opcode),
-                evm_gas = %self.gas,
-                gas_cost = %gas_cost,
-                "[is_safe]残ガスが足りない"
-                );
+            depth = execution_environment.i_depth,
+            opcode = format_args!("0x{:x}",opcode),
+            evm_gas = %self.gas,
+            gas_cost = %gas_cost,
+            "[is_safe]残ガスが足りない"
+            );
             return false;
         }
 

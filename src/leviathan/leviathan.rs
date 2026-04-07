@@ -209,7 +209,8 @@ impl TransactionExecution for LEVIATHAN {
                     //set_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
-                        Action::Account_creation(block_header.h_beneficiary.clone()).push(self, state); //アカウントが存在しない場合
+                        Action::Account_creation(block_header.h_beneficiary.clone())
+                            .push(self, state); //アカウントが存在しない場合
                     }
                 }
                 state.set_balance(&block_header.h_beneficiary, reward);
@@ -248,7 +249,8 @@ impl TransactionExecution for LEVIATHAN {
                     //set_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
-                        Action::Account_creation(block_header.h_beneficiary.clone()).push(self, state); //アカウントが存在しない場合
+                        Action::Account_creation(block_header.h_beneficiary.clone())
+                            .push(self, state); //アカウントが存在しない場合
                     }
                 }
                 state.set_balance(&block_header.h_beneficiary, reward);
@@ -291,7 +293,7 @@ mod state_tests {
             "EIP150" | "TangerineWhistle" => VersionId::TangerineWhistle,
             "EIP158" | "SpuriousDragon" => VersionId::SpuriousDragon,
             "Byzantium" => VersionId::Byzantium,
-            "Constantinople"  => VersionId::Constantinople,
+            "Constantinople" => VersionId::Constantinople,
             "Petersburg" | "ConstantinopleFix" => VersionId::Petersburg,
             "Istanbul" => VersionId::Istanbul,
             "Berlin" => VersionId::Berlin,
@@ -407,7 +409,7 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
-        let test_dir = "require/stCreateTest";
+        let test_dir = "require/stMemoryTest";
         //let test_dir = "require/stCallCodes";
         //let test_dir = "require/stCreate2";
 

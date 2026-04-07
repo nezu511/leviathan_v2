@@ -21,27 +21,28 @@ impl State for WorldState {
         return true;
     }
 
-    fn is_dead(&self, version:VersionId, address: &Address) -> bool {
+    fn is_dead(&self, version: VersionId, address: &Address) -> bool {
         //DEADだとtrue
         if version < VersionId::SpuriousDragon {
             if !self.0.contains_key(address) {
                 return true;
-            }else{
+            } else {
                 return false;
             }
-        }else{
+        } else {
             if !self.0.contains_key(address) || self.is_empty(address) {
                 return true;
-            }else{
+            } else {
                 return false;
             }
         }
     }
 
-    fn is_physically_exist(&self, address: &Address) -> bool { //存在してたらtrue
+    fn is_physically_exist(&self, address: &Address) -> bool {
+        //存在してたらtrue
         self.0.contains_key(address)
     }
-                                                               
+
     fn is_storage_empty(&self, address: &Address) -> bool {
         //空だとtrue;
         let Some(account) = self.0.get(address) else {
