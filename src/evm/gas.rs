@@ -182,7 +182,7 @@ impl Gfunction for EVM {
                 let byte = (bit + 7) / 8;
                 let byte_u256 = U256::from(byte);
 
-                if self.version == VersionId::Frontier {
+                if self.version < VersionId::SpuriousDragon {
                     let result = byte_u256
                         .saturating_mul(U256::from(10))
                         .saturating_add(U256::from(10));
