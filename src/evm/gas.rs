@@ -209,15 +209,15 @@ impl Gfunction for EVM {
                 return total;
             }
 
-            0x31  => {
+            0x31 => {
                 //BALANCE
                 if self.version < VersionId::TangerineWhistle {
                     return U256::from(20);
-                }else if self.version < VersionId::Istanbul {
+                } else if self.version < VersionId::Istanbul {
                     return U256::from(400);
-                }else if self.version < VersionId::Berlin {
+                } else if self.version < VersionId::Berlin {
                     return U256::from(700);
-                }else{
+                } else {
                     //Address型に変換
                     let data = self.peek(0);
                     let cost = self.is_account_access(data, substate);
@@ -229,9 +229,9 @@ impl Gfunction for EVM {
                 //EXTCODESIZE
                 if self.version < VersionId::TangerineWhistle {
                     return U256::from(20);
-                }else if self.version < VersionId::Berlin {
+                } else if self.version < VersionId::Berlin {
                     return U256::from(700);
-                }else{
+                } else {
                     //Address型に変換
                     let data = self.peek(0);
                     let cost = self.is_account_access(data, substate);

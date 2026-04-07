@@ -241,7 +241,7 @@ impl Ofunction for EVM {
                 let to_address = Address::from_u256(val1);
                 //デバック用
                 tracing::info!(
-                    recipient =  format_args!("0x{}", hex::encode(to_address.0)),
+                    recipient = format_args!("0x{}", hex::encode(to_address.0)),
                     "SELFDESTRUCT"
                 );
                 let balance = state.get_balance(&from_address).unwrap();
@@ -390,9 +390,9 @@ impl Ofunction for EVM {
                     self.active_words = active_words;
                 }
                 tracing::info!(
-                    return_gas = %return_gas,
-                    "[CALL] normal end:"
-                    );
+                return_gas = %return_gas,
+                "[CALL] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算

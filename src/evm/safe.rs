@@ -170,7 +170,7 @@ impl Zfunction for EVM {
         //現在の命令が要求する要素数に対して，スタックの中身は足りるか？
         let pop_number = op_info[0] as usize;
         if self.stack.len() < pop_number {
-            tracing::warn!("スタックの中身が足りない: 0x{:x}",opcode);
+            tracing::warn!("スタックの中身が足りない: 0x{:x}", opcode);
             return false;
         }
 
