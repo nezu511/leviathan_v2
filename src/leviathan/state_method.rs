@@ -182,7 +182,7 @@ impl State for WorldState {
     }
 
     fn add_account(&mut self, address: &Address, account: Account) {
-        //println!("作成された: 0x{}",hex::encode(address.0)); //アドレス
+        tracing::info!("add_accout: 0x{}", hex::encode(address.0));
         self.0.insert(address.clone(), account);
     }
 
