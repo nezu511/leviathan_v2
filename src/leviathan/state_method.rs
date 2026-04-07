@@ -38,6 +38,10 @@ impl State for WorldState {
         }
     }
 
+    fn is_physically_exist(&self, address: &Address) -> bool { //存在してたらtrue
+        self.0.contains_key(address)
+    }
+                                                               
     fn is_storage_empty(&self, address: &Address) -> bool {
         //空だとtrue;
         let Some(account) = self.0.get(address) else {
@@ -96,7 +100,7 @@ impl State for WorldState {
         let account = self
             .0
             .get_mut(&address)
-            .expect("アカウントが存在しない.事前にadd_account");
+            .expect("[set_balance]アカウントが存在しない.事前にadd_account");
         account.balance += value;
     }
 
@@ -106,7 +110,7 @@ impl State for WorldState {
         let account = self
             .0
             .get_mut(&address)
-            .expect("アカウントが存在しない.事前にadd_account");
+            .expect("[inc_nonce]アカウントが存在しない.事前にadd_account");
         tracing::info!("[inc_nonce]アドレス:0x{}", hex::encode(address.0)); //アドレス
         account.nonce += 1
     }

@@ -6,6 +6,8 @@ pub trait State {
     fn is_empty(&self, address: &Address) -> bool; //空だとtrue;
     
     fn is_dead(&self, version: VersionId, address: &Address) -> bool; //DEADだとtrue
+   
+    fn is_physically_exist(&self, address: &Address) -> bool; //存在してたらtrue
 
     fn is_storage_empty(&self, address: &Address) -> bool; //空だとtrue;
 
