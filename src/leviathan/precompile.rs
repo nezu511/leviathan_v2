@@ -9,13 +9,91 @@ use crate::leviathan::structs::{
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
 use crate::my_trait::leviathan_trait::{CompiledContract, RoleBack, State, TransactionExecution};
-use alloy_primitives::{I256, U256};
-use ripemd::{Digest, Ripemd160};
-use sha2::Sha256;
-use sha3::Keccak256;
+use alloy_primitives::{I256, U256, uint};
+use sha2::{Sha256, Digest as _};
+use sha3::{Keccak256, Digest as _};
+use ripemd::{Ripemd160, Digest as _};
+use secp256k1::{
+    Message, Secp256k1,
+    ecdsa::{RecoverableSignature, RecoveryId},
+};
 use std::collections::HashMap;
 
+pub const SECP256K1N: U256 = uint!(0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141_U256);
+
 impl CompiledContract for LEVIATHAN {
+    #[inline(never)]
+    fn ecrec(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+        // ガス検証
+        if gas < U256::from(3000) {
+            return Err((U256::ZERO, None));
+        }
+        let return_gas = gas - U256::from(3000);
+
+        //データ抽出
+        let mut tmp = [0u8;128];
+        let copy_len = data.len().min(128);
+        tmp[..copy_len].copy_from_slice(&data[..copy_len]);
+        let h: [u8;32] = tmp[0..32].try_into().expect("[ecrec]変換失敗");
+        let v: [u8;32] = tmp[32..64].try_into().expect("[ecrec]変換失敗");
+        let r: [u8;32] = tmp[64..96].try_into().expect("[ecrec]変換失敗");
+        let s: [u8;32] = tmp[96..128].try_into().expect("[ecrec]変換失敗");
+
+        //バリデーション
+        // 1.vの条件 27 or 28
+        let mut v_val = U256::from_be_bytes(v);
+        if v_val != U256::from(27) && v_val != U256::from(28) {
+            return Ok((return_gas, Vec::<u8>::new()));
+        }
+        // 2. rとsの条件
+        let r_val = U256::from_be_bytes(r);
+        let s_val = U256::from_be_bytes(s);
+        let r_check = U256::ZERO < r_val  && r_val < SECP256K1N;
+        let s_check = U256::ZERO < s_val  && s_val < SECP256K1N;
+        if !r_check || !s_check {
+            return Ok((return_gas, Vec::<u8>::new()));
+        }
+        // v,r,sから復元可能な署名
+        // 1. vの変換
+        v_val = v_val - U256::from(27);
+        let v_val_i32 = v_val.to::<u32>() as i32;
+        let recovery_id = match secp256k1::ecdsa::RecoveryId::try_from(v_val_i32) {
+            Ok(id) => id,
+            Err(_) => return Ok((return_gas, Vec::<u8>::new())),
+        };
+        // 2. rとsを結合
+        let mut r_s = [0u8;64];
+        r_s[0..32].copy_from_slice(&r[..]);
+        r_s[32..64].copy_from_slice(&s[..]);
+        // 3. messageの生成
+        let message = match secp256k1::Message::from_digest_slice(&h) {
+            Ok(message) => message,
+            Err(_) => return Ok((return_gas, Vec::<u8>::new())),
+        };
+        // 4. 署名の生成
+        let signature =  match secp256k1::ecdsa::RecoverableSignature::from_compact(&r_s, recovery_id) {
+            Ok(signature) => signature,
+            Err(_) => return Ok((return_gas, Vec::<u8>::new())),
+        };
+
+        //公開鍵を復元
+        let secp = Secp256k1::new();
+        let publickey = match secp.recover_ecdsa(message, &signature) {
+            Ok(pubkey) => pubkey,
+            Err(_) => return Ok((return_gas, Vec::<u8>::new())),
+        };
+        let serialized_pk = publickey.serialize_uncompressed();
+        let slice = &serialized_pk[1..65];
+        //keccak256準備
+        let mut hasher = Keccak256::new();
+        hasher.update(slice);
+        let result:[u8;32] = hasher.finalize().try_into().unwrap();
+        let mut return_data = vec![0u8; 32];
+        return_data[12..].copy_from_slice(&result[12..]);
+        return Ok((gas, return_data));
+
+    }
+
     #[inline(never)]
     fn sha256(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 60 + 12 * ceil(|data| / 32)

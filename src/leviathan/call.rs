@@ -81,7 +81,10 @@ impl MessageCall for LEVIATHAN {
         //プリコンパイル判定と実行の要件
         let contract_u256 = contract.to_u256();
         let result = match contract_u256 {
-            val if val == U256::from(1) => todo!(), //ECDSA公開鍵復元
+            val if val == U256::from(1) => {
+                //ECDSA公開鍵復元
+                LEVIATHAN::ecrec(gas, &execution_environment.i_data)
+            }
             val if val == U256::from(2) => {
                 //SHA256
                 LEVIATHAN::sha256(gas, &execution_environment.i_data)
