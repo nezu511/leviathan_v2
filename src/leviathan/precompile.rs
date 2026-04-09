@@ -17,6 +17,7 @@ use secp256k1::{
     Message, Secp256k1,
     ecdsa::{RecoverableSignature, RecoveryId},
 };
+use num_bigint::BigUint;
 use std::collections::HashMap;
 
 pub const SECP256K1N: U256 = uint!(0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141_U256);
@@ -173,4 +174,113 @@ impl CompiledContract for LEVIATHAN {
         // 5. 残ガスと出力データを返す
         Ok((remaining_gas, result))
     }
+
+    // プリコンパイルコントラクト: Identity (Address 5)
+    #[inline(never)]
+    fn expmod(
+        gas: U256,
+        data: &[u8]
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+        //ヘルパー関数
+        let get_padded_data = |start: usize, len:usize| -> Vec<u8> {
+            let mut out = vec![0u8; len];
+            if start < data.len() {
+                let copy_len = (data.len() - start).min(len);
+                    out[..copy_len].copy_from_slice(&data[start..start + copy_len]);
+            }
+            out
+        };
+        //データ抽出
+        let b_len_byte = get_padded_data(0, 32);
+        let e_len_byte = get_padded_data(32, 32);
+        let m_len_byte = get_padded_data(64, 32);
+        let mut b_len = U256::from_be_slice(&b_len_byte);
+        let mut e_len = U256::from_be_slice(&e_len_byte);
+        let mut m_len = U256::from_be_slice(&m_len_byte);
+
+        //ガス計算
+        //f(x)
+        let max_len = b_len.max(m_len);
+        let words = (max_len + U256::from(7))/U256::from(8);
+        let val1 = words.saturating_mul(max_len);
+    
+        //val2
+        let val2 = if e_len <= U256::from(32) {
+            let e_len_usize = e_len.try_into().unwrap_or(0);
+            let b_len_usize = e_len.try_into().unwrap_or(usize::MAX);
+            let e_bytes = get_padded_data(96 + b_len_usize, e_len_usize);
+            let e_val_u256 = U256::from_be_slice(&e_bytes);
+            if e_val_u256.is_zero() {
+                U256::from(1)
+            }else{
+                U256::from(e_val_u256.bit_len())
+            }
+        }else{
+            let e_len_usize = e_len.try_into().unwrap_or(0);
+            let b_len_usize = e_len.try_into().unwrap_or(usize::MAX);
+            let e_top_bytes = get_padded_data(96 + b_len_usize, 32);
+            let e_top = U256::from_be_slice(&e_top_bytes);
+            let rest = e_len - U256::from(32);
+
+            (rest * U256::from(8)) + U256::from(e_top.bit_len())
+        };
+        let g_cost1 = (val1 * val2) / U256::from(3);
+        let used_gas = g_cost1.max(U256::from(200));
+        // ガス検証
+        if gas < used_gas {
+            return Err((U256::ZERO, None));
+        }
+        let return_gas = gas - used_gas;
+        
+        //データを取得
+        //1. データ長を取得
+        let b_len_usize = b_len.try_into().unwrap_or(0);
+        let e_len_usize = e_len.try_into().unwrap_or(0);
+        let m_len_usize = m_len.try_into().unwrap_or(0);
+        //2. データをVecで取得
+        let b_val_byte = get_padded_data(96, b_len_usize);
+        let e_val_byte = get_padded_data(96 + b_len_usize, e_len_usize);
+        let m_val_byte = get_padded_data(96 + b_len_usize + e_len_usize, m_len_usize);
+        //3. VecデータをBigUintに変換
+        let b_val = if b_len_usize == 0 {
+            BigUint::ZERO
+        }else{
+            BigUint::from_bytes_be(&b_val_byte)
+        };
+        let e_val = if e_len_usize == 0 {
+            BigUint::ZERO
+        }else{
+            BigUint::from_bytes_be(&e_val_byte)
+        };
+        let m_val = if m_len_usize == 0 {
+            BigUint::ZERO
+        }else{
+            BigUint::from_bytes_be(&m_val_byte)
+        };
+
+        //計算
+        //例外を処理
+        if m_val == BigUint::ZERO {
+            return Ok((return_gas, vec![0u8;m_len_usize]));
+        }
+        let result_val = b_val.modpow(&e_val, &m_val);
+        let mut result_val_byte = result_val.to_bytes_be();
+
+        if result_val_byte.len() < m_len_usize {
+            let padding = m_len_usize - result_val_byte.len();
+            let mut padded_result = vec![0u8; padding];
+            padded_result.append(&mut result_val_byte);
+            return Ok((return_gas, padded_result));
+        } else if result_val_byte.len() > m_len_usize {
+            let start = result_val_byte.len() - m_len_usize;
+            return Ok((return_gas, result_val_byte[start..].to_vec()));
+        }
+        return Ok((return_gas, result_val_byte));
+
+
+
+    }
+
+
+
 }

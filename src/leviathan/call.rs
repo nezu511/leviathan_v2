@@ -100,7 +100,11 @@ impl MessageCall for LEVIATHAN {
                 LEVIATHAN::precompile_identity(gas, &execution_environment.i_data)
             }
 
-            val if val == U256::from(5) => todo!(), //EXPMOD
+            val if val == U256::from(5) => {
+                //EXPMOD
+                LEVIATHAN::expmod(gas, &execution_environment.i_data)
+            }
+
             val if val == U256::from(6) => todo!(), //BN_ADD
             val if val == U256::from(7) => todo!(), //BN_MUL
             val if val == U256::from(8) => todo!(), //SNARKV
