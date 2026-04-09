@@ -328,7 +328,7 @@ impl CompiledContract for LEVIATHAN {
         }else{
             let point = G1Affine::new_unchecked(fq_x1, fq_y1);
             if !point.is_on_curve() {
-                return Ok((return_gas, Vec::<u8>::new()));
+                return Err((U256::ZERO, None));
             }
             point
         };
@@ -338,7 +338,7 @@ impl CompiledContract for LEVIATHAN {
         }else{
             let point = G1Affine::new_unchecked(fq_x2, fq_y2);
             if !point.is_on_curve() {
-                return Ok((return_gas, Vec::<u8>::new()));
+                return Err((U256::ZERO, None));
             }
             point
         };
