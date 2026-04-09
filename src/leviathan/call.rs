@@ -110,7 +110,11 @@ impl MessageCall for LEVIATHAN {
                 LEVIATHAN::bn_add(gas, &execution_environment.i_data)
             }
 
-            val if val == U256::from(7) => todo!(), //BN_MUL
+            val if val == U256::from(7) => {
+                //BN_MUL
+                LEVIATHAN::bn_mul(gas, &execution_environment.i_data)
+            }
+            
             val if val == U256::from(8) => todo!(), //SNARKV
             val if val == U256::from(9) => todo!(), //BLAKE2_F
 
