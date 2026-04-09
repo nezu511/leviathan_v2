@@ -135,4 +135,9 @@ pub trait CompiledContract {
         gas: U256,
         data: &[u8]
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
+    fn bn_add(
+        gas: U256,
+        data: &[u8]
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 }

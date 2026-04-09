@@ -19,8 +19,12 @@ use secp256k1::{
 };
 use num_bigint::BigUint;
 use std::collections::HashMap;
+use ark_bn254::{Fq, G1Affine};
+use ark_ff::{PrimeField, BigInteger};
+use ark_ec::{AffineRepr, CurveGroup};
 
 pub const SECP256K1N: U256 = uint!(0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141_U256);
+pub const PRIME_P: U256 = uint!(21888242871839275222246405745257275088696311157297823662689037894645226208583_U256);
 
 impl CompiledContract for LEVIATHAN {
     #[inline(never)]
@@ -277,10 +281,84 @@ impl CompiledContract for LEVIATHAN {
         }
         return Ok((return_gas, result_val_byte));
 
-
-
     }
 
+    fn bn_add(
+        gas: U256,
+        data: &[u8]
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+        //ヘルパー関数
+        let get_padded_data = |start: usize, len:usize| -> Vec<u8> {
+            let mut out = vec![0u8; len];
+            if start < data.len() {
+                let copy_len = (data.len() - start).min(len);
+                    out[..copy_len].copy_from_slice(&data[start..start + copy_len]);
+            }
+            out
+        };
+        // ガス検証
+        if gas < U256::from(150) {
+            return Err((U256::ZERO, None));
+        }
+        let return_gas = gas - U256::from(150);
+        //データ抽出
+        let x1_byte = get_padded_data(0, 32);
+        let y1_byte = get_padded_data(32, 32);
+        let x2_byte = get_padded_data(64, 32);
+        let y2_byte = get_padded_data(96, 32);
+        let mut x1 = U256::from_be_slice(&x1_byte);
+        let mut y1 = U256::from_be_slice(&y1_byte);
+        let mut x2 = U256::from_be_slice(&x2_byte);
+        let mut y2 = U256::from_be_slice(&y2_byte);
+        let fq_x1 = Fq::from_be_bytes_mod_order(&x1_byte);
+        let fq_y1 = Fq::from_be_bytes_mod_order(&y1_byte);
+        let fq_x2 = Fq::from_be_bytes_mod_order(&x2_byte);
+        let fq_y2 = Fq::from_be_bytes_mod_order(&y2_byte);
+
+        //バリデーション要件
+        // 1. フィールドサイズの検証
+        if x1 >= PRIME_P || y1 >= PRIME_P || x2 >= PRIME_P || y2 >= PRIME_P {
+            return Err((U256::ZERO, None));
+        }
+
+        // 2. 曲線状にあるかの検証
+        //  2.1 (x1, y1)
+        let p1 = if x1 == U256::ZERO && y1 == U256::ZERO {
+            G1Affine::zero()
+        }else{
+            let point = G1Affine::new_unchecked(fq_x1, fq_y1);
+            if !point.is_on_curve() {
+                return Ok((return_gas, Vec::<u8>::new()));
+            }
+            point
+        };
+        //  2.1 (x2, y2)
+        let p2 = if x2 == U256::ZERO && y2 == U256::ZERO {
+            G1Affine::zero()
+        }else{
+            let point = G1Affine::new_unchecked(fq_x2, fq_y2);
+            if !point.is_on_curve() {
+                return Ok((return_gas, Vec::<u8>::new()));
+            }
+            point
+        };
+        //p3を作成 (p1 + p2)
+        let p3_proj = p1.into_group() + p2.into_group();    //into_group():マフィン座標から射影座標に変換
+        let p3_affine = p3_proj.into_affine();              //into_affine(): 射影座標からマフィン座標へ
+
+        //計算結果を返す
+        if p3_affine.is_zero() {
+            return Ok((return_gas, vec![0u8,64]));
+        }
+        let x3_bytes = p3_affine.x.into_bigint().to_bytes_be();
+        let y3_bytes = p3_affine.y.into_bigint().to_bytes_be();
+        let mut tmp = vec![0u8,64];
+        tmp[..32].copy_from_slice(&x3_bytes[..]);
+        tmp[32..].copy_from_slice(&y3_bytes[..]);
+            
+        return Ok((return_gas, tmp));
+
+    }
 
 
 }
