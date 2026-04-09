@@ -354,8 +354,8 @@ impl CompiledContract for LEVIATHAN {
         let x3_bytes = p3_affine.x.into_bigint().to_bytes_be();
         let y3_bytes = p3_affine.y.into_bigint().to_bytes_be();
         let mut tmp = vec![0u8;64];
-        tmp[..32].copy_from_slice(&x3_bytes[..]);
-        tmp[32..].copy_from_slice(&y3_bytes[..]);
+        tmp[32 - x3_bytes.len()..32].copy_from_slice(&x3_bytes[..]);
+        tmp[64 - y3_bytes.len()..64].copy_from_slice(&y3_bytes[..]);
             
         return Ok((return_gas, tmp));
 
