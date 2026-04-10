@@ -114,7 +114,7 @@ impl MessageCall for LEVIATHAN {
                 //BN_MUL
                 LEVIATHAN::bn_mul(gas, &execution_environment.i_data)
             }
-            
+
             val if val == U256::from(8) => {
                 //SNARKV
                 LEVIATHAN::bn_pairing(gas, &execution_environment.i_data)
