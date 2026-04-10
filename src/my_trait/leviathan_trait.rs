@@ -117,13 +117,25 @@ pub trait RoleBack {
 }
 
 pub trait CompiledContract {
+    fn ecrec(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
     fn sha256(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
     fn precompile_ripemd160(
         gas: U256,
         data: &[u8],
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
     fn precompile_identity(
         gas: U256,
         data: &[u8],
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
+    fn expmod(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
+    fn bn_add(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
+    fn bn_mul(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
+    fn bn_pairing(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 }
