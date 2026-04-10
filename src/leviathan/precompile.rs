@@ -19,10 +19,12 @@ use secp256k1::{
 };
 use num_bigint::BigUint;
 use std::collections::HashMap;
-use ark_bn254::{Fq, G1Affine, Fr};
-use ark_ff::{PrimeField, BigInteger};
+use ark_bn254::{Fq, G1Affine, Fr, Bn254, Fq2, G2Affine};
+use ark_ff::{PrimeField, BigInteger, One, Zero};
 use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::pairing::Pairing;
 use std::ops::Mul;
+use std::ops::Rem;
 
 pub const SECP256K1N: U256 = uint!(0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141_U256);
 pub const PRIME_P: U256 = uint!(21888242871839275222246405745257275088696311157297823662689037894645226208583_U256);
@@ -423,5 +425,104 @@ impl CompiledContract for LEVIATHAN {
         return Ok((return_gas, tmp));
 
     }
+
+    fn bn_pairing(
+        gas: U256,
+        data: &[u8]
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+        //要件確認1
+        if data.len().rem(192) != 0 {
+            return Err((U256::ZERO, None));
+        }
+        let k = data.len() / 192;
+
+        // ガス検証
+        let used_gas = U256::from(34000).saturating_mul(U256::from(k)).saturating_add(U256::from(45000));
+        if gas < used_gas {
+            return Err((U256::ZERO, None));
+        }
+        let return_gas = gas - used_gas;
+        //データ取得
+        let mut g1_points = Vec::new();
+        let mut g2_points = Vec::new();
+        let mut i:usize = 0;
+        while i < k  {
+            let offset = i * 192;
+            //G1の抽出
+            let g1_x = Fq::from_be_bytes_mod_order(&data[offset .. offset + 32]);
+            let g1_y = Fq::from_be_bytes_mod_order(&data[offset + 32 .. offset +64]);
+            let mut x = U256::from_be_slice(&data[offset .. offset + 32]);
+            let mut y = U256::from_be_slice(&data[offset + 32 .. offset +64]);
+            //バリデーション(G1)
+            // 1. フィールドサイズの検証
+            if x >= PRIME_P || y >= PRIME_P {
+                return Err((U256::ZERO, None));
+            }
+
+            // 2. 曲線状にあるかの検証
+            let p = if x == U256::ZERO && y == U256::ZERO {
+                G1Affine::zero()
+            }else{
+                let point = G1Affine::new_unchecked(g1_x, g1_y);
+                if !point.is_on_curve() {
+                    return Err((U256::ZERO, None));
+                }
+                point
+            };
+            g1_points.push(p);
+            
+            //G2の抽出
+            let x_im = Fq::from_be_bytes_mod_order(&data[offset + 64..offset + 96]);
+            let x_re = Fq::from_be_bytes_mod_order(&data[offset + 96..offset + 128]);
+            let y_im = Fq::from_be_bytes_mod_order(&data[offset + 128..offset + 160]);
+            let y_re = Fq::from_be_bytes_mod_order(&data[offset + 160..offset + 192]);
+            let x_im_u256 = U256::from_be_slice(&data[offset + 64..offset + 96]);
+            let x_re_u256 = U256::from_be_slice(&data[offset + 96..offset + 128]);
+            let y_im_u256 = U256::from_be_slice(&data[offset + 128..offset + 160]);
+            let y_re_u256 = U256::from_be_slice(&data[offset + 160..offset + 192]);
+
+
+            // Arkworksの Fq2::new は (実部, 虚部) の順に受け取る
+            let fq2_x = Fq2::new(x_re, x_im);
+            let fq2_y = Fq2::new(y_re, y_im);
+
+
+            //バリデーション(G1)
+            // 1. フィールドサイズの検証
+            if x_im_u256 >= PRIME_P || x_re_u256 >= PRIME_P || y_im_u256 >= PRIME_P || y_re_u256 >= PRIME_P {
+                return Err((U256::ZERO, None));
+            }
+
+            if x_im_u256 >= PRIME_P || x_re_u256 >= PRIME_P || y_im_u256 >= PRIME_P || y_re_u256 >= PRIME_P {
+                    return Err((U256::ZERO, None));
+            }// 2. 曲線状にあるかの検証
+            let p2 = if fq2_x.is_zero() && fq2_y.is_zero() {
+                G2Affine::zero() // G2の無限遠点
+            } else {
+                let point = G2Affine::new_unchecked(fq2_x, fq2_y);
+
+                // ZKの安全性のため、G2では曲線チェックに加えてサブグループチェックも行うのが一般的です
+                if !point.is_on_curve() || !point.is_in_correct_subgroup_assuming_on_curve() {
+                    return Err((U256::ZERO, None));
+                }
+                point
+            };
+            g2_points.push(p2);
+
+            i +=1;
+        }
+
+        //ペアリング計算
+        let pairing_result = Bn254::multi_pairing(g1_points, g2_points);
+        //等式の検証
+        let is_valid = pairing_result.0.is_one();
+        let mut output = vec![0u8; 32];
+        if is_valid {
+            output[31] = 1;
+        }
+
+        return Ok((return_gas, output));
+    }
+
 
 }
