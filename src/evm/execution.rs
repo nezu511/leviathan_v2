@@ -897,7 +897,8 @@ impl Ofunction for EVM {
         let required_size = offset.saturating_add(32);
         let mut buffer = [0u8; 32];
         if offset >= data.len() {
-            self.push(U256::ZERO)
+            self.push(U256::ZERO);
+            return;
         } else if required_size > data.len() {
             buffer[..data.len() - offset].copy_from_slice(&data[offset..data.len()]);
         } else {
