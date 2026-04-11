@@ -138,9 +138,9 @@ impl ContractCreation for LEVIATHAN {
                 let deposit_gas = 200 * output.len();
                 let rest_gas = evm.return_gas();
                 tracing::debug!(
-                    deposit_gas = %deposit_gas,
-                    rest_gas = %rest_gas,
-                    );
+                deposit_gas = %deposit_gas,
+                rest_gas = %rest_gas,
+                );
                 let mut return_gas = rest_gas;
                 if self.version >= VersionId::Homestead {
                     if U256::from(deposit_gas) > rest_gas {
@@ -159,7 +159,7 @@ impl ContractCreation for LEVIATHAN {
                         }
                     }
                     //不正なプレフィックス
-                    if self.version >= VersionId::London{
+                    if self.version >= VersionId::London {
                         if output.len() > 0 && output[0] == 0xefu8 {
                             tracing::info!("[ContractCreation] 例外停止:不正なプレフィックス");
                             self.roleback(state); //Roleback実行
@@ -169,13 +169,12 @@ impl ContractCreation for LEVIATHAN {
                     }
                     return_gas = return_gas - U256::from(deposit_gas);
                     state.set_code(&contract_address, output);
-                }else{
+                } else {
                     if U256::from(deposit_gas) < rest_gas {
                         return_gas = return_gas - U256::from(deposit_gas);
                         state.set_code(&contract_address, output);
                     }
                 }
-
 
                 return Ok((return_gas, Vec::<u8>::new(), Some(contract_address.clone())));
             }
