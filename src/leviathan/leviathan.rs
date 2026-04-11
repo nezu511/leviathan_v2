@@ -195,10 +195,6 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
-                tracing::info!(
-                    "マイナーアドレス: 0x{}",
-                    hex::encode(block_header.h_beneficiary.0)
-                ); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);
                 let f = if self.version < VersionId::London {
                     transaction.t_price
@@ -215,6 +211,14 @@ impl TransactionExecution for LEVIATHAN {
                     }
                 }
                 state.set_balance(&block_header.h_beneficiary, reward);
+                //デバック用
+                tracing::info!(
+                    beneficiary =  format_args!("0x{}", hex::encode(block_header.h_beneficiary.0)),
+                    reward = %reward,
+                    reimburse = %reimburse,
+                    final_billed_gas = %final_billed_gas,
+                    "[マイナーへの支払い]",
+                );
                 //substate.a_desの処理
                 while !substate.a_des.is_empty() {
                     let address = substate.a_des.pop().unwrap();
@@ -235,10 +239,6 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.set_balance(&sender_address, reimburse);
                 //マイナーへの支払い
-                tracing::info!(
-                    "マイナーアドレス: 0x{}",
-                    hex::encode(block_header.h_beneficiary.0)
-                ); //アドレス
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(gas);
                 let f = if self.version < VersionId::London {
                     transaction.t_price
@@ -255,13 +255,20 @@ impl TransactionExecution for LEVIATHAN {
                     }
                 }
                 state.set_balance(&block_header.h_beneficiary, reward);
+                //デバック用
+                tracing::info!(
+                    beneficiary =  format_args!("0x{}", hex::encode(block_header.h_beneficiary.0)),
+                    reward = %reward,
+                    reimburse = %reimburse,
+                    final_billed_gas = %final_billed_gas,
+                    "[Err:マイナーへの支払い]",
+                );
                 return Err((final_billed_gas, Vec::new()));
             }
         }
     }
 }
 
-// leviathan.rs の一番下に追加
 // leviathan.rs の一番下に追加
 #[cfg(test)]
 mod state_tests {
@@ -411,8 +418,8 @@ mod state_tests {
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
         let test_dir = "GeneralStateTestsFiller/stWalletTest";
-        //let test_dir = "require/stCallCodes";
-        //let test_dir = "require/stCreate2";
+        //let test_dir = "GeneralStateTestsFiller/stCallCodes";
+        //let test_dir = "GeneralStateTestsFiller/stCreate2";
 
         let paths = fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));

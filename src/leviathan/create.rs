@@ -137,6 +137,11 @@ impl ContractCreation for LEVIATHAN {
                 //コードデプロイ費用
                 let deposit_gas = 200 * output.len();
                 let rest_gas = evm.return_gas();
+                tracing::debug!(
+                    deposit_gas = %deposit_gas,
+                    rest_gas = %rest_gas,
+                    );
+                let mut return_gas = rest_gas;
                 if self.version >= VersionId::Homestead {
                     if U256::from(deposit_gas) > rest_gas {
                         tracing::info!("[ContractCreation] 例外停止:コードデプロイ費用不足");
@@ -144,33 +149,34 @@ impl ContractCreation for LEVIATHAN {
                         substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                         return Err((U256::ZERO, None, None));
                     }
-                }
-
-                //コードのサイズ制限
-                if self.version >= VersionId::SpuriousDragon {
-                    if output.len() > 24576 {
-                        tracing::info!("[ContractCreation] 例外停止:コードサイズ制限");
-                        self.roleback(state); //Roleback実行
-                        substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                        return Err((U256::ZERO, None, None));
+                    //コードのサイズ制限
+                    if self.version >= VersionId::SpuriousDragon {
+                        if output.len() > 24576 {
+                            tracing::info!("[ContractCreation] 例外停止:コードサイズ制限");
+                            self.roleback(state); //Roleback実行
+                            substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
+                            return Err((U256::ZERO, None, None));
+                        }
+                    }
+                    //不正なプレフィックス
+                    if self.version >= VersionId::London{
+                        if output.len() > 0 && output[0] == 0xefu8 {
+                            tracing::info!("[ContractCreation] 例外停止:不正なプレフィックス");
+                            self.roleback(state); //Roleback実行
+                            substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
+                            return Err((U256::ZERO, None, None));
+                        }
+                    }
+                    return_gas = return_gas - U256::from(deposit_gas);
+                    state.set_code(&contract_address, output);
+                }else{
+                    if U256::from(deposit_gas) < rest_gas {
+                        return_gas = return_gas - U256::from(deposit_gas);
+                        state.set_code(&contract_address, output);
                     }
                 }
 
-                //不正なプレフィックス
-                if self.version >= VersionId::London{
-                    if output.len() > 0 && output[0] == 0xefu8 {
-                        tracing::info!("[ContractCreation] 例外停止:不正なプレフィックス");
-                        self.roleback(state); //Roleback実行
-                        substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                        return Err((U256::ZERO, None, None));
-                    }
-                }
 
-
-
-                //最終処理
-                let return_gas = rest_gas - U256::from(deposit_gas);
-                state.set_code(&contract_address, output);
                 return Ok((return_gas, Vec::<u8>::new(), Some(contract_address.clone())));
             }
 
