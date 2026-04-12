@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub enum Action {
-    Sstorage(Address, U256, U256),    //Address, Key, pre_value
+    Sstorage(Address, U256, U256),   //Address, Key, pre_value
     SendEth(Address, Address, U256), //from, to, eth
     AddNonce(Address),
     StoreCode(Address, Vec<u8>),

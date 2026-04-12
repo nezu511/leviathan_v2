@@ -24,7 +24,7 @@ impl Address {
     pub fn to_u256(&self) -> U256 {
         let mut tmp = [0u8; 32];
         tmp[12..32].copy_from_slice(&self.0);
-        
+
         U256::from_be_bytes(tmp)
     }
 }

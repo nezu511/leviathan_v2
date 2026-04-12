@@ -1,6 +1,4 @@
-use crate::leviathan::structs::{
-    BlockHeader, Log, SubState, Transaction, VersionId,
-};
+use crate::leviathan::structs::{BlockHeader, Log, SubState, Transaction, VersionId};
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use alloy_primitives::U256;
 
@@ -64,7 +62,6 @@ pub trait TransactionChecks {
         block_header: &BlockHeader,
     ) -> Result<Address, &'static str>;
 }
-
 
 pub trait TransactionExecution {
     fn execution(
@@ -140,5 +137,3 @@ pub trait CompiledContract {
 
     fn bn_pairing(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 }
-
-

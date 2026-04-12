@@ -220,7 +220,6 @@ impl TransactionExecution for LEVIATHAN {
                 );
                 //substate.a_desの処理
                 while let Some(address) = substate.a_des.pop() {
-                    
                     state.delete_account(&address);
                 }
 
@@ -368,7 +367,6 @@ mod state_tests {
         data: &[u8],
         secret_key_hex: &str,
     ) -> (U256, U256, U256) {
-        
         // 1. 各要素のRLPペイロード長を事前計算する
         let mut payload_length = 0;
         payload_length += nonce.length();
@@ -385,7 +383,11 @@ mod state_tests {
 
         // 2. 必要なメモリを一括で確保し、リストのヘッダーを書き込む
         let mut out = BytesMut::with_capacity(payload_length + 10);
-        Header { list: true, payload_length }.encode(&mut out);
+        Header {
+            list: true,
+            payload_length,
+        }
+        .encode(&mut out);
 
         // 3. データを順次エンコード
         // u256_to_minimal_bytes を使わなくても、U256型が勝手にゼロ省略してくれます！
@@ -421,7 +423,6 @@ mod state_tests {
 
         (v, r, s)
     }
-
 
     #[test]
     fn state_test() {

@@ -232,10 +232,9 @@ impl Ofunction for EVM {
             0xff => {
                 //SELFDESTRUCT
                 let from_address = &execution_environment.i_address;
-                if self.version < VersionId::London
-                    && !substate.a_des.contains(from_address) {
-                        substate.a_reimburse += 24000;
-                    }
+                if self.version < VersionId::London && !substate.a_des.contains(from_address) {
+                    substate.a_reimburse += 24000;
+                }
                 let val1 = self.pop();
                 let to_address = Address::from_u256(val1);
                 //デバック用
@@ -252,11 +251,10 @@ impl Ofunction for EVM {
                         if state.is_empty(from_address) {
                             return Some(false);
                         }
-                        if state.is_empty(&to_address)
-                            && !state.is_physically_exist(&to_address) {
-                                state.add_account(&to_address, Account::new()); //アカウントを追加
-                                Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
-                            }
+                        if state.is_empty(&to_address) && !state.is_physically_exist(&to_address) {
+                            state.add_account(&to_address, Account::new()); //アカウントを追加
+                            Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
+                        }
                         Action::SendEth(from_address.clone(), to_address.clone(), balance)
                             .push(leviathan, state); //ロールバック用
                         state.send_eth(from_address, &to_address, balance);

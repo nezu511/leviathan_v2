@@ -8,9 +8,7 @@ use crate::leviathan::structs::{
 };
 use crate::leviathan::world_state::{Account, Address, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
-use crate::my_trait::leviathan_trait::{
-    CompiledContract, MessageCall, RoleBack, State,
-};
+use crate::my_trait::leviathan_trait::{CompiledContract, MessageCall, RoleBack, State};
 use alloy_primitives::U256;
 use sha3::Digest;
 
@@ -42,22 +40,20 @@ impl MessageCall for LEVIATHAN {
             if state.is_empty(&sender) {
                 return Err((gas, None, None));
             }
-            if state.is_empty(&recipient)
-                && !state.is_physically_exist(&recipient) {
-                    state.add_account(&recipient, Account::new()); //アカウントを追加
-                    Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
-                }
+            if state.is_empty(&recipient) && !state.is_physically_exist(&recipient) {
+                state.add_account(&recipient, Account::new()); //アカウントを追加
+                Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+            }
             if sender != recipient {
                 Action::SendEth(sender.clone(), recipient.clone(), eth).push(self, state); //ロールバック用
                 state.send_eth(&sender, &recipient, eth); //残高の移動
             }
         } else if self.version < VersionId::SpuriousDragon {
             //Ethereumの初期はvalue=0であっても無条件でアカウントを作成
-            if state.is_empty(&recipient)
-                && !state.is_physically_exist(&recipient) {
-                    state.add_account(&recipient, Account::new()); //アカウントを追加
-                    Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
-                }
+            if state.is_empty(&recipient) && !state.is_physically_exist(&recipient) {
+                state.add_account(&recipient, Account::new()); //アカウントを追加
+                Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+            }
         }
 
         //Execution Environmentの構築

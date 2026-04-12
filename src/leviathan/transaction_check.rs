@@ -1,9 +1,7 @@
 #![allow(dead_code)]
 
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{
-    BlockHeader, Transaction, VersionId,
-};
+use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
 use crate::leviathan::world_state::{Address, WorldState};
 use crate::my_trait::leviathan_trait::{State, TransactionChecks};
 use alloy_primitives::U256;
@@ -29,7 +27,7 @@ impl TransactionChecks for LEVIATHAN {
         payload_length += transaction.t_nonce.length();
         payload_length += transaction.t_price.length();
         payload_length += transaction.t_gas_limit.length();
-        
+
         let to_slice = match &transaction.t_to {
             Some(address) => address.0.as_slice(),
             None => &[], // 空のバイト列
@@ -40,7 +38,11 @@ impl TransactionChecks for LEVIATHAN {
 
         // 2. バッファを確保し、リストのヘッダーを書き込む
         let mut out = BytesMut::with_capacity(payload_length + 10); // ヘッダー分少し余分に確保
-        Header { list: true, payload_length }.encode(&mut out);
+        Header {
+            list: true,
+            payload_length,
+        }
+        .encode(&mut out);
 
         // 3. 要素を順次書き込む (U256のゼロ省略などはalloy-rlpが自動処理します)
         transaction.t_nonce.encode(&mut out);
@@ -110,10 +112,9 @@ impl TransactionChecks for LEVIATHAN {
         //Initコードが49152バイト以下
         if self.version >= VersionId::Shanghai {
             //Shanghai以降
-            if transaction.t_to.is_none()
-                && transaction.data.len() > 49152 {
-                    return Err("Initコードが49152バイトを超えている");
-                }
+            if transaction.t_to.is_none() && transaction.data.len() > 49152 {
+                return Err("Initコードが49152バイトを超えている");
+            }
         }
 
         //トランザクションの実行ガス価格が，ブロックのベースフィー以上

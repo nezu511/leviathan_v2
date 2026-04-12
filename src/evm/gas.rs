@@ -174,7 +174,6 @@ impl Gfunction for EVM {
             return U256::from(used_gas);
         }
 
-        
         match opcode {
             0x0a => {
                 //EXP   OK対応!
@@ -184,12 +183,10 @@ impl Gfunction for EVM {
                 let byte_u256 = U256::from(byte);
 
                 if self.version < VersionId::SpuriousDragon {
-                    
                     byte_u256
                         .saturating_mul(U256::from(10))
                         .saturating_add(U256::from(10))
                 } else {
-                    
                     byte_u256
                         .saturating_mul(U256::from(50))
                         .saturating_add(U256::from(10))

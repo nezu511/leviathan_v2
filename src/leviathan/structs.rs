@@ -182,7 +182,6 @@ impl<'a> ExecutionEnvironment<'a> {
     }
 }
 
-
 pub struct BlockHeader {
     pub h_beneficiary: Address, //ブロックの優先手数料を受け取るアドレス
     pub h_timestamp: U256,      //ブロック生成時の妥当なUnixスタンプ:
