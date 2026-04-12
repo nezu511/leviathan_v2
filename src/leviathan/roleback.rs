@@ -14,9 +14,9 @@ pub enum Action {
     AddNonce(Address),
     StoreCode(Address, Vec<u8>),
     AccountCreation(Address),
-    Delete_account(Address, Account),
-    Reset_storage(Address, HashMap<U256, U256>),
-    Set_balance(Address, U256),
+    DeleteAccount(Address, Account),
+    ResetStorage(Address, HashMap<U256, U256>),
+    SetBalance(Address, U256),
 }
 
 impl Action {
@@ -40,20 +40,20 @@ impl Action {
 
             Action::AccountCreation(_) => self,
 
-            Action::Delete_account(address, _) => {
+            Action::DeleteAccount(address, _) => {
                 let account = state.get_account(&address);
-                Action::Delete_account(address, account)
+                Action::DeleteAccount(address, account)
             }
 
-            Action::Reset_storage(address, _) => {
+            Action::ResetStorage(address, _) => {
                 let account = state.get_account(&address);
                 let storage = account.storage.clone();
-                Action::Reset_storage(address, storage)
+                Action::ResetStorage(address, storage)
             }
 
-            Action::Set_balance(address, _) => {
+            Action::SetBalance(address, _) => {
                 let pre_value = state.get_balance(&address).unwrap_or(U256::ZERO);
-                Action::Set_balance(address, pre_value)
+                Action::SetBalance(address, pre_value)
             }
         };
         leviathan.journal.push(action);
@@ -91,17 +91,17 @@ impl RoleBack for LEVIATHAN {
                     state.delete_account(&address);
                 }
 
-                Action::Delete_account(address, account) => {
+                Action::DeleteAccount(address, account) => {
                     state.add_account(&address, account);
                 }
 
-                Action::Reset_storage(address, storage) => {
+                Action::ResetStorage(address, storage) => {
                     for (key, value) in storage {
                         state.set_storage(&address, key, value);
                     }
                 }
 
-                Action::Set_balance(address, pre_value) => {
+                Action::SetBalance(address, pre_value) => {
                     state.set_balance(&address, pre_value);
                 }
 

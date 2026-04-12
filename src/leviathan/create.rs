@@ -101,7 +101,7 @@ impl ContractCreation for LEVIATHAN {
         Action::SendEth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
         //storageRootを空にする
-        Action::Reset_storage(contract_address.clone(), HashMap::<U256, U256>::new())
+        Action::ResetStorage(contract_address.clone(), HashMap::<U256, U256>::new())
             .push(self, state); //ロールバック用
         state.reset_storage(&contract_address);
         //codehashに空配列をセット
