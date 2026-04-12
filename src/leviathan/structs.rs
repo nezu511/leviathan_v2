@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use alloy_primitives::{I256, U256};
+use crate::leviathan::world_state::Address;
+use alloy_primitives::U256;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -44,6 +44,12 @@ pub struct BackupSubstate {
     pub a_access_storage: HashMap<Address, HashMap<U256, U256>>,
 }
 
+impl Default for BackupSubstate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BackupSubstate {
     pub fn new() -> Self {
         Self {
@@ -82,6 +88,12 @@ pub struct SubState {
     pub a_reimburse: i64,       //ガスの払い戻し
     pub a_access: Vec<Address>, //アクセスされたアカウントリスト：２回目移行のアクセスはガス代割引
     pub a_access_storage: HashMap<Address, HashMap<U256, U256>>, //一度アクセスしたストレージのスロット
+}
+
+impl Default for SubState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SubState {
@@ -167,13 +179,6 @@ impl<'a> ExecutionEnvironment<'a> {
             i_depth,
             i_permission,
         }
-    }
-}
-
-impl <'a> ExecutionEnvironment <'a>{
-    pub fn new(i_address: Address, i_origin: Address, i_gas_price: U256, i_data: Vec<u8>, i_sender: Address, 
-               i_value: U256, i_byte: Vec<u8>, i_block_header: &'a BlockHeader, i_depth: usize, i_permission:bool) -> Self {
-        Self {i_address, i_origin, i_gas_price, i_data, i_sender, i_value, i_byte, i_block_header, i_depth, i_permission}
     }
 }
 

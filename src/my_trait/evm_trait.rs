@@ -1,8 +1,7 @@
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState};
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use alloy_primitives::{I256, U256};
-use crate::leviathan::leviathan::LEVIATHAN;
+use crate::leviathan::world_state::WorldState;
+use alloy_primitives::U256;
 
 pub trait Xi {
     fn evm_run(

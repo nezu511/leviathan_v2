@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{I256, U256};
-use sha3::{Digest, Keccak256};
+use alloy_primitives::U256;
+use sha3::Digest;
 use std::collections::HashMap;
 
 pub struct WorldState(pub HashMap<Address, Account>);
@@ -24,8 +24,8 @@ impl Address {
     pub fn to_u256(&self) -> U256 {
         let mut tmp = [0u8; 32];
         tmp[12..32].copy_from_slice(&self.0);
-        let val = U256::from_be_bytes(tmp);
-        return val;
+
+        U256::from_be_bytes(tmp)
     }
 }
 
@@ -35,6 +35,12 @@ pub struct Account {
     pub balance: U256,
     pub storage: HashMap<U256, U256>,
     pub code: Vec<u8>,
+}
+
+impl Default for Account {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Account {
