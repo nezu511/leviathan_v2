@@ -12,9 +12,10 @@ use crate::my_trait::leviathan_trait::{
     ContractCreation, RoleBack, State,
 };
 use alloy_primitives::{U256, hex};
-use rlp::RlpStream;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
+use alloy_rlp::{Encodable, Header};
+use bytes::BytesMut;
 
 impl ContractCreation for LEVIATHAN {
     fn contract_creation(
@@ -36,10 +37,21 @@ impl ContractCreation for LEVIATHAN {
         let byte: Vec<u8> = if salt.is_none() {
             //CREATE
             let nonce = state.get_nonce(&sender).unwrap() - 1;
-            let mut stream = RlpStream::new_list(2);
-            stream.append(&sender.0.as_ref());
-            stream.append(&nonce);
-            stream.out().to_vec()
+            // 1. 各要素のRLPペイロード長を事前計算
+            let mut payload_length = 0;
+            payload_length += sender.0.as_slice().length();
+            payload_length += nonce.length();
+
+            // 2. 必要なメモリを一括で確保し、リストのヘッダーを書き込む
+            let mut out = BytesMut::with_capacity(payload_length + 10);
+            Header { list: true, payload_length }.encode(&mut out);
+
+            // 3. データを順次エンコード
+            sender.0.as_slice().encode(&mut out);
+            nonce.encode(&mut out);
+
+            // 4. ハッシュ化の前準備として Vec<u8> に変換して返す
+            out.to_vec()
         } else {
             //CREATE2
             let mut tmp = [0u8; 85];
