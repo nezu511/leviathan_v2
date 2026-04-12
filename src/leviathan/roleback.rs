@@ -12,8 +12,8 @@ pub enum Action {
     Sstorage(Address, U256, U256),    //Address, Key, pre_value
     SendEth(Address, Address, U256), //from, to, eth
     AddNonce(Address),
-    Store_code(Address, Vec<u8>),
-    Account_creation(Address),
+    StoreCode(Address, Vec<u8>),
+    AccountCreation(Address),
     Delete_account(Address, Account),
     Reset_storage(Address, HashMap<U256, U256>),
     Set_balance(Address, U256),
@@ -33,12 +33,12 @@ impl Action {
 
             Action::AddNonce(_) => self,
 
-            Action::Store_code(address, _) => {
+            Action::StoreCode(address, _) => {
                 let pre_code = state.get_code(&address).unwrap_or(Vec::<u8>::new());
-                Action::Store_code(address, pre_code)
+                Action::StoreCode(address, pre_code)
             }
 
-            Action::Account_creation(_) => self,
+            Action::AccountCreation(_) => self,
 
             Action::Delete_account(address, _) => {
                 let account = state.get_account(&address);
@@ -83,11 +83,11 @@ impl RoleBack for LEVIATHAN {
                     state.dec_nonce(&address);
                 }
 
-                Action::Store_code(address, code) => {
+                Action::StoreCode(address, code) => {
                     state.set_code(&address, code);
                 }
 
-                Action::Account_creation(address) => {
+                Action::AccountCreation(address) => {
                     state.delete_account(&address);
                 }
 

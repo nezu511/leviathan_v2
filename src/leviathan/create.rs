@@ -83,7 +83,7 @@ impl ContractCreation for LEVIATHAN {
         if state.is_empty(&contract_address)
             && !state.is_physically_exist(&contract_address) {
                 state.add_account(&contract_address, Account::new()); //アカウントを追加
-                Action::Account_creation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
+                Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
             }
         if self.version >= VersionId::SpuriousDragon {
             Action::AddNonce(contract_address.clone()).push(self, state); //ロールバック用
@@ -96,7 +96,7 @@ impl ContractCreation for LEVIATHAN {
         if state.is_empty(&contract_address)
             && !state.is_physically_exist(&contract_address) {
                 state.add_account(&contract_address, Account::new()); //アカウントを追加
-                Action::Account_creation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
+                Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
             }
         Action::SendEth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
@@ -105,7 +105,7 @@ impl ContractCreation for LEVIATHAN {
             .push(self, state); //ロールバック用
         state.reset_storage(&contract_address);
         //codehashに空配列をセット
-        Action::Store_code(contract_address.clone(), Vec::new()).push(self, state); //ロールバック用
+        Action::StoreCode(contract_address.clone(), Vec::new()).push(self, state); //ロールバック用
         state.set_code(&contract_address, Vec::<u8>::new());
 
         //Execution Environmentの構築

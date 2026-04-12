@@ -45,7 +45,7 @@ impl MessageCall for LEVIATHAN {
             if state.is_empty(&recipient)
                 && !state.is_physically_exist(&recipient) {
                     state.add_account(&recipient, Account::new()); //アカウントを追加
-                    Action::Account_creation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+                    Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
                 }
             if sender != recipient {
                 Action::SendEth(sender.clone(), recipient.clone(), eth).push(self, state); //ロールバック用
@@ -56,7 +56,7 @@ impl MessageCall for LEVIATHAN {
             if state.is_empty(&recipient)
                 && !state.is_physically_exist(&recipient) {
                     state.add_account(&recipient, Account::new()); //アカウントを追加
-                    Action::Account_creation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+                    Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
                 }
         }
 

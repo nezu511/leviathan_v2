@@ -255,7 +255,7 @@ impl Ofunction for EVM {
                         if state.is_empty(&to_address)
                             && !state.is_physically_exist(&to_address) {
                                 state.add_account(&to_address, Account::new()); //アカウントを追加
-                                Action::Account_creation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
+                                Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
                             }
                         Action::SendEth(from_address.clone(), to_address.clone(), balance)
                             .push(leviathan, state); //ロールバック用
