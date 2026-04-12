@@ -1,18 +1,16 @@
 #![allow(dead_code)]
 
-use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, Log, SubState, Transaction};
 use crate::leviathan::world_state::{Account, Address, WorldState};
-use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
+use crate::my_trait::evm_trait::Ofunction;
 use crate::my_trait::leviathan_trait::{RoleBack, State};
-use alloy_primitives::{I256, U256};
+use alloy_primitives::U256;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub enum Action {
     Sstorage(Address, U256, U256),    //Address, Key, pre_value
-    Send_eth(Address, Address, U256), //from, to, eth
+    SendEth(Address, Address, U256), //from, to, eth
     Add_nonce(Address),
     Store_code(Address, Vec<u8>),
     Account_creation(Address),
@@ -31,7 +29,7 @@ impl Action {
                 Action::Sstorage(address, key, pre_value)
             }
 
-            Action::Send_eth(_, _, _) => self,
+            Action::SendEth(_, _, _) => self,
 
             Action::Add_nonce(_) => self,
 
@@ -66,7 +64,7 @@ impl RoleBack for LEVIATHAN {
     fn roleback(&mut self, state: &mut WorldState) -> Result<(), &'static str> {
         tracing::info!("ロールバック起動");
         //println!("{:?}", self.journal);
-        while self.journal.len() > 0 {
+        while !self.journal.is_empty() {
             let action = self.journal.pop();
             match action.unwrap() {
                 Action::Sstorage(address, key, pre_value) => {
@@ -77,7 +75,7 @@ impl RoleBack for LEVIATHAN {
                     }
                 }
 
-                Action::Send_eth(from, to, eth) => {
+                Action::SendEth(from, to, eth) => {
                     state.send_eth(&to, &from, eth);
                 }
 

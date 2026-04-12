@@ -4,14 +4,14 @@ use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
-    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId,
+    BackupSubstate, BlockHeader, ExecutionEnvironment, SubState, VersionId,
 };
 use crate::leviathan::world_state::{Account, Address, WorldState};
-use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
+use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
 use crate::my_trait::leviathan_trait::{
-    ContractCreation, RoleBack, State, TransactionChecks, TransactionExecution,
+    ContractCreation, RoleBack, State,
 };
-use alloy_primitives::{I256, U256, hex};
+use alloy_primitives::{U256, hex};
 use rlp::RlpStream;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
@@ -49,13 +49,13 @@ impl ContractCreation for LEVIATHAN {
             tmp[21..53].copy_from_slice(&salt_byte); //salt
             let mut hasher = Keccak256::new();
             hasher.update(&init_code);
-            let result: [u8; 32] = hasher.finalize().try_into().unwrap();
+            let result: [u8; 32] = hasher.finalize().into();
             tmp[53..85].copy_from_slice(&result);
             tmp.to_vec()
         };
         let mut hasher = Keccak256::new();
         hasher.update(&byte);
-        let result: [u8; 32] = hasher.finalize().try_into().unwrap();
+        let result: [u8; 32] = hasher.finalize().into();
         let mut tmp = [0u8; 20];
         tmp.copy_from_slice(&result[12..32]);
         let contract_address = Address::new(tmp);
@@ -65,7 +65,7 @@ impl ContractCreation for LEVIATHAN {
         let nonce = state.get_nonce(&contract_address).unwrap_or(0);
         let code = state
             .get_code(&contract_address)
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_default();
         let is_collision =
             nonce != 0 || !code.is_empty() || !state.is_storage_empty(&contract_address); // アドレス衝突
         if is_collision {
@@ -80,12 +80,11 @@ impl ContractCreation for LEVIATHAN {
         self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
 
         //Nonceを1にする．
-        if state.is_empty(&contract_address) {
-            if !state.is_physically_exist(&contract_address) {
+        if state.is_empty(&contract_address)
+            && !state.is_physically_exist(&contract_address) {
                 state.add_account(&contract_address, Account::new()); //アカウントを追加
                 Action::Account_creation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
             }
-        }
         if self.version >= VersionId::SpuriousDragon {
             Action::Add_nonce(contract_address.clone()).push(self, state); //ロールバック用
             state.inc_nonce(&contract_address);
@@ -94,13 +93,12 @@ impl ContractCreation for LEVIATHAN {
         if state.is_empty(&sender) {
             return Err((gas, None, None));
         }
-        if state.is_empty(&contract_address) {
-            if !state.is_physically_exist(&contract_address) {
+        if state.is_empty(&contract_address)
+            && !state.is_physically_exist(&contract_address) {
                 state.add_account(&contract_address, Account::new()); //アカウントを追加
                 Action::Account_creation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
             }
-        }
-        Action::Send_eth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
+        Action::SendEth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
         //storageRootを空にする
         Action::Reset_storage(contract_address.clone(), HashMap::<U256, U256>::new())
@@ -125,7 +123,7 @@ impl ContractCreation for LEVIATHAN {
         ));
 
         //仮想マシンの実行
-        let mut evm = Box::new(EVM::new(&execution_environment, self.version.clone()));
+        let mut evm = Box::new(EVM::new(&execution_environment, self.version));
         evm.gas = gas;
         let result = evm.evm_run(self, state, substate, &mut execution_environment);
         //Ok()：正常停止
@@ -150,33 +148,29 @@ impl ContractCreation for LEVIATHAN {
                         return Err((U256::ZERO, None, None));
                     }
                     //コードのサイズ制限
-                    if self.version >= VersionId::SpuriousDragon {
-                        if output.len() > 24576 {
+                    if self.version >= VersionId::SpuriousDragon
+                        && output.len() > 24576 {
                             tracing::info!("[ContractCreation] 例外停止:コードサイズ制限");
                             self.roleback(state); //Roleback実行
                             substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                             return Err((U256::ZERO, None, None));
                         }
-                    }
                     //不正なプレフィックス
-                    if self.version >= VersionId::London {
-                        if output.len() > 0 && output[0] == 0xefu8 {
+                    if self.version >= VersionId::London
+                        && !output.is_empty() && output[0] == 0xefu8 {
                             tracing::info!("[ContractCreation] 例外停止:不正なプレフィックス");
                             self.roleback(state); //Roleback実行
                             substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
                             return Err((U256::ZERO, None, None));
                         }
-                    }
-                    return_gas = return_gas - U256::from(deposit_gas);
+                    return_gas -= U256::from(deposit_gas);
                     state.set_code(&contract_address, output);
-                } else {
-                    if U256::from(deposit_gas) < rest_gas {
-                        return_gas = return_gas - U256::from(deposit_gas);
-                        state.set_code(&contract_address, output);
-                    }
+                } else if U256::from(deposit_gas) < rest_gas {
+                    return_gas -= U256::from(deposit_gas);
+                    state.set_code(&contract_address, output);
                 }
 
-                return Ok((return_gas, Vec::<u8>::new(), Some(contract_address.clone())));
+                Ok((return_gas, Vec::<u8>::new(), Some(contract_address.clone())))
             }
 
             Err(Some(revert_data)) => {
@@ -185,7 +179,7 @@ impl ContractCreation for LEVIATHAN {
                 let revert_gas = evm.return_gas(); //ガス返却
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                return Err((revert_gas, Some(revert_data), None));
+                Err((revert_gas, Some(revert_data), None))
             }
 
             Err(None) => {
@@ -193,7 +187,7 @@ impl ContractCreation for LEVIATHAN {
                 tracing::info!("[ContractCreation] 例外停止");
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                return Err((U256::ZERO, None, None));
+                Err((U256::ZERO, None, None))
             }
         }
     }
