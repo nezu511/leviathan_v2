@@ -11,7 +11,7 @@ use std::collections::HashMap;
 pub enum Action {
     Sstorage(Address, U256, U256),    //Address, Key, pre_value
     SendEth(Address, Address, U256), //from, to, eth
-    Add_nonce(Address),
+    AddNonce(Address),
     Store_code(Address, Vec<u8>),
     Account_creation(Address),
     Delete_account(Address, Account),
@@ -31,7 +31,7 @@ impl Action {
 
             Action::SendEth(_, _, _) => self,
 
-            Action::Add_nonce(_) => self,
+            Action::AddNonce(_) => self,
 
             Action::Store_code(address, _) => {
                 let pre_code = state.get_code(&address).unwrap_or(Vec::<u8>::new());
@@ -79,7 +79,7 @@ impl RoleBack for LEVIATHAN {
                     state.send_eth(&to, &from, eth);
                 }
 
-                Action::Add_nonce(address) => {
+                Action::AddNonce(address) => {
                     state.dec_nonce(&address);
                 }
 

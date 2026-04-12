@@ -1470,7 +1470,7 @@ impl Ofunction for EVM {
             return;
         }
         //コントラクト自身のNonceのインクリメント
-        Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
+        Action::AddNonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
         state.inc_nonce(&execution_environment.i_address);
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
@@ -1593,7 +1593,7 @@ impl Ofunction for EVM {
             return;
         }
         //コントラクト自身のNonceのインクリメント
-        Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
+        Action::AddNonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
         state.inc_nonce(&execution_environment.i_address);
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
