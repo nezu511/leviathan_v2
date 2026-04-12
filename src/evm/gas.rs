@@ -5,10 +5,10 @@
 */
 use crate::evm::evm::EVM;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use crate::my_trait::evm_trait::{Gfunction, Xi};
+use crate::leviathan::world_state::{Address, WorldState};
+use crate::my_trait::evm_trait::Gfunction;
 use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::{I256, U256};
+use alloy_primitives::U256;
 
 //GAS table固定費
 static GAS_TABLE: [u8; 256] = {
@@ -147,7 +147,7 @@ impl Gfunction for EVM {
                 return result;
             }
         }
-        return U256::ZERO;
+        U256::ZERO
     }
 
     fn is_account_access(&mut self, data: U256, substate: &SubState) -> U256 {
@@ -156,9 +156,9 @@ impl Gfunction for EVM {
         tmp.copy_from_slice(&buffer[12..32]);
         let address = Address::new(tmp);
         if substate.a_access.contains(&address) {
-            return U256::from(100);
+            U256::from(100)
         } else {
-            return U256::from(2600);
+            U256::from(2600)
         }
     }
 
@@ -174,24 +174,25 @@ impl Gfunction for EVM {
             return U256::from(used_gas);
         }
 
-        let used_gas = match opcode {
+        
+        match opcode {
             0x0a => {
                 //EXP   OK対応!
                 let exponent = self.peek(1);
                 let bit = exponent.bit_len();
-                let byte = (bit + 7) / 8;
+                let byte = bit.div_ceil(8);
                 let byte_u256 = U256::from(byte);
 
                 if self.version < VersionId::SpuriousDragon {
-                    let result = byte_u256
+                    
+                    byte_u256
                         .saturating_mul(U256::from(10))
-                        .saturating_add(U256::from(10));
-                    result
+                        .saturating_add(U256::from(10))
                 } else {
-                    let result = byte_u256
+                    
+                    byte_u256
                         .saturating_mul(U256::from(50))
-                        .saturating_add(U256::from(10));
-                    result
+                        .saturating_add(U256::from(10))
                 }
             }
             0x20 => {
@@ -212,30 +213,30 @@ impl Gfunction for EVM {
             0x31 => {
                 //BALANCE
                 if self.version < VersionId::TangerineWhistle {
-                    return U256::from(20);
+                    U256::from(20)
                 } else if self.version < VersionId::Istanbul {
-                    return U256::from(400);
+                    U256::from(400)
                 } else if self.version < VersionId::Berlin {
-                    return U256::from(700);
+                    U256::from(700)
                 } else {
                     //Address型に変換
                     let data = self.peek(0);
                     let cost = self.is_account_access(data, substate);
-                    return U256::from(cost);
+                    U256::from(cost)
                 }
             }
 
             0x3b => {
                 //EXTCODESIZE
                 if self.version < VersionId::TangerineWhistle {
-                    return U256::from(20);
+                    U256::from(20)
                 } else if self.version < VersionId::Berlin {
-                    return U256::from(700);
+                    U256::from(700)
                 } else {
                     //Address型に変換
                     let data = self.peek(0);
                     let cost = self.is_account_access(data, substate);
-                    return U256::from(cost);
+                    U256::from(cost)
                 }
             }
 
@@ -243,13 +244,13 @@ impl Gfunction for EVM {
                 //BALANCE
                 //Address型に変換
                 if self.version < VersionId::Istanbul {
-                    return U256::from(400);
+                    U256::from(400)
                 } else if self.version < VersionId::Berlin {
-                    return U256::from(700);
+                    U256::from(700)
                 } else {
                     let data = self.peek(0);
                     let cost = self.is_account_access(data, substate);
-                    return U256::from(cost);
+                    U256::from(cost)
                 }
             }
 
@@ -264,7 +265,7 @@ impl Gfunction for EVM {
                 let total = ext_cost
                     .saturating_add(dynamic_cost)
                     .saturating_add(U256::from(3));
-                return total;
+                total
             }
 
             0x3c => {
@@ -281,7 +282,7 @@ impl Gfunction for EVM {
                 let total = acc_cost
                     .saturating_add(ext_cost)
                     .saturating_add(dynamic_cost);
-                return total;
+                total
             }
 
             0x51 | 0x52 => {
@@ -289,7 +290,7 @@ impl Gfunction for EVM {
                 let offset = self.peek(0);
                 let ext_cost = self.extension_cost(offset, U256::from(32));
                 let total = ext_cost.saturating_add(U256::from(3));
-                return total;
+                total
             }
 
             0x53 => {
@@ -297,7 +298,7 @@ impl Gfunction for EVM {
                 let offset = self.peek(0);
                 let ext_cost = self.extension_cost(offset, U256::from(1));
                 let total = ext_cost.saturating_add(U256::from(3));
-                return total;
+                total
             }
 
             0x54 => {
@@ -314,12 +315,10 @@ impl Gfunction for EVM {
                     let key_case = substate.a_access_storage.get(address);
                     if key_case.is_none() {
                         U256::from(2100)
+                    } else if key_case.unwrap().contains_key(&key) {
+                        U256::from(100)
                     } else {
-                        if key_case.unwrap().contains_key(&key) {
-                            U256::from(100)
-                        } else {
-                            U256::from(2100)
-                        }
+                        U256::from(2100)
                     }
                 }
             }
@@ -331,7 +330,7 @@ impl Gfunction for EVM {
                 let new_value = self.peek(1);
                 //今現在，スロットに入ってる値
                 let current_value = state
-                    .get_storage_value(&address, &key)
+                    .get_storage_value(address, &key)
                     .unwrap_or(U256::from(0));
                 if self.version < VersionId::Istanbul && self.version != VersionId::Constantinople {
                     if current_value.is_zero() && !new_value.is_zero() {
@@ -358,7 +357,7 @@ impl Gfunction for EVM {
                             if self.version >= VersionId::Berlin {
                                 called_cost = 100; //Warm/Cold
                             }
-                            val1.unwrap().clone()
+                            *val1.unwrap()
                         }
                     };
                     //Update Costを算出
@@ -369,31 +368,29 @@ impl Gfunction for EVM {
                         } else {
                             100
                         }
-                    } else {
-                        if current_value == original_value {
-                            if original_value == U256::from(0) {
-                                //0　→  0 →  0以外
-                                20000
-                            } else {
-                                //0以外(a) →  0以外(a) →  0以外(b)
-                                if self.version == VersionId::Constantinople {
-                                    5000
-                                } else {
-                                    2900
-                                }
-                            }
+                    } else if current_value == original_value {
+                        if original_value == U256::from(0) {
+                            //0　→  0 →  0以外
+                            20000
                         } else {
-                            //*(a) → *(b) →  *(c)
+                            //0以外(a) →  0以外(a) →  0以外(b)
                             if self.version == VersionId::Constantinople {
-                                200
+                                5000
                             } else {
-                                100
+                                2900
                             }
+                        }
+                    } else {
+                        //*(a) → *(b) →  *(c)
+                        if self.version == VersionId::Constantinople {
+                            200
+                        } else {
+                            100
                         }
                     };
                     //トータルcostを算出
                     let total = update_cost + called_cost;
-                    return U256::from(total);
+                    U256::from(total)
                 }
             }
 
@@ -411,7 +408,7 @@ impl Gfunction for EVM {
                     .saturating_add(topic_cost)
                     .saturating_add(dynamic_cost)
                     .saturating_add(U256::from(375));
-                return total;
+                total
             }
 
             0xf0 => {
@@ -424,12 +421,12 @@ impl Gfunction for EVM {
                 let dynamic_cost = words.saturating_mul(U256::from(2));
                 if self.version < VersionId::Shanghai {
                     let total = ext_cost.saturating_add(U256::from(32000));
-                    return total;
+                    total
                 } else {
                     let total = dynamic_cost
                         .saturating_add(ext_cost)
                         .saturating_add(U256::from(32000));
-                    return total;
+                    total
                 }
             }
 
@@ -474,12 +471,10 @@ impl Gfunction for EVM {
                     if state.is_dead(self.version, &address) {
                         create_cost = create_cost.saturating_add(U256::from(25000));
                     }
-                } else {
-                    if !value.is_zero() {
-                        create_cost = create_cost.saturating_add(U256::from(9000));
-                        if state.is_dead(self.version, &address) {
-                            create_cost = create_cost.saturating_add(U256::from(25000));
-                        }
+                } else if !value.is_zero() {
+                    create_cost = create_cost.saturating_add(U256::from(9000));
+                    if state.is_dead(self.version, &address) {
+                        create_cost = create_cost.saturating_add(U256::from(25000));
                     }
                 }
                 let base_cost = ext_cost
@@ -499,7 +494,7 @@ impl Gfunction for EVM {
                     }
                 }
                 self.child_gas_mem = Some(result);
-                return result.saturating_add(base_cost);
+                result.saturating_add(base_cost)
             }
 
             0xf2 => {
@@ -534,7 +529,7 @@ impl Gfunction for EVM {
                     self.is_account_access(address, substate)
                 };
                 //送金の追加コスト
-                let address = Address::from_u256(address);
+                let _address = Address::from_u256(address);
                 let mut create_cost = U256::from(0);
                 if !value.is_zero() {
                     create_cost = create_cost.saturating_add(U256::from(9000));
@@ -556,7 +551,7 @@ impl Gfunction for EVM {
                     }
                 }
                 self.child_gas_mem = Some(result);
-                return result.saturating_add(base_cost);
+                result.saturating_add(base_cost)
             }
 
             0xf3 | 0xfd => {
@@ -564,7 +559,7 @@ impl Gfunction for EVM {
                 let offset = self.peek(0);
                 let size = self.peek(1);
                 let ext_cost = self.extension_cost(offset, size);
-                return ext_cost;
+                ext_cost
             }
 
             0xf4 | 0xfa => {
@@ -613,7 +608,7 @@ impl Gfunction for EVM {
                     }
                 }
                 self.child_gas_mem = Some(result);
-                return result.saturating_add(base_cost);
+                result.saturating_add(base_cost)
             }
 
             0xf5 => {
@@ -632,12 +627,12 @@ impl Gfunction for EVM {
                 let total = dynamic_cost
                     .saturating_add(ext_cost)
                     .saturating_add(U256::from(32000));
-                return total;
+                total
             }
 
             0xff => {
                 if self.version < VersionId::TangerineWhistle {
-                    return U256::ZERO;
+                    U256::ZERO
                 } else {
                     let data = self.peek(0);
                     let address = Address::from_u256(data);
@@ -661,12 +656,11 @@ impl Gfunction for EVM {
                         };
                     }
                     let total = create_cost + access_state_cost + 5000;
-                    return U256::from(total);
+                    U256::from(total)
                 }
             }
 
             _ => U256::from(0),
-        };
-        return used_gas;
+        }
     }
 }

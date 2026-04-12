@@ -1,16 +1,15 @@
 #![allow(dead_code)]
 
-use crate::evm::evm::EVM;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
-    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId,
+    BackupSubstate, BlockHeader, Log, SubState, Transaction, VersionId,
 };
-use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{I256, U256, hex};
-use sha3::{Digest, Keccak256};
+use alloy_primitives::{U256, hex};
+use sha3::Digest;
 
 pub struct LEVIATHAN {
     pub journal: Vec<Action>,
@@ -23,7 +22,7 @@ impl LEVIATHAN {
         Self {
             journal: Vec::<Action>::new(),
             substate_backup: BackupSubstate::new(),
-            version: version,
+            version,
         }
     }
 
@@ -190,7 +189,7 @@ impl TransactionExecution for LEVIATHAN {
                     //set_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
                         state.add_account(&sender_address, Account::new()); //アカウントを追加
-                        Action::Account_creation(sender_address.clone()).push(self, state); //アカウントが存在しない場合
+                        Action::AccountCreation(sender_address.clone()).push(self, state); //アカウントが存在しない場合
                     }
                 }
                 state.set_balance(&sender_address, reimburse);
@@ -206,7 +205,7 @@ impl TransactionExecution for LEVIATHAN {
                     //set_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
-                        Action::Account_creation(block_header.h_beneficiary.clone())
+                        Action::AccountCreation(block_header.h_beneficiary.clone())
                             .push(self, state); //アカウントが存在しない場合
                     }
                 }
@@ -220,12 +219,12 @@ impl TransactionExecution for LEVIATHAN {
                     "[マイナーへの支払い]",
                 );
                 //substate.a_desの処理
-                while !substate.a_des.is_empty() {
-                    let address = substate.a_des.pop().unwrap();
+                while let Some(address) = substate.a_des.pop() {
+                    
                     state.delete_account(&address);
                 }
 
-                return Ok((final_billed_gas, substate.a_log.clone()));
+                Ok((final_billed_gas, substate.a_log.clone()))
             }
             Err((gas, _, _)) => {
                 //送信者への返金
@@ -234,7 +233,7 @@ impl TransactionExecution for LEVIATHAN {
                     //set_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
                         state.add_account(&sender_address, Account::new()); //アカウントを追加
-                        Action::Account_creation(sender_address.clone()).push(self, state); //アカウントが存在しない場合
+                        Action::AccountCreation(sender_address.clone()).push(self, state); //アカウントが存在しない場合
                     }
                 }
                 state.set_balance(&sender_address, reimburse);
@@ -250,7 +249,7 @@ impl TransactionExecution for LEVIATHAN {
                     //set_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
-                        Action::Account_creation(block_header.h_beneficiary.clone())
+                        Action::AccountCreation(block_header.h_beneficiary.clone())
                             .push(self, state); //アカウントが存在しない場合
                     }
                 }
@@ -263,7 +262,7 @@ impl TransactionExecution for LEVIATHAN {
                     final_billed_gas = %final_billed_gas,
                     "[Err:マイナーへの支払い]",
                 );
-                return Err((final_billed_gas, Vec::new()));
+                Err((final_billed_gas, Vec::new()))
             }
         }
     }
@@ -417,9 +416,9 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
-        let test_dir = "GeneralStateTestsFiller/stWalletTest";
+        //let test_dir = "GeneralStateTestsFiller/stWalletTest";
         //let test_dir = "GeneralStateTestsFiller/stCallCodes";
-        //let test_dir = "GeneralStateTestsFiller/stCreate2";
+        let test_dir = "GeneralStateTestsFiller/stCreate2";
 
         let paths = fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));

@@ -2,10 +2,9 @@
 
 use crate::evm::evm::EVM;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use crate::my_trait::evm_trait::{Gfunction, Xi, Zfunction};
-use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::{I256, U256};
+use crate::leviathan::world_state::WorldState;
+use crate::my_trait::evm_trait::{Gfunction, Zfunction};
+use alloy_primitives::U256;
 
 //push_pop表
 static SAFE_TABLE: [[u8; 2]; 256] = {
@@ -223,12 +222,11 @@ impl Zfunction for EVM {
         }
 
         //命令がSSTOREで残ガスが2300以下
-        if self.version >= VersionId::Istanbul {
-            if opcode == 0x55 && self.gas <= U256::from(2300) {
+        if self.version >= VersionId::Istanbul
+            && opcode == 0x55 && self.gas <= U256::from(2300) {
                 tracing::warn!("SSTOREを実行するのにガスが2300以下");
                 return false;
             }
-        }
 
         //RETURNDATACOPYに関するルール
         if opcode == 0x3e {
@@ -261,6 +259,6 @@ impl Zfunction for EVM {
             }
         }
 
-        return true;
+        true
     }
 }

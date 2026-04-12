@@ -2,10 +2,9 @@
 
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
-use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::{I256, U256, hex};
+use crate::leviathan::world_state::WorldState;
+use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi, Zfunction};
+use alloy_primitives::U256;
 
 pub struct EVM {
     pub gas: U256,
@@ -48,8 +47,8 @@ impl EVM {
             active_words: 0,
             stack: Vec::new(),
             return_back: Vec::new(),
-            safe_jump: safe_jump,
-            version: version,
+            safe_jump,
+            version,
             child_gas_mem: None,
         }
     }
@@ -66,7 +65,7 @@ impl EVM {
     pub fn return_gas(&mut self) -> U256 {
         let gas = self.gas;
         self.gas = U256::ZERO;
-        return gas;
+        gas
     }
 }
 
@@ -100,12 +99,12 @@ impl Xi for EVM {
             }
 
             //Z関数による安全性を確認
-            if !self.is_safe(opcode, &substate, &state, &execution_environment) {
+            if !self.is_safe(opcode, substate, state, execution_environment) {
                 return Err(None); //例外的な停止
             }
 
             //デバック用
-            let consumption_gas = self.gas(opcode, &substate, &state, &execution_environment);
+            let consumption_gas = self.gas(opcode, substate, state, execution_environment);
             tracing::trace!(
             opcode = format_args!("0x{:x}", opcode),
             self_gas = %self.gas,
