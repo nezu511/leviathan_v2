@@ -279,7 +279,8 @@ mod state_tests {
     use alloy_primitives::{U256, hex};
 
     // 署名生成のためのクレート
-    use rlp::RlpStream;
+    use alloy_rlp::{Encodable, Header};
+    use bytes::BytesMut;
     use secp256k1::{Message, Secp256k1, SecretKey};
     use sha3::{Digest, Keccak256};
 
@@ -358,15 +359,6 @@ mod state_tests {
         hex::decode(s.trim_start_matches("0x")).unwrap_or_default()
     }
 
-    fn u256_to_minimal_bytes(val: U256) -> Vec<u8> {
-        if val == U256::ZERO {
-            return vec![];
-        }
-        let bytes = val.to_be_bytes::<32>();
-        let start = bytes.iter().position(|&b| b != 0).unwrap_or(32);
-        bytes[start..].to_vec()
-    }
-
     fn sign_transaction(
         nonce: U256,
         gas_price: U256,
@@ -376,24 +368,43 @@ mod state_tests {
         data: &[u8],
         secret_key_hex: &str,
     ) -> (U256, U256, U256) {
-        let mut stream = RlpStream::new_list(6);
-        stream.append(&u256_to_minimal_bytes(nonce));
-        stream.append(&u256_to_minimal_bytes(gas_price));
-        stream.append(&u256_to_minimal_bytes(gas_limit));
+        
+        // 1. 各要素のRLPペイロード長を事前計算する
+        let mut payload_length = 0;
+        payload_length += nonce.length();
+        payload_length += gas_price.length();
+        payload_length += gas_limit.length();
 
-        if let Some(addr) = to {
-            stream.append(&addr.0.as_ref());
-        } else {
-            stream.append_empty_data();
-        }
+        let to_slice = match &to {
+            Some(addr) => addr.0.as_slice(),
+            None => &[], // 空のバイト列
+        };
+        payload_length += to_slice.length();
+        payload_length += value.length();
+        payload_length += data.length();
 
-        stream.append(&u256_to_minimal_bytes(value));
-        stream.append(&data);
+        // 2. 必要なメモリを一括で確保し、リストのヘッダーを書き込む
+        let mut out = BytesMut::with_capacity(payload_length + 10);
+        Header { list: true, payload_length }.encode(&mut out);
 
+        // 3. データを順次エンコード
+        // u256_to_minimal_bytes を使わなくても、U256型が勝手にゼロ省略してくれます！
+        nonce.encode(&mut out);
+        gas_price.encode(&mut out);
+        gas_limit.encode(&mut out);
+        to_slice.encode(&mut out);
+        value.encode(&mut out);
+        data.encode(&mut out);
+
+        // RLPエンコードされたバイト列を取り出す
+        let rlp_encoded = out.freeze();
+
+        // 4. Keccak256でハッシュ化して32バイトのハッシュを得る
         let mut hasher = Keccak256::new();
-        hasher.update(stream.out());
-        let hash: [u8; 32] = hasher.finalize().try_into().unwrap();
+        hasher.update(&rlp_encoded);
+        let hash: [u8; 32] = hasher.finalize().into();
 
+        // --- 以下、secp256k1 による署名ロジックは既存のまま変更なし ---
         let secp = Secp256k1::new();
         let secret_key_bytes = hex::decode(secret_key_hex).expect("Invalid secret key hex");
         let secret_key = SecretKey::from_slice(&secret_key_bytes).expect("Invalid secret key");
@@ -410,6 +421,8 @@ mod state_tests {
 
         (v, r, s)
     }
+
+
     #[test]
     fn state_test() {
         let _ = tracing_subscriber::fmt()
