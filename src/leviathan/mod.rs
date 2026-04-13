@@ -7,3 +7,4 @@ pub mod state_method;
 pub mod structs;
 pub mod transaction_check;
 pub mod world_state;
+pub mod mpt_method;
