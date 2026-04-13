@@ -1,10 +1,28 @@
 #![allow(dead_code)]
 
-use alloy_primitives::U256;
+use alloy_primitives::{U256, B256};
 use sha3::Digest;
 use std::collections::HashMap;
+use std::sync::Arc;
+use eth_trie::{MemoryDB, EthTrie};
+use alloy_rlp::{RlpEncodable, RlpDecodable};
 
 pub struct WorldState(pub HashMap<Address, Account>);
+
+pub struct WorldState2{
+    cash: HashMap<Address, Account>,
+    data: Arc<MemoryDB>,
+    eth_trie: EthTrie<MemoryDB>,
+    code_storage: HashMap<B256, Vec<u8>>
+}
+
+#[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
+pub struct MptAccount { //MPT専用
+    pub nonce: u64,
+    pub balance: U256,
+    pub storage_root: B256, 
+    pub code_hash: B256,
+}
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, PartialOrd, Ord)]
 pub struct Address(pub [u8; 20]);
