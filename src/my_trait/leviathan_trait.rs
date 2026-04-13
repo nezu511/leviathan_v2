@@ -17,7 +17,7 @@ pub trait State {
 
     fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256>;
 
-    fn get_nonce(&self, address: &Address) -> Option<u32>;
+    fn get_nonce(&self, address: &Address) -> Option<u64>;
 
     fn get_account(&self, address: &Address) -> Account;
 

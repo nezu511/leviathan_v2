@@ -10,7 +10,7 @@ use alloy_rlp::{RlpEncodable, RlpDecodable};
 pub struct WorldState(pub HashMap<Address, Account>);
 
 pub struct WorldState2{
-    cache: HashMap<Address, Account>,
+    cache: HashMap<Address, CacheAccount>,
     data: Arc<MemoryDB>,
     eth_trie: EthTrie<MemoryDB>,
     code_storage: HashMap<B256, Vec<u8>>
@@ -19,7 +19,7 @@ pub struct WorldState2{
 impl WorldState2 {
     pub fn new() -> Self {
         let data = Arc::new(MemoryDB::new(true));
-        let cache = HashMap::<Address, Account>::new();
+        let cache = HashMap::<Address, CacheAccount>::new();
         let eth_trie = EthTrie::new(data.clone());
         let mut code_storage = HashMap::<B256, Vec<u8>>::new();
         //空のコードのハッシュを登録
@@ -29,6 +29,11 @@ impl WorldState2 {
 
         Self {cache, data, eth_trie, code_storage}
     }
+
+    pub fn add_cache(accout: &MptAccount) {
+
+    }
+
 }
         
 
@@ -52,10 +57,18 @@ impl MptAccount {
 }
 
 
+#[derive(Debug, Clone)]
+pub struct CacheAccount {
+    pub nonce: u64,
+    pub balance: U256,
+    pub storage: HashMap<U256, U256>,
+    pub code: B256,
+}
+
 
 #[derive(Debug, Clone)]
 pub struct Account {
-    pub nonce: u32,
+    pub nonce: u64,
     pub balance: U256,
     pub storage: HashMap<U256, U256>,
     pub code: Vec<u8>,
@@ -70,10 +83,16 @@ impl Default for Account {
 impl Account {
     pub fn new() -> Self {
         Self {
-            nonce: 0u32,
+            nonce: 0u64,
             balance: U256::ZERO,
             storage: HashMap::new(),
             code: Vec::new(),
         }
     }
+
+    pub fn make(nonce: u64, balance: U256, code: Vec<u8>) -> Self {
+        let storage = HashMap::<U256, U256>::new();
+        Self {nonce, balance, storage, code}
+    }
+
 }

@@ -71,7 +71,7 @@ impl State for WorldState {
         Some(value.cloned().unwrap_or(U256::from(0)))
     }
 
-    fn get_nonce(&self, address: &Address) -> Option<u32> {
+    fn get_nonce(&self, address: &Address) -> Option<u64> {
         if !self.0.contains_key(address) {
             return None;
         }

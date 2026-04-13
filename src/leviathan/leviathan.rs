@@ -757,7 +757,7 @@ mod state_tests {
                         }
 
                         if let Some(expected_nonce_str) = &expected_acc.nonce {
-                            let expected_nonce: u32 =
+                            let expected_nonce: u64 =
                                 parse_u256(expected_nonce_str).try_into().unwrap_or(0);
                             assert_eq!(
                                 actual_acc.nonce, expected_nonce,
