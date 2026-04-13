@@ -8,7 +8,7 @@ use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{WorldState};
 use crate::my_trait::evm_trait::Gfunction;
 use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::{U256, Address};
+use alloy_primitives::{U256, Address, B256};
 
 //GAS table固定費
 static GAS_TABLE: [u8; 256] = {
@@ -459,7 +459,7 @@ impl Gfunction for EVM {
                     self.is_account_access(address, substate)
                 };
                 //送金とアカウント作成の追加コスト
-                let address = Address::from_u256(address);
+                let address = Address::from_word(B256::from(address.to_be_bytes::<32>()));
                 let mut create_cost = U256::ZERO;
                 if self.version < VersionId::SpuriousDragon {
                     if !value.is_zero() {
@@ -526,7 +526,7 @@ impl Gfunction for EVM {
                     self.is_account_access(address, substate)
                 };
                 //送金の追加コスト
-                let _address = Address::from_u256(address);
+                let _address = Address::from_word(B256::from(address.to_be_bytes::<32>()));
                 let mut create_cost = U256::from(0);
                 if !value.is_zero() {
                     create_cost = create_cost.saturating_add(U256::from(9000));
@@ -632,7 +632,7 @@ impl Gfunction for EVM {
                     U256::ZERO
                 } else {
                     let data = self.peek(0);
-                    let address = Address::from_u256(data);
+                    let address = Address::from_word(B256::from(data.to_be_bytes::<32>()));
                     //新規アカウント作成のペナルティ
                     let my_address = &execution_environment.i_address;
                     let create_cost = if state.get_balance(my_address).unwrap_or(U256::from(0))

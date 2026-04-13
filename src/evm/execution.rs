@@ -7,7 +7,7 @@ use crate::leviathan::structs::{ExecutionEnvironment, Log, SubState, VersionId};
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::{ContractCreation, MessageCall, State};
-use alloy_primitives::{I256, U256, hex, Address};
+use alloy_primitives::{I256, U256, hex, Address, B256};
 use sha3::{Digest, Keccak256};
 
 impl Ofunction for EVM {
@@ -236,7 +236,7 @@ impl Ofunction for EVM {
                     substate.a_reimburse += 24000;
                 }
                 let val1 = self.pop();
-                let to_address = Address::from_u256(val1);
+                let to_address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
                 //デバック用
                 tracing::info!(
                     recipient = format_args!("0x{}", hex::encode(to_address.0)),
@@ -281,7 +281,7 @@ impl Ofunction for EVM {
         //CALL
         let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let value = self.pop();
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -775,14 +775,14 @@ impl Ofunction for EVM {
             0x30 => {
                 //ADDRESS
                 let address = &execution_environment.i_address;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
             0x31 => {
                 //BALANCE
                 let val1 = self.pop();
-                let address = Address::from_u256(val1);
+                let address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
                 let balance = state.get_balance(&address);
                 match balance {
                     Some(x) => self.push(x),
@@ -797,14 +797,14 @@ impl Ofunction for EVM {
             0x32 => {
                 //ORIGIN
                 let address = &execution_environment.i_origin;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
             0x33 => {
                 //CALLER
                 let address = &execution_environment.i_sender;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
@@ -835,7 +835,7 @@ impl Ofunction for EVM {
             0x3b => {
                 //EXTCODESIZE
                 let val1 = self.pop();
-                let address = Address::from_u256(val1);
+                let address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
                 let result = state.get_code(&address);
                 match result {
                     Some(x) => self.push(U256::from(x.len())),
@@ -856,7 +856,7 @@ impl Ofunction for EVM {
             0x3f => {
                 //EXTCODEHASH
                 let data = self.pop();
-                let address = Address::from_u256(data);
+                let address = Address::from_word(B256::from(data.to_be_bytes::<32>()));
                 //コード取得
                 let result = state.get_code(&address);
                 match result {
@@ -999,7 +999,7 @@ impl Ofunction for EVM {
     ) {
         //EXTCODECOPY
         let val1 = self.pop();
-        let address = Address::from_u256(val1);
+        let address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
         let dest_offset = self.pop().try_into().unwrap_or(usize::MAX); //メモリ
         let offset = self.pop().try_into().unwrap_or(usize::MAX);
         let size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1091,7 +1091,7 @@ impl Ofunction for EVM {
                 //COINBASE
                 let header = &execution_environment.i_block_header;
                 let address = &header.h_beneficiary;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
@@ -1516,7 +1516,7 @@ impl Ofunction for EVM {
                 //return_backの更新
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
-                let contract_u256 = contract_address.to_u256();
+                let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&contract_address) {
                     substate.a_access.push(contract_address.clone())
@@ -1638,7 +1638,7 @@ impl Ofunction for EVM {
                 //return_backの更新
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
-                let contract_u256 = contract_address.to_u256();
+                let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&contract_address) {
                     substate.a_access.push(contract_address.clone())
@@ -1680,7 +1680,7 @@ impl Ofunction for EVM {
         //CALLCODE
         let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //コードを借りてくる対象のアカウントアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let value = self.pop();
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1831,7 +1831,7 @@ impl Ofunction for EVM {
         //DELEGATECALL
         let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
         let out_offset = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1970,7 +1970,7 @@ impl Ofunction for EVM {
         //STATICCALL
         let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
         let out_offset = self.pop().try_into().unwrap_or(usize::MAX);

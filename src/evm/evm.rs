@@ -135,11 +135,12 @@ mod tests {
     use std::collections::HashMap;
     use std::fs;
     use std::path::{Path, PathBuf};
+    use alloy_primitives::Address;
 
     // あなたが作った構造体をインポート
     use crate::leviathan::leviathan::LEVIATHAN;
     use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, SubState, VersionId};
-    use crate::leviathan::world_state::{Account, Address, WorldState};
+    use crate::leviathan::world_state::{Account, WorldState};
     use crate::my_trait::leviathan_trait::{RoleBack, TransactionExecution};
 
     // パーサーをインポート

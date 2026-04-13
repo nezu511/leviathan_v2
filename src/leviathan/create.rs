@@ -58,7 +58,7 @@ impl ContractCreation for LEVIATHAN {
             //CREATE2
             let mut tmp = [0u8; 85];
             tmp[0] = 0xff; //定数
-            tmp[1..21].copy_from_slice(&sender.0); //送信者のアドレス
+            tmp[1..21].copy_from_slice(sender.0.as_slice()); //送信者のアドレス
             let salt_byte: [u8; 32] = salt.unwrap().to_be_bytes();
             tmp[21..53].copy_from_slice(&salt_byte); //salt
             let mut hasher = Keccak256::new();

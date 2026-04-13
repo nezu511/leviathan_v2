@@ -71,7 +71,7 @@ impl MessageCall for LEVIATHAN {
         ));
 
         //プリコンパイル判定と実行の要件
-        let contract_u256 = contract.to_u256();
+        let contract_u256 = U256::from_be_bytes(contract.into_word().0);
         let result = match contract_u256 {
             val if val == U256::from(1) => {
                 //ECDSA公開鍵復元

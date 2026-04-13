@@ -275,7 +275,7 @@ mod state_tests {
     use std::fs;
 
     // alloy_primitives の hex を使用して E0433 を解消
-    use alloy_primitives::{U256, hex};
+    use alloy_primitives::{U256, hex, Address};
 
     // 署名生成のためのクレート
     use alloy_rlp::{Encodable, Header};
@@ -284,7 +284,7 @@ mod state_tests {
     use sha3::{Digest, Keccak256};
 
     use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
-    use crate::leviathan::world_state::{Account, Address, WorldState};
+    use crate::leviathan::world_state::{Account, WorldState};
     use crate::my_trait::leviathan_trait::TransactionExecution;
     use crate::test::state_parser::StateTestSuite;
 
