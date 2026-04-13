@@ -4,10 +4,10 @@ use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{ExecutionEnvironment, Log, SubState, VersionId};
-use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::{ContractCreation, MessageCall, State};
-use alloy_primitives::{I256, U256, hex};
+use alloy_primitives::{I256, U256, hex, Address};
 use sha3::{Digest, Keccak256};
 
 impl Ofunction for EVM {

@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
-use crate::leviathan::world_state::Address;
-use alloy_primitives::U256;
+use alloy_primitives::{U256, Address};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

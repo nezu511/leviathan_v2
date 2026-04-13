@@ -5,10 +5,10 @@
 */
 use crate::evm::evm::EVM;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
-use crate::leviathan::world_state::{Address, WorldState};
+use crate::leviathan::world_state::{WorldState};
 use crate::my_trait::evm_trait::Gfunction;
 use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::U256;
+use alloy_primitives::{U256, Address};
 
 //GAS table固定費
 static GAS_TABLE: [u8; 256] = {

@@ -6,10 +6,10 @@ use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
     BackupSubstate, BlockHeader, ExecutionEnvironment, SubState, VersionId,
 };
-use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
 use crate::my_trait::leviathan_trait::{CompiledContract, MessageCall, RoleBack, State};
-use alloy_primitives::U256;
+use alloy_primitives::{U256, Address};
 use sha3::Digest;
 
 impl MessageCall for LEVIATHAN {

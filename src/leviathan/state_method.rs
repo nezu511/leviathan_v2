@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
 use crate::leviathan::structs::VersionId;
-use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::{U256, hex};
+use alloy_primitives::{U256, hex, Address};
 
 impl State for WorldState {
     fn is_empty(&self, address: &Address) -> bool {

@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::Ofunction;
 use crate::my_trait::leviathan_trait::{RoleBack, State};
-use alloy_primitives::U256;
+use alloy_primitives::{U256, Address};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]

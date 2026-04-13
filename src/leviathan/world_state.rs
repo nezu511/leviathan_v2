@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{U256, B256};
+use alloy_primitives::{U256, B256, Address};
 use sha3::Digest;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -24,28 +24,6 @@ pub struct MptAccount { //MPT専用
     pub code_hash: B256,
 }
 
-#[derive(Debug, Eq, Hash, PartialEq, Clone, PartialOrd, Ord)]
-pub struct Address(pub [u8; 20]);
-
-impl Address {
-    pub fn new(input: [u8; 20]) -> Self {
-        Self(input)
-    }
-
-    pub fn from_u256(data: U256) -> Self {
-        let bytes: [u8; 32] = data.to_be_bytes();
-        let mut tmp = [0u8; 20];
-        tmp.copy_from_slice(&bytes[12..32]);
-        Self(tmp)
-    }
-
-    pub fn to_u256(&self) -> U256 {
-        let mut tmp = [0u8; 32];
-        tmp[12..32].copy_from_slice(&self.0);
-
-        U256::from_be_bytes(tmp)
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Account {
