@@ -10,16 +10,16 @@ use alloy_rlp::{RlpEncodable, RlpDecodable};
 pub struct WorldState(pub HashMap<Address, Account>);
 
 pub struct WorldState2{
-    cache: HashMap<Address, CacheAccount>,
-    data: Arc<MemoryDB>,
-    eth_trie: EthTrie<MemoryDB>,
-    code_storage: HashMap<B256, Vec<u8>>
+    pub cache: HashMap<Address, Account>,
+    pub data: Arc<MemoryDB>,
+    pub eth_trie: EthTrie<MemoryDB>,
+    pub code_storage: HashMap<B256, Vec<u8>>
 }
 
 impl WorldState2 {
     pub fn new() -> Self {
         let data = Arc::new(MemoryDB::new(true));
-        let cache = HashMap::<Address, CacheAccount>::new();
+        let cache = HashMap::<Address, Account>::new();
         let eth_trie = EthTrie::new(data.clone());
         let mut code_storage = HashMap::<B256, Vec<u8>>::new();
         //空のコードのハッシュを登録
@@ -30,8 +30,12 @@ impl WorldState2 {
         Self {cache, data, eth_trie, code_storage}
     }
 
-    pub fn add_cache(accout: &MptAccount) {
-
+    pub fn add_cache(&mut self, address: Address, mpt_accout: &MptAccount) {
+        let nonce = mpt_accout.nonce;
+        let balance = mpt_accout.balance;
+        let code = self.code_storage.get(&mpt_accout.code_hash).cloned().unwrap();
+        let account = Account::make(nonce, balance, code);
+        self.cache.insert(address, account);
     }
 
 }
