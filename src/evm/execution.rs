@@ -4,10 +4,10 @@ use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{ExecutionEnvironment, Log, SubState, VersionId};
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
+use crate::leviathan::world_state::{Account, WorldState};
+use crate::my_trait::evm_trait::{Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::{ContractCreation, MessageCall, State};
-use alloy_primitives::{I256, U256, hex};
+use alloy_primitives::{I256, U256, hex, Address, B256};
 use sha3::{Digest, Keccak256};
 
 impl Ofunction for EVM {
@@ -232,34 +232,30 @@ impl Ofunction for EVM {
             0xff => {
                 //SELFDESTRUCT
                 let from_address = &execution_environment.i_address;
-                if self.version < VersionId::London {
-                    if !substate.a_des.contains(&from_address) {
-                        substate.a_reimburse += 24000;
-                    }
+                if self.version < VersionId::London && !substate.a_des.contains(from_address) {
+                    substate.a_reimburse += 24000;
                 }
                 let val1 = self.pop();
-                let to_address = Address::from_u256(val1);
+                let to_address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
                 //デバック用
                 tracing::info!(
                     recipient = format_args!("0x{}", hex::encode(to_address.0)),
                     "SELFDESTRUCT"
                 );
-                let balance = state.get_balance(&from_address).unwrap();
+                let balance = state.get_balance(from_address).unwrap();
                 if from_address.clone() == to_address {
-                    Action::Set_balance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
+                    Action::SetBalance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
                     state.reset_balance(from_address)
                 } else {
                     if balance != U256::ZERO {
-                        if state.is_empty(&from_address) {
+                        if state.is_empty(from_address) {
                             return Some(false);
                         }
-                        if state.is_empty(&to_address) {
-                            if !state.is_physically_exist(&to_address) {
-                                state.add_account(&to_address, Account::new()); //アカウントを追加
-                                Action::Account_creation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
-                            }
+                        if state.is_empty(&to_address) && !state.is_physically_exist(&to_address) {
+                            state.add_account(&to_address, Account::new()); //アカウントを追加
+                            Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
                         }
-                        Action::Send_eth(from_address.clone(), to_address.clone(), balance)
+                        Action::SendEth(from_address.clone(), to_address.clone(), balance)
                             .push(leviathan, state); //ロールバック用
                         state.send_eth(from_address, &to_address, balance);
                     }
@@ -270,22 +266,22 @@ impl Ofunction for EVM {
 
             _ => todo!(),
         }
-        return None;
+        None
     }
 
     #[inline(never)]
     fn call_opcode(
         &mut self,
-        opcode: u8,
+        _opcode: u8,
         leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
         //CALL
-        let gas = self.pop(); //サブコールに割り当てる最大ガス
+        let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let value = self.pop();
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -396,7 +392,7 @@ impl Ofunction for EVM {
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
-                self.gas = self.gas + return_gas;
+                self.gas += return_gas;
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -416,12 +412,12 @@ impl Ofunction for EVM {
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
-                self.gas = self.gas + return_gas;
+                self.gas += return_gas;
                 //結果push
                 self.push(U256::ZERO);
             }
 
-            Err((return_gas, None, _)) => {
+            Err((_return_gas, None, _)) => {
                 //結果push
                 self.push(U256::ZERO);
             }
@@ -432,10 +428,10 @@ impl Ofunction for EVM {
     fn arithmetic_opcodes(
         &mut self,
         opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
-        execution_environment: &ExecutionEnvironment,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
+        _execution_environment: &ExecutionEnvironment,
     ) {
         match opcode {
             0x01 => {
@@ -567,10 +563,10 @@ impl Ofunction for EVM {
     fn comparison_bitwise_opcodes(
         &mut self,
         opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
-        execution_environment: &ExecutionEnvironment,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
+        _execution_environment: &ExecutionEnvironment,
     ) {
         match opcode {
             0x10 => {
@@ -734,11 +730,11 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn keccak256_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
-        execution_environment: &ExecutionEnvironment,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
+        _execution_environment: &ExecutionEnvironment,
     ) {
         //KECCAK256
         let offset = self.pop().try_into().unwrap_or(usize::MAX);
@@ -758,7 +754,7 @@ impl Ofunction for EVM {
         //keccak256準備
         let mut hasher = Keccak256::new();
         hasher.update(slice);
-        let result = hasher.finalize().try_into().unwrap();
+        let result = hasher.finalize().into();
         let val = U256::from_be_bytes(result);
         self.push(val);
         //アクティブなword数を更新
@@ -770,7 +766,7 @@ impl Ofunction for EVM {
     fn environmental_info_opcode(
         &mut self,
         opcode: u8,
-        leviathan: &mut LEVIATHAN,
+        _leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
@@ -779,14 +775,14 @@ impl Ofunction for EVM {
             0x30 => {
                 //ADDRESS
                 let address = &execution_environment.i_address;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
             0x31 => {
                 //BALANCE
                 let val1 = self.pop();
-                let address = Address::from_u256(val1);
+                let address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
                 let balance = state.get_balance(&address);
                 match balance {
                     Some(x) => self.push(x),
@@ -801,14 +797,14 @@ impl Ofunction for EVM {
             0x32 => {
                 //ORIGIN
                 let address = &execution_environment.i_origin;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
             0x33 => {
                 //CALLER
                 let address = &execution_environment.i_sender;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
@@ -839,7 +835,7 @@ impl Ofunction for EVM {
             0x3b => {
                 //EXTCODESIZE
                 let val1 = self.pop();
-                let address = Address::from_u256(val1);
+                let address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
                 let result = state.get_code(&address);
                 match result {
                     Some(x) => self.push(U256::from(x.len())),
@@ -860,14 +856,14 @@ impl Ofunction for EVM {
             0x3f => {
                 //EXTCODEHASH
                 let data = self.pop();
-                let address = Address::from_u256(data);
+                let address = Address::from_word(B256::from(data.to_be_bytes::<32>()));
                 //コード取得
                 let result = state.get_code(&address);
                 match result {
                     Some(x) => {
                         let mut hasher = Keccak256::new();
                         hasher.update(x);
-                        let result = hasher.finalize().try_into().unwrap();
+                        let result = hasher.finalize().into();
                         let val = U256::from_be_bytes(result);
                         self.push(val);
                     }
@@ -885,10 +881,10 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn calldataload_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
         //CALLDATALOAD
@@ -911,10 +907,10 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn calldatacopy_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
         //CALLDATACOPY
@@ -950,10 +946,10 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn codecopy_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
         //CODECOPY
@@ -995,24 +991,21 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn extcodecopy_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
-        execution_environment: &ExecutionEnvironment,
+        _execution_environment: &ExecutionEnvironment,
     ) {
         //EXTCODECOPY
         let val1 = self.pop();
-        let address = Address::from_u256(val1);
+        let address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
         let dest_offset = self.pop().try_into().unwrap_or(usize::MAX); //メモリ
         let offset = self.pop().try_into().unwrap_or(usize::MAX);
         let size = self.pop().try_into().unwrap_or(usize::MAX);
         //コード取得
         let result = state.get_code(&address);
-        let data = match result {
-            Some(x) => x,
-            None => Vec::<u8>::new(),
-        };
+        let data = result.unwrap_or_default();
         //メモリ拡張
         if size != 0 {
             let required_size = dest_offset.saturating_add(size);
@@ -1045,11 +1038,11 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn returndatacopy_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
-        execution_environment: &ExecutionEnvironment,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
+        _execution_environment: &ExecutionEnvironment,
     ) {
         //RETURNDATACOPY
         let data = self.return_back.clone();
@@ -1076,8 +1069,8 @@ impl Ofunction for EVM {
     fn block_info_opcode(
         &mut self,
         opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
@@ -1098,7 +1091,7 @@ impl Ofunction for EVM {
                 //COINBASE
                 let header = &execution_environment.i_block_header;
                 let address = &header.h_beneficiary;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
@@ -1158,11 +1151,11 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn mload_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
-        execution_environment: &ExecutionEnvironment,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
+        _execution_environment: &ExecutionEnvironment,
     ) {
         //MLOAD メモリから読み込む（32B)
         let pointer = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1185,11 +1178,11 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn mstore_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
-        execution_environment: &ExecutionEnvironment,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
+        _execution_environment: &ExecutionEnvironment,
     ) {
         //MSTORE メモリに保存(32)
         let pointer = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1211,11 +1204,11 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn mstore8_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
-        execution_environment: &ExecutionEnvironment,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
+        _execution_environment: &ExecutionEnvironment,
     ) {
         //MSTORE8
         let pointer = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1237,8 +1230,8 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn sload_opcode(
         &mut self,
-        opcode: u8,
-        leviathan: &mut LEVIATHAN,
+        _opcode: u8,
+        _leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
@@ -1263,7 +1256,7 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn sstore_opcode(
         &mut self,
-        opcode: u8,
+        _opcode: u8,
         leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
@@ -1281,9 +1274,9 @@ impl Ofunction for EVM {
             .or_default()
             .entry(key)
             .or_insert(pre_value);
-        let val0 = substate
+        let _val0 = substate
             .a_access_storage
-            .get(&address)
+            .get(address)
             .unwrap()
             .get(&key)
             .cloned()
@@ -1297,7 +1290,7 @@ impl Ofunction for EVM {
         } else {
             let val0 = substate
                 .a_access_storage
-                .get(&address)
+                .get(address)
                 .unwrap()
                 .get(&key)
                 .cloned()
@@ -1362,9 +1355,9 @@ impl Ofunction for EVM {
     fn push_opcode(
         &mut self,
         opcode: u8,
-        leviathan: &mut LEVIATHAN,
-        substate: &mut SubState,
-        state: &mut WorldState,
+        _leviathan: &mut LEVIATHAN,
+        _substate: &mut SubState,
+        _state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
         let code = &execution_environment.i_byte;
@@ -1394,9 +1387,9 @@ impl Ofunction for EVM {
     fn log_opcode(
         &mut self,
         opcode: u8,
-        leviathan: &mut LEVIATHAN,
+        _leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
-        state: &mut WorldState,
+        _state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
         //LOG
@@ -1434,7 +1427,7 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn create_opcode(
         &mut self,
-        opcode: u8,
+        _opcode: u8,
         leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
@@ -1466,7 +1459,7 @@ impl Ofunction for EVM {
         let is_deepth = execution_environment.i_depth >= 1024;
         let is_code_size = if self.version >= VersionId::Shanghai {
             //Initcodeのサイズ確認
-            if data.len() > 49152 { true } else { false }
+            data.len() > 49152
         } else {
             false
         };
@@ -1475,7 +1468,7 @@ impl Ofunction for EVM {
             return;
         }
         //コントラクト自身のNonceのインクリメント
-        Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
+        Action::AddNonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
         state.inc_nonce(&execution_environment.i_address);
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
@@ -1517,13 +1510,13 @@ impl Ofunction for EVM {
         );
         //実行後の処理
         match result {
-            Ok((return_gas, return_data, Some(contract_address))) => {
+            Ok((return_gas, _return_data, Some(contract_address))) => {
                 //ガスの精算
                 self.gas += return_gas;
                 //return_backの更新
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
-                let contract_u256 = contract_address.to_u256();
+                let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&contract_address) {
                     substate.a_access.push(contract_address.clone())
@@ -1544,7 +1537,7 @@ impl Ofunction for EVM {
                 self.push(U256::ZERO);
             }
 
-            Err((return_gas, None, _)) => {
+            Err((_return_gas, None, _)) => {
                 tracing::info!("CREATE: 例外停止");
                 //ガスの精算
                 self.push(U256::ZERO);
@@ -1556,7 +1549,7 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn create2_opcode(
         &mut self,
-        opcode: u8,
+        _opcode: u8,
         leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
@@ -1589,7 +1582,7 @@ impl Ofunction for EVM {
         let is_deepth = execution_environment.i_depth >= 1024;
         let is_code_size = if self.version >= VersionId::Shanghai {
             //Initcodeのサイズ確認
-            if data.len() > 49152 { true } else { false }
+            data.len() > 49152
         } else {
             false
         };
@@ -1598,7 +1591,7 @@ impl Ofunction for EVM {
             return;
         }
         //コントラクト自身のNonceのインクリメント
-        Action::Add_nonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
+        Action::AddNonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
         state.inc_nonce(&execution_environment.i_address);
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
@@ -1639,13 +1632,13 @@ impl Ofunction for EVM {
         );
         //実行後の処理
         match result {
-            Ok((return_gas, return_data, Some(contract_address))) => {
+            Ok((return_gas, _return_data, Some(contract_address))) => {
                 //ガスの精算
                 self.gas += return_gas;
                 //return_backの更新
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
-                let contract_u256 = contract_address.to_u256();
+                let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&contract_address) {
                     substate.a_access.push(contract_address.clone())
@@ -1666,7 +1659,7 @@ impl Ofunction for EVM {
                 self.push(U256::ZERO);
             }
 
-            Err((return_gas, None, _)) => {
+            Err((_return_gas, None, _)) => {
                 tracing::info!("CREATE2: 例外停止");
                 //ガスの精算
                 self.push(U256::ZERO);
@@ -1678,16 +1671,16 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn callcode_opcode(
         &mut self,
-        opcode: u8,
+        _opcode: u8,
         leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
         //CALLCODE
-        let gas = self.pop(); //サブコールに割り当てる最大ガス
+        let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //コードを借りてくる対象のアカウントアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let value = self.pop();
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1793,7 +1786,7 @@ impl Ofunction for EVM {
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
-                self.gas = self.gas + return_gas;
+                self.gas += return_gas;
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -1814,12 +1807,12 @@ impl Ofunction for EVM {
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
-                self.gas = self.gas + return_gas;
+                self.gas += return_gas;
                 //結果push
                 self.push(U256::ZERO);
             }
 
-            Err((return_gas, None, _)) => {
+            Err((_return_gas, None, _)) => {
                 //結果push
                 self.push(U256::ZERO);
             }
@@ -1829,16 +1822,16 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn delegatecall_opcode(
         &mut self,
-        opcode: u8,
+        _opcode: u8,
         leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
         //DELEGATECALL
-        let gas = self.pop(); //サブコールに割り当てる最大ガス
+        let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
         let out_offset = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1869,7 +1862,7 @@ impl Ofunction for EVM {
             data = Vec::<u8>::new();
         }
         //子に渡すガスの計算
-        let Some(mut child_gas) = self.child_gas_mem else {
+        let Some(child_gas) = self.child_gas_mem else {
             self.push(U256::ZERO);
             return;
         };
@@ -1932,7 +1925,7 @@ impl Ofunction for EVM {
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
-                self.gas = self.gas + return_gas;
+                self.gas += return_gas;
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -1953,12 +1946,12 @@ impl Ofunction for EVM {
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
-                self.gas = self.gas + return_gas;
+                self.gas += return_gas;
                 //結果push
                 self.push(U256::ZERO);
             }
 
-            Err((return_gas, None, _)) => {
+            Err((_return_gas, None, _)) => {
                 //結果push
                 self.push(U256::ZERO);
             }
@@ -1968,16 +1961,16 @@ impl Ofunction for EVM {
     #[inline(never)]
     fn staticcall_opcode(
         &mut self,
-        opcode: u8,
+        _opcode: u8,
         leviathan: &mut LEVIATHAN,
         substate: &mut SubState,
         state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) {
         //STATICCALL
-        let gas = self.pop(); //サブコールに割り当てる最大ガス
+        let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
         let out_offset = self.pop().try_into().unwrap_or(usize::MAX);
@@ -2072,7 +2065,7 @@ impl Ofunction for EVM {
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
-                self.gas = self.gas + return_gas;
+                self.gas += return_gas;
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
                 //結果push
@@ -2093,12 +2086,12 @@ impl Ofunction for EVM {
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
-                self.gas = self.gas + return_gas;
+                self.gas += return_gas;
                 //結果push
                 self.push(U256::ZERO);
             }
 
-            Err((return_gas, None, _)) => {
+            Err((_return_gas, None, _)) => {
                 //結果push
                 self.push(U256::ZERO);
             }

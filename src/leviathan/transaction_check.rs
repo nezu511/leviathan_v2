@@ -1,14 +1,12 @@
 #![allow(dead_code)]
 
-use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{
-    BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId,
-};
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use crate::my_trait::leviathan_trait::{State, TransactionChecks, TransactionExecution};
-use alloy_primitives::{I256, U256};
-use rlp::RlpStream;
+use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
+use crate::leviathan::world_state::WorldState;
+use crate::my_trait::leviathan_trait::{State, TransactionChecks};
+use alloy_primitives::{U256, Address};
+use alloy_rlp::{Encodable, Header};
+use bytes::BytesMut;
 use secp256k1::{
     Message, Secp256k1,
     ecdsa::{RecoverableSignature, RecoveryId},
@@ -24,35 +22,36 @@ impl TransactionChecks for LEVIATHAN {
         pre_cost: &U256,
         block_header: &BlockHeader,
     ) -> Result<Address, &'static str> {
-        //公開鍵取得
-        //1. RlpStreamを使って，6つの要素をもつリストを作成する．
-        let mut stream = RlpStream::new_list(6);
-        // U256 を RLP 向けにバイト列（先頭のゼロを省略した形式）に変換するヘルパー関数
-        let append_u256 = |stream: &mut RlpStream, val: &alloy_primitives::U256| {
-            let bytes = val.to_be_bytes::<32>(); // U256を32バイトのビッグエンディアン配列に変換
-            let trimmed = match bytes.iter().position(|&b| b != 0) {
-                Some(i) => &bytes[i..], // 最初の非ゼロバイト以降を取得
-                None => &[],            // 値が 0 の場合は空の配列 (RLP仕様)
-            };
-            stream.append(&trimmed);
+        // 1. 各要素のRLPペイロード長を事前計算する (alloy-rlpの特徴)
+        let mut payload_length = 0;
+        payload_length += transaction.t_nonce.length();
+        payload_length += transaction.t_price.length();
+        payload_length += transaction.t_gas_limit.length();
+
+        let to_slice = match &transaction.t_to {
+            Some(address) => address.0.as_slice(),
+            None => &[], // 空のバイト列
         };
-        //イエローペーパーの定義通りに，順番に要素を追加
-        stream.append(&transaction.t_nonce);
-        append_u256(&mut stream, &transaction.t_price);
-        append_u256(&mut stream, &transaction.t_gas_limit);
-        match &transaction.t_to {
-            Some(address) => {
-                //自作Address構造体の中身の配列([u8; 20])をスライスとして渡す
-                stream.append(&address.0.as_slice());
-            }
-            None => {
-                stream.append_empty_data();
-            }
+        payload_length += to_slice.length();
+        payload_length += transaction.t_value.length();
+        payload_length += transaction.data.as_slice().length();
+
+        // 2. バッファを確保し、リストのヘッダーを書き込む
+        let mut out = BytesMut::with_capacity(payload_length + 10); // ヘッダー分少し余分に確保
+        Header {
+            list: true,
+            payload_length,
         }
-        append_u256(&mut stream, &transaction.t_value);
-        stream.append(&transaction.data);
-        //3. RLPエンコードされたバイト列を取り出す
-        let rlp_encoded = stream.out();
+        .encode(&mut out);
+
+        // 3. 要素を順次書き込む (U256のゼロ省略などはalloy-rlpが自動処理します)
+        transaction.t_nonce.encode(&mut out);
+        transaction.t_price.encode(&mut out);
+        transaction.t_gas_limit.encode(&mut out);
+        to_slice.encode(&mut out);
+        transaction.t_value.encode(&mut out);
+        transaction.data.as_slice().encode(&mut out);
+        let rlp_encoded = out.freeze();
         //4. Keccak256でハッシュ化して32バイトのh(T)を得る
         let mut hasher = Keccak256::new();
         hasher.update(&rlp_encoded);
@@ -113,10 +112,8 @@ impl TransactionChecks for LEVIATHAN {
         //Initコードが49152バイト以下
         if self.version >= VersionId::Shanghai {
             //Shanghai以降
-            if transaction.t_to.is_none() {
-                if transaction.data.len() > 49152 {
-                    return Err("Initコードが49152バイトを超えている");
-                }
+            if transaction.t_to.is_none() && transaction.data.len() > 49152 {
+                return Err("Initコードが49152バイトを超えている");
             }
         }
 
@@ -127,6 +124,6 @@ impl TransactionChecks for LEVIATHAN {
 
         //トランザクションのガスリミットが，ブロック全体のガスリミットからブロックの累積消費ガスを引いた値以下か
 
-        return Ok(sender_address);
+        Ok(sender_address)
     }
 }

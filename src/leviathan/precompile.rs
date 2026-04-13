@@ -1,28 +1,18 @@
 #![allow(dead_code)]
 
-use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::roleback::Action;
-use crate::leviathan::structs::{
-    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction,
-};
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
-use crate::my_trait::leviathan_trait::{CompiledContract, RoleBack, State, TransactionExecution};
-use alloy_primitives::{I256, U256, uint};
+use crate::my_trait::evm_trait::Ofunction;
+use crate::my_trait::leviathan_trait::CompiledContract;
+use alloy_primitives::{U256, uint};
 use ark_bn254::{Bn254, Fq, Fq2, Fr, G1Affine, G2Affine};
 use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, One, PrimeField, Zero};
 use num_bigint::BigUint;
 use ripemd::{Digest as _, Ripemd160};
-use secp256k1::{
-    Message, Secp256k1,
-    ecdsa::{RecoverableSignature, RecoveryId},
-};
+use secp256k1::Secp256k1;
 use sha2::{Digest as _, Sha256};
 use sha3::{Digest as _, Keccak256};
-use std::collections::HashMap;
 use std::ops::Mul;
 use std::ops::Rem;
 
@@ -65,7 +55,7 @@ impl CompiledContract for LEVIATHAN {
         }
         // v,r,sから復元可能な署名
         // 1. vの変換
-        v_val = v_val - U256::from(27);
+        v_val -= U256::from(27);
         let v_val_i32 = v_val.to::<u32>() as i32;
         let recovery_id = match secp256k1::ecdsa::RecoveryId::try_from(v_val_i32) {
             Ok(id) => id,
@@ -98,17 +88,17 @@ impl CompiledContract for LEVIATHAN {
         //keccak256準備
         let mut hasher = Keccak256::new();
         hasher.update(slice);
-        let result: [u8; 32] = hasher.finalize().try_into().unwrap();
+        let result: [u8; 32] = hasher.finalize().into();
         let mut return_data = vec![0u8; 32];
         return_data[12..].copy_from_slice(&result[12..]);
-        return Ok((gas, return_data));
+        Ok((gas, return_data))
     }
 
     #[inline(never)]
     fn sha256(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 60 + 12 * ceil(|data| / 32)
         // 整数演算での切り上げ: (len + 31) / 32
-        let word_count = (data.len() + 31) / 32;
+        let word_count = data.len().div_ceil(32);
         let gas_required = U256::from(60) + U256::from(12 * word_count);
 
         // 2. Out-of-Gas (OOG) 検証
@@ -133,7 +123,7 @@ impl CompiledContract for LEVIATHAN {
         data: &[u8],
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 600 + 120 * ceil(|data| / 32) [cite: 1388]
-        let word_count = (data.len() + 31) / 32;
+        let word_count = data.len().div_ceil(32);
         let gas_required = U256::from(600) + U256::from(120 * word_count);
 
         // 2. Out-of-Gas (OOG) 検証
@@ -166,7 +156,7 @@ impl CompiledContract for LEVIATHAN {
         data: &[u8],
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 15 + 3 * ceil(|data| / 32) [cite: 1397]
-        let word_count = (data.len() + 31) / 32;
+        let word_count = data.len().div_ceil(32);
         let gas_required = U256::from(15) + U256::from(3 * word_count);
 
         // 2. Out-of-Gas (OOG) 検証
@@ -200,9 +190,9 @@ impl CompiledContract for LEVIATHAN {
         let b_len_byte = get_padded_data(0, 32);
         let e_len_byte = get_padded_data(32, 32);
         let m_len_byte = get_padded_data(64, 32);
-        let mut b_len = U256::from_be_slice(&b_len_byte);
-        let mut e_len = U256::from_be_slice(&e_len_byte);
-        let mut m_len = U256::from_be_slice(&m_len_byte);
+        let b_len = U256::from_be_slice(&b_len_byte);
+        let e_len = U256::from_be_slice(&e_len_byte);
+        let m_len = U256::from_be_slice(&m_len_byte);
 
         //ガス計算
         //f(x)
@@ -222,7 +212,7 @@ impl CompiledContract for LEVIATHAN {
                 U256::from(e_val_u256.bit_len())
             }
         } else {
-            let e_len_usize = e_len.try_into().unwrap_or(0);
+            let _e_len_usize = e_len.try_into().unwrap_or(0);
             let b_len_usize = e_len.try_into().unwrap_or(usize::MAX);
             let e_top_bytes = get_padded_data(96 + b_len_usize, 32);
             let e_top = U256::from_be_slice(&e_top_bytes);
@@ -281,7 +271,7 @@ impl CompiledContract for LEVIATHAN {
             let start = result_val_byte.len() - m_len_usize;
             return Ok((return_gas, result_val_byte[start..].to_vec()));
         }
-        return Ok((return_gas, result_val_byte));
+        Ok((return_gas, result_val_byte))
     }
 
     fn bn_add(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
@@ -304,10 +294,10 @@ impl CompiledContract for LEVIATHAN {
         let y1_byte = get_padded_data(32, 32);
         let x2_byte = get_padded_data(64, 32);
         let y2_byte = get_padded_data(96, 32);
-        let mut x1 = U256::from_be_slice(&x1_byte);
-        let mut y1 = U256::from_be_slice(&y1_byte);
-        let mut x2 = U256::from_be_slice(&x2_byte);
-        let mut y2 = U256::from_be_slice(&y2_byte);
+        let x1 = U256::from_be_slice(&x1_byte);
+        let y1 = U256::from_be_slice(&y1_byte);
+        let x2 = U256::from_be_slice(&x2_byte);
+        let y2 = U256::from_be_slice(&y2_byte);
         let fq_x1 = Fq::from_be_bytes_mod_order(&x1_byte);
         let fq_y1 = Fq::from_be_bytes_mod_order(&y1_byte);
         let fq_x2 = Fq::from_be_bytes_mod_order(&x2_byte);
@@ -354,7 +344,7 @@ impl CompiledContract for LEVIATHAN {
         tmp[32 - x3_bytes.len()..32].copy_from_slice(&x3_bytes[..]);
         tmp[64 - y3_bytes.len()..64].copy_from_slice(&y3_bytes[..]);
 
-        return Ok((return_gas, tmp));
+        Ok((return_gas, tmp))
     }
 
     fn bn_mul(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
@@ -376,9 +366,9 @@ impl CompiledContract for LEVIATHAN {
         let x_byte = get_padded_data(0, 32);
         let y_byte = get_padded_data(32, 32);
         let n_byte = get_padded_data(64, 32);
-        let mut x = U256::from_be_slice(&x_byte);
-        let mut y = U256::from_be_slice(&y_byte);
-        let mut n = U256::from_be_slice(&n_byte);
+        let x = U256::from_be_slice(&x_byte);
+        let y = U256::from_be_slice(&y_byte);
+        let _n = U256::from_be_slice(&n_byte);
         let fq_x = Fq::from_be_bytes_mod_order(&x_byte);
         let fq_y = Fq::from_be_bytes_mod_order(&y_byte);
         let scalar_n = Fr::from_be_bytes_mod_order(&n_byte);
@@ -413,7 +403,7 @@ impl CompiledContract for LEVIATHAN {
         tmp[32 - result_bytes_x.len()..32].copy_from_slice(&result_bytes_x[..]);
         tmp[64 - result_bytes_y.len()..64].copy_from_slice(&result_bytes_y[..]);
 
-        return Ok((return_gas, tmp));
+        Ok((return_gas, tmp))
     }
 
     fn bn_pairing(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
@@ -440,8 +430,8 @@ impl CompiledContract for LEVIATHAN {
             //G1の抽出
             let g1_x = Fq::from_be_bytes_mod_order(&data[offset..offset + 32]);
             let g1_y = Fq::from_be_bytes_mod_order(&data[offset + 32..offset + 64]);
-            let mut x = U256::from_be_slice(&data[offset..offset + 32]);
-            let mut y = U256::from_be_slice(&data[offset + 32..offset + 64]);
+            let x = U256::from_be_slice(&data[offset..offset + 32]);
+            let y = U256::from_be_slice(&data[offset + 32..offset + 64]);
             //バリデーション(G1)
             // 1. フィールドサイズの検証
             if x >= PRIME_P || y >= PRIME_P {
@@ -516,6 +506,6 @@ impl CompiledContract for LEVIATHAN {
             output[31] = 1;
         }
 
-        return Ok((return_gas, output));
+        Ok((return_gas, output))
     }
 }

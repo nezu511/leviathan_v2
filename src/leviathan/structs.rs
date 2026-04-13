@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use alloy_primitives::{I256, U256};
+use alloy_primitives::{U256, Address};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -44,6 +43,12 @@ pub struct BackupSubstate {
     pub a_access_storage: HashMap<Address, HashMap<U256, U256>>,
 }
 
+impl Default for BackupSubstate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BackupSubstate {
     pub fn new() -> Self {
         Self {
@@ -82,6 +87,12 @@ pub struct SubState {
     pub a_reimburse: i64,       //ガスの払い戻し
     pub a_access: Vec<Address>, //アクセスされたアカウントリスト：２回目移行のアクセスはガス代割引
     pub a_access_storage: HashMap<Address, HashMap<U256, U256>>, //一度アクセスしたストレージのスロット
+}
+
+impl Default for SubState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SubState {
