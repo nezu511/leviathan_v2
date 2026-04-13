@@ -430,9 +430,9 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
         // ここにテストしたいディレクトリへのパスを指定します
-        //let test_dir = "GeneralStateTestsFiller/stWalletTest";
+        let test_dir = "GeneralStateTestsFiller/stWalletTest";
         //let test_dir = "GeneralStateTestsFiller/stCallCodes";
-        let test_dir = "GeneralStateTestsFiller/stCreate2";
+        //let test_dir = "GeneralStateTestsFiller/stCreate2";
 
         let paths = fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));

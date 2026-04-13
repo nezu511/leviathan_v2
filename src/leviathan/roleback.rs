@@ -20,7 +20,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn push(self, leviathan: &mut LEVIATHAN, state: &WorldState) {
+    pub fn push(self, leviathan: &mut LEVIATHAN, state: &mut WorldState) {
         let action = match self {
             Action::Sstorage(address, key, _) => {
                 let pre_value = state
