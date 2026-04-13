@@ -16,6 +16,20 @@ pub struct WorldState2{
     code_storage: HashMap<B256, Vec<u8>>
 }
 
+impl WorldState2 {
+    //data:Arc<MemoryDB> = Arc::new(MemoryDB::new(true))
+    pub fn new(data: Arc<MemoryDB>) -> Self {
+        let cash = HashMap::<Address, Account>::new();
+        let data = data;
+        let eth_trie = EthTrie::new(data.clone());
+        let code_storage = HashMap::<B256, Vec<u8>>::new();
+
+        Self {cash, data, eth_trie, code_storage}
+    }
+}
+        
+
+
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
 pub struct MptAccount { //MPT専用
     pub nonce: u64,
