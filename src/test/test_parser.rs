@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, Bytes, U256};
+use alloy_primitives::{Address, B256, Bytes, U256};
 use serde::Deserialize;
 use std::collections::HashMap;
 

@@ -4,13 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-alloy-primitives = {version = "1.5.7", features = ["serde", "rlp"]}
+alloy-primitives = {version = "1.5.7", features = ["serde"]}
 secp256k1 = {version = "0.31.1", features = ["recovery"]}
 sha3 = "0.10.8"
 sha2 = "0.11.0"
 ripemd = "0.2.0"
-bytes = "1.11.1"
-alloy-rlp = "0.3.15"
+rlp = "0.6.1"
 serde = {version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 stacker = "0.1.23"
@@ -20,4 +19,3 @@ num-bigint = "0.4.6"
 ark-bn254 = "0.5.0"
 ark-ff = "0.5.0"
 ark-ec = "0.5.0"
-eth_trie = "0.6.1"

@@ -58,24 +58,12 @@ dependencies = [
 
 [[package]]
 name = "alloy-rlp"
-version = "0.3.15"
+version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc90b1e703d3c03f4ff7f48e82dd0bc1c8211ab7d079cd836a06fcfeb06651cb"
+checksum = "e93e50f64a77ad9c5470bf2ad0ca02f228da70c792a8f06634801e202579f35e"
 dependencies = [
- "alloy-rlp-derive",
  "arrayvec",
  "bytes",
-]
-
-[[package]]
-name = "alloy-rlp-derive"
-version = "0.3.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f36834a5c0a2fa56e171bf256c34d70fca07d0c0031583edea1c4946b7889c9e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
 ]
 
 [[package]]
@@ -752,20 +740,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "eth_trie"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dccc337a4be0e05a73d509b85fa1c8f07cc7e7928de4f03c618bf33671a7f005"
-dependencies = [
- "alloy-primitives",
- "alloy-rlp",
- "hashbrown 0.15.5",
- "keccak-hash",
- "log",
- "parking_lot",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -910,7 +884,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
  "allocator-api2",
- "equivalent",
  "foldhash 0.1.5",
 ]
 
@@ -1059,16 +1032,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "keccak-hash"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e1b8590eb6148af2ea2d75f38e7d29f5ca970d5a4df456b3ef19b8b415d0264"
-dependencies = [
- "primitive-types 0.13.1",
- "tiny-keccak",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1085,14 +1048,12 @@ name = "leviathan_v2"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
- "alloy-rlp",
  "ark-bn254",
  "ark-ec",
  "ark-ff 0.5.0",
- "bytes",
- "eth_trie",
  "num-bigint",
  "ripemd",
+ "rlp 0.6.1",
  "secp256k1",
  "serde",
  "serde_json",
@@ -1120,15 +1081,6 @@ name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
-
-[[package]]
-name = "lock_api"
-version = "0.4.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965"
-dependencies = [
- "scopeguard",
-]
 
 [[package]]
 name = "log"
@@ -1233,29 +1185,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "parking_lot"
-version = "0.12.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93857453250e3077bd71ff98b6a65ea6621a19bb0f559a85248955ac12c45a1a"
-dependencies = [
- "lock_api",
- "parking_lot_core",
-]
-
-[[package]]
-name = "parking_lot_core"
-version = "0.9.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2621685985a2ebf1c516881c026032ac7deafcda1a2c9b7850dc81e3dfcb64c1"
-dependencies = [
- "cfg-if",
- "libc",
- "redox_syscall",
- "smallvec",
- "windows-link",
-]
-
-[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1314,17 +1243,7 @@ checksum = "0b34d9fd68ae0b74a41b21c03c2f62847aa0ffea044eee893b4c140b37e244e2"
 dependencies = [
  "fixed-hash",
  "impl-codec",
- "uint 0.9.5",
-]
-
-[[package]]
-name = "primitive-types"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d15600a7d856470b7d278b3fe0e311fe28c2526348549f8ef2ff7db3299c87f5"
-dependencies = [
- "fixed-hash",
- "uint 0.10.0",
+ "uint",
 ]
 
 [[package]]
@@ -1487,15 +1406,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "redox_syscall"
-version = "0.5.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
-dependencies = [
- "bitflags",
-]
-
-[[package]]
 name = "regex-automata"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1542,6 +1452,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rlp"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa24e92bb2a83198bb76d661a71df9f7076b8c420b8696e4d3d97d50d94479e3"
+dependencies = [
+ "bytes",
+ "rustc-hex",
+]
+
+[[package]]
 name = "ruint"
 version = "1.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1558,11 +1478,11 @@ dependencies = [
  "num-integer",
  "num-traits",
  "parity-scale-codec",
- "primitive-types 0.12.2",
+ "primitive-types",
  "proptest",
  "rand 0.8.5",
  "rand 0.9.2",
- "rlp",
+ "rlp 0.5.2",
  "ruint-macro",
  "serde_core",
  "valuable",
@@ -1635,12 +1555,6 @@ dependencies = [
  "tempfile",
  "wait-timeout",
 ]
-
-[[package]]
-name = "scopeguard"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "sec1"
@@ -1902,15 +1816,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tiny-keccak"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
-dependencies = [
- "crunchy",
-]
-
-[[package]]
 name = "toml_datetime"
 version = "1.0.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2018,18 +1923,6 @@ name = "uint"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76f64bba2c53b04fcab63c01a7d7427eadc821e3bc48c34dc9ba29c501164b52"
-dependencies = [
- "byteorder",
- "crunchy",
- "hex",
- "static_assertions",
-]
-
-[[package]]
-name = "uint"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "909988d098b2f738727b161a106cfc7cab00c539c2687a8836f8e565976fb53e"
 dependencies = [
  "byteorder",
  "crunchy",

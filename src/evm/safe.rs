@@ -2,9 +2,10 @@
 
 use crate::evm::evm::EVM;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
-use crate::leviathan::world_state::WorldState;
-use crate::my_trait::evm_trait::{Gfunction, Zfunction};
-use alloy_primitives::U256;
+use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::my_trait::evm_trait::{Gfunction, Xi, Zfunction};
+use crate::my_trait::leviathan_trait::State;
+use alloy_primitives::{I256, U256};
 
 //push_pop表
 static SAFE_TABLE: [[u8; 2]; 256] = {
@@ -194,12 +195,6 @@ impl Zfunction for EVM {
             return false;
         }
 
-        //命令のガスコストと現在の残ガスを比較
-        let gas_cost = self.gas(opcode, substate, state, execution_environment);
-        if self.gas < gas_cost {
-            return false;
-        }
-
         //スタックが指定する飛び先の位置が有効か(JUMP)
         if opcode == 0x56 {
             let distination = self.peek(0).try_into().unwrap_or(usize::MAX);
@@ -221,9 +216,11 @@ impl Zfunction for EVM {
         }
 
         //命令がSSTOREで残ガスが2300以下
-        if self.version >= VersionId::Istanbul && opcode == 0x55 && self.gas <= U256::from(2300) {
-            tracing::warn!("SSTOREを実行するのにガスが2300以下");
-            return false;
+        if self.version >= VersionId::Istanbul {
+            if opcode == 0x55 && self.gas <= U256::from(2300) {
+                tracing::warn!("SSTOREを実行するのにガスが2300以下");
+                return false;
+            }
         }
 
         //RETURNDATACOPYに関するルール
@@ -257,6 +254,6 @@ impl Zfunction for EVM {
             }
         }
 
-        true
+        return true;
     }
 }
