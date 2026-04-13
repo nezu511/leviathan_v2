@@ -4,13 +4,17 @@ use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
-    BackupSubstate, BlockHeader, ExecutionEnvironment, SubState, VersionId,
+    BackupSubstate, BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId,
 };
-use crate::leviathan::world_state::{Account, WorldState};
-use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
-use crate::my_trait::leviathan_trait::{CompiledContract, MessageCall, RoleBack, State};
-use alloy_primitives::{U256, Address};
-use sha3::Digest;
+use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::my_trait::evm_trait::{Gfunction, Hfunction, Ofunction, Xi, Zfunction};
+use crate::my_trait::leviathan_trait::{
+    CompiledContract, MessageCall, RoleBack, State, TransactionExecution,
+};
+use alloy_primitives::{I256, U256};
+use rlp::RlpStream;
+use sha3::{Digest, Keccak256};
+use std::collections::HashMap;
 
 impl MessageCall for LEVIATHAN {
     fn message_call(
@@ -40,19 +44,23 @@ impl MessageCall for LEVIATHAN {
             if state.is_empty(&sender) {
                 return Err((gas, None, None));
             }
-            if state.is_empty(&recipient) && !state.is_physically_exist(&recipient) {
-                state.add_account(&recipient, Account::new()); //アカウントを追加
-                Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+            if state.is_empty(&recipient) {
+                if !state.is_physically_exist(&recipient) {
+                    state.add_account(&recipient, Account::new()); //アカウントを追加
+                    Action::Account_creation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+                }
             }
             if sender != recipient {
-                Action::SendEth(sender.clone(), recipient.clone(), eth).push(self, state); //ロールバック用
+                Action::Send_eth(sender.clone(), recipient.clone(), eth).push(self, state); //ロールバック用
                 state.send_eth(&sender, &recipient, eth); //残高の移動
             }
         } else if self.version < VersionId::SpuriousDragon {
             //Ethereumの初期はvalue=0であっても無条件でアカウントを作成
-            if state.is_empty(&recipient) && !state.is_physically_exist(&recipient) {
-                state.add_account(&recipient, Account::new()); //アカウントを追加
-                Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+            if state.is_empty(&recipient) {
+                if !state.is_physically_exist(&recipient) {
+                    state.add_account(&recipient, Account::new()); //アカウントを追加
+                    Action::Account_creation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+                }
             }
         }
 
@@ -71,7 +79,7 @@ impl MessageCall for LEVIATHAN {
         ));
 
         //プリコンパイル判定と実行の要件
-        let contract_u256 = U256::from_be_bytes(contract.into_word().0);
+        let contract_u256 = contract.to_u256();
         let result = match contract_u256 {
             val if val == U256::from(1) => {
                 //ECDSA公開鍵復元
@@ -117,10 +125,10 @@ impl MessageCall for LEVIATHAN {
             _ => {
                 //通常のスマートコントラクト呼び出し
 
-                let exe_code = state.get_code(&contract).unwrap_or_default();
+                let exe_code = state.get_code(&contract).unwrap_or(Vec::new());
                 execution_environment.i_byte = exe_code;
                 //仮想マシンの実行
-                let mut evm = Box::new(EVM::new(&execution_environment, self.version));
+                let mut evm = Box::new(EVM::new(&execution_environment, self.version.clone()));
                 evm.gas = gas;
                 let result = evm.evm_run(self, state, substate, &mut execution_environment);
                 match result {
@@ -141,7 +149,7 @@ impl MessageCall for LEVIATHAN {
         match result {
             Ok((return_gas, output)) => {
                 //最終処理
-                Ok((return_gas, output, None))
+                return Ok((return_gas, output, None));
             }
 
             Err((revert_gas, Some(revert_data))) => {
@@ -149,15 +157,15 @@ impl MessageCall for LEVIATHAN {
                 tracing::info!("[MessageCall] Revert");
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                Err((revert_gas, Some(revert_data), None))
+                return Err((revert_gas, Some(revert_data), None));
             }
 
-            Err((_gas, None)) => {
+            Err((gas, None)) => {
                 //Z関数による停止
                 tracing::info!("[MessageCall] 例外停止");
                 self.roleback(state); //Roleback実行
                 substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                Err((U256::ZERO, None, None))
+                return Err((U256::ZERO, None, None));
             }
         }
     }

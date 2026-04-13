@@ -1,6 +1,8 @@
-use crate::leviathan::structs::{BlockHeader, Log, SubState, Transaction, VersionId};
-use crate::leviathan::world_state::{Account, WorldState};
-use alloy_primitives::{U256, Address};
+use crate::leviathan::structs::{
+    BlockHeader, ExecutionEnvironment, Log, SubState, Transaction, VersionId,
+};
+use crate::leviathan::world_state::{Account, Address, WorldState};
+use alloy_primitives::{I256, U256};
 
 pub trait State {
     fn is_empty(&self, address: &Address) -> bool; //空だとtrue;

@@ -1,29 +1,33 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{U256, B256, Address};
-use sha3::Digest;
+use alloy_primitives::{I256, U256};
+use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
-use std::sync::Arc;
-use eth_trie::{MemoryDB, EthTrie};
-use alloy_rlp::{RlpEncodable, RlpDecodable};
 
 pub struct WorldState(pub HashMap<Address, Account>);
 
-pub struct WorldState2{
-    cash: HashMap<Address, Account>,
-    data: Arc<MemoryDB>,
-    eth_trie: EthTrie<MemoryDB>,
-    code_storage: HashMap<B256, Vec<u8>>
-}
+#[derive(Debug, Eq, Hash, PartialEq, Clone, PartialOrd, Ord)]
+pub struct Address(pub [u8; 20]);
 
-#[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
-pub struct MptAccount { //MPT専用
-    pub nonce: u64,
-    pub balance: U256,
-    pub storage_root: B256, 
-    pub code_hash: B256,
-}
+impl Address {
+    pub fn new(input: [u8; 20]) -> Self {
+        Self(input)
+    }
 
+    pub fn from_u256(data: U256) -> Self {
+        let bytes: [u8; 32] = data.to_be_bytes();
+        let mut tmp = [0u8; 20];
+        tmp.copy_from_slice(&bytes[12..32]);
+        Self(tmp)
+    }
+
+    pub fn to_u256(&self) -> U256 {
+        let mut tmp = [0u8; 32];
+        tmp[12..32].copy_from_slice(&self.0);
+        let val = U256::from_be_bytes(tmp);
+        return val;
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Account {
@@ -31,12 +35,6 @@ pub struct Account {
     pub balance: U256,
     pub storage: HashMap<U256, U256>,
     pub code: Vec<u8>,
-}
-
-impl Default for Account {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Account {
