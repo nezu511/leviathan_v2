@@ -166,7 +166,7 @@ impl Gfunction for EVM {
         &mut self,
         opcode: u8,
         substate: &SubState,
-        state: &WorldState,
+        state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) -> U256 {
         let used_gas = GAS_TABLE[opcode as usize];

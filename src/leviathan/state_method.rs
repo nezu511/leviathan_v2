@@ -6,7 +6,7 @@ use crate::my_trait::leviathan_trait::State;
 use alloy_primitives::{U256, hex, Address};
 
 impl State for WorldState {
-    fn is_empty(&self, address: &Address) -> bool {
+    fn is_empty(&mut self, address: &Address) -> bool {
         //空だとtrue;
         if self.0.contains_key(address) {
             let account = self.0.get(address).unwrap();
@@ -21,7 +21,7 @@ impl State for WorldState {
         true
     }
 
-    fn is_dead(&self, version: VersionId, address: &Address) -> bool {
+    fn is_dead(&mut self, version: VersionId, address: &Address) -> bool {
         //DEADだとtrue
         if version < VersionId::SpuriousDragon {
             !self.0.contains_key(address)
@@ -30,12 +30,12 @@ impl State for WorldState {
         }
     }
 
-    fn is_physically_exist(&self, address: &Address) -> bool {
+    fn is_physically_exist(&mut self, address: &Address) -> bool {
         //存在してたらtrue
         self.0.contains_key(address)
     }
 
-    fn is_storage_empty(&self, address: &Address) -> bool {
+    fn is_storage_empty(&mut self, address: &Address) -> bool {
         //空だとtrue;
         let Some(account) = self.0.get(address) else {
             return true;
@@ -43,7 +43,7 @@ impl State for WorldState {
         account.storage.is_empty()
     }
 
-    fn get_balance(&self, address: &Address) -> Option<U256> {
+    fn get_balance(&mut self, address: &Address) -> Option<U256> {
         if !self.0.contains_key(address) {
             return None;
         }
@@ -52,7 +52,7 @@ impl State for WorldState {
         Some(value)
     }
 
-    fn get_code(&self, address: &Address) -> Option<Vec<u8>> {
+    fn get_code(&mut self, address: &Address) -> Option<Vec<u8>> {
         if !self.0.contains_key(address) {
             return None;
         }
@@ -61,7 +61,7 @@ impl State for WorldState {
         Some(code)
     }
 
-    fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256> {
+    fn get_storage_value(&mut self, address: &Address, key: &U256) -> Option<U256> {
         if !self.0.contains_key(address) {
             return None;
         }
@@ -71,7 +71,7 @@ impl State for WorldState {
         Some(value.cloned().unwrap_or(U256::from(0)))
     }
 
-    fn get_nonce(&self, address: &Address) -> Option<u32> {
+    fn get_nonce(&mut self, address: &Address) -> Option<u64> {
         if !self.0.contains_key(address) {
             return None;
         }
@@ -81,7 +81,7 @@ impl State for WorldState {
     }
 
     //非推奨
-    fn get_account(&self, address: &Address) -> Account {
+    fn get_account(&mut self, address: &Address) -> Account {
         let account = self.0.get(address);
         match account {
             Some(x) => x.clone(),

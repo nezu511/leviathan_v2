@@ -23,7 +23,7 @@ pub trait Gfunction {
         &mut self,
         opcode: u8,
         substate: &SubState,
-        state: &WorldState,
+        state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) -> U256;
 
@@ -38,7 +38,7 @@ pub trait Zfunction {
         &mut self,
         opcode: u8,
         substate: &SubState,
-        state: &WorldState,
+        state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) -> bool;
 }

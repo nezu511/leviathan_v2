@@ -142,7 +142,7 @@ impl Zfunction for EVM {
         &mut self,
         opcode: u8,
         substate: &SubState,
-        state: &WorldState,
+        state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) -> bool {
         //不正な命令の実行確認
