@@ -3,23 +3,23 @@ use crate::leviathan::world_state::{Account, WorldState};
 use alloy_primitives::{U256, Address};
 
 pub trait State {
-    fn is_empty(&self, address: &Address) -> bool; //空だとtrue;
+    fn is_empty(&mut self, address: &Address) -> bool; //空だとtrue;
 
-    fn is_dead(&self, version: VersionId, address: &Address) -> bool; //DEADだとtrue
+    fn is_dead(&mut self, version: VersionId, address: &Address) -> bool; //DEADだとtrue
 
-    fn is_physically_exist(&self, address: &Address) -> bool; //存在してたらtrue
+    fn is_physically_exist(&mut self, address: &Address) -> bool; //存在してたらtrue
 
-    fn is_storage_empty(&self, address: &Address) -> bool; //空だとtrue;
+    fn is_storage_empty(&mut self, address: &Address) -> bool; //空だとtrue;
 
-    fn get_balance(&self, address: &Address) -> Option<U256>;
+    fn get_balance(&mut self, address: &Address) -> Option<U256>;
 
-    fn get_code(&self, address: &Address) -> Option<Vec<u8>>;
+    fn get_code(&mut self, address: &Address) -> Option<Vec<u8>>;
 
-    fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256>;
+    fn get_storage_value(&mut self, address: &Address, key: &U256) -> Option<U256>;
 
-    fn get_nonce(&self, address: &Address) -> Option<u64>;
+    fn get_nonce(&mut self, address: &Address) -> Option<u64>;
 
-    fn get_account(&self, address: &Address) -> Account;
+    fn get_account(&mut self, address: &Address) -> Account;
 
     // 書き込み系
     fn set_balance(&mut self, address: &Address, value: U256);
