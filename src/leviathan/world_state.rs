@@ -17,10 +17,9 @@ pub struct WorldState2{
 }
 
 impl WorldState2 {
-    //data:Arc<MemoryDB> = Arc::new(MemoryDB::new(true))
-    pub fn new(data: Arc<MemoryDB>) -> Self {
+    pub fn new() -> Self {
+        let data = Arc::new(MemoryDB::new(true));
         let cash = HashMap::<Address, Account>::new();
-        let data = data;
         let eth_trie = EthTrie::new(data.clone());
         let code_storage = HashMap::<B256, Vec<u8>>::new();
 
