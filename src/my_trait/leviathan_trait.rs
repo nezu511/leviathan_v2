@@ -19,7 +19,6 @@ pub trait State {
 
     fn get_nonce(&mut self, address: &Address) -> Option<u64>;
 
-    fn get_account(&mut self, address: &Address) -> Account;
 
     // 書き込み系
     fn set_balance(&mut self, address: &Address, value: U256);
