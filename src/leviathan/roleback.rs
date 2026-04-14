@@ -97,6 +97,7 @@ impl RoleBack for LEVIATHAN {
                     /*
                      * let cache_account = state.cache.get_mut(&address).unwrap();
                      * cache_account.storage_hash = storage;
+                     * cache_account.storage.clear();
                      */
                 }
 
