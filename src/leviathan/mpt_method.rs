@@ -4,7 +4,7 @@ use crate::leviathan::structs::VersionId;
 use crate::leviathan::world_state::{Account, WorldState2, MptAccount, EMPTY_STORAGE_ROOT, EMPTY_CODE_HASH};
 use crate::my_trait::leviathan_trait::State;
 use alloy_primitives::{U256, hex, Address, b256, B256, keccak256};
-use eth_trie::Trie;
+use eth_trie::{Trie, EthTrie};
 use alloy_rlp::{Decodable};
 
 
@@ -126,6 +126,42 @@ impl State for WorldState2 {
         self.add_cache(address, &mpt_account);
         let code = self.code_storage.get(&mpt_account.code_hash).cloned().unwrap();
         Some(code)
+    }
+
+    fn get_storage_value(&mut self, address: &Address, key: &U256) -> Option<U256> {
+        if !self.cache.contains_key(address) {
+            let Some(mpt_account) = self.contain_mpt(address) else {
+                return None; // アカウント自体が存在しない場合は None
+            };
+            self.add_cache(address, &mpt_account);
+        }
+
+        let cache_account = self.cache.get_mut(address).unwrap();
+
+        if let Some(value) = cache_account.storage.get(key).cloned() {
+            return Some(value);
+        }
+
+        if cache_account.storage_hash != EMPTY_STORAGE_ROOT {  //ストレージが空か確認
+            let Ok(storage_trie) = EthTrie::from(self.data.clone(), cache_account.storage_hash) else{
+                tracing::warn!("[get_storage_value] EthTrie::fromでエラー");
+                return None;
+            };
+            let key_byte: [u8;32] = key.to_be_bytes();
+            let key_hash = keccak256(key_byte);
+            let Some(val) = storage_trie.get(key_hash.as_slice()).unwrap() else {
+                return None;
+            };
+            //値をcacheに保存
+            let mut slice = val.as_slice();
+            let Ok(val) = U256::decode(&mut slice) else {
+                tracing::warn!("[get_storage_value] U256::decodeでエラー");
+                return None;
+            };
+            cache_account.storage.insert(*key, val);
+            return Some(val);
+        }
+        return None;
     }
 }
 
