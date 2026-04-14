@@ -196,6 +196,11 @@ impl State for WorldState2 {
         return Account::new();
     }
 
+    fn reset_storage(&mut self, address: &Address) {
+        //アカウントがcacheにある前提
+        let account = self.cache.get_mut(address).unwrap();
+        account.storage_hash = EMPTY_STORAGE_ROOT;
+    }
 
 }
 
