@@ -53,12 +53,58 @@ impl State for WorldState2 {
             }
         }
     }
+
+    fn is_dead(&mut self, version: VersionId, address: &Address) -> bool {
+        //DEADだとtrue
+        if version < VersionId::SpuriousDragon {
+            if self.cache.contains_key(address) {   //chaceを調査
+                return false
+            }else{
+                //MPTを調査
+                let address_hash = keccak256(address);
+                let result = self.eth_trie.get(address_hash.as_slice()).unwrap();
+                match result {
+                    Some(rlp_bytes) => {
+                        let mut slice = rlp_bytes.as_slice();
+                        let Ok(account) = MptAccount::decode(&mut slice) else {
+                            tracing::warn!("[is_empty] MptAccount::decodeでエラー");
+                            return false;
+                        };
+                        self.add_cache(address, &account);
+                        return false;
+                    }
+
+                    None => return true,
+                }
+            }
+        } else {
+            return self.is_empty(address);
+        }
+    }
+
+    fn is_physically_exist(&mut self, address: &Address) -> bool {
+        //存在してたらtrue
+        if self.cache.contains_key(address) {   //chaceを調査
+            return true
+        }else{
+            //MPTを調査
+            let address_hash = keccak256(address);
+            let result = self.eth_trie.get(address_hash.as_slice()).unwrap();
+            match result {
+                Some(rlp_bytes) => {
+                    let mut slice = rlp_bytes.as_slice();
+                    let Ok(account) = MptAccount::decode(&mut slice) else {
+                        tracing::warn!("[is_empty] MptAccount::decodeでエラー");
+                        return true;
+                    };
+                    self.add_cache(address, &account);
+                    return true;
+                }
+
+                None => return false,
+            }
+        }
+    }
+
 }
-
-
-
-
-                
-
-
 
