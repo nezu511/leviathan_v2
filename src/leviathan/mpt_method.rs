@@ -163,5 +163,39 @@ impl State for WorldState2 {
         }
         return None;
     }
+
+    
+    fn get_nonce(&mut self, address: &Address) -> Option<u64> {
+        //cache調査
+        if let Some(cache_account) = self.cache.get(address) {
+            return Some(cache_account.nonce);
+        }
+        //MPTを調査
+        let Some(mpt_account) = self.contain_mpt(address) else{
+            return None;
+        };
+        self.add_cache(address, &mpt_account);
+        Some(mpt_account.nonce)
+    }
+
+
+    //非推奨
+    fn get_account(&mut self, address: &Address) -> Account {
+        //cache調査
+        if let Some(cache_account) = self.cache.get(address).cloned() {
+            return cache_account;
+        }
+        //MPTを調査
+        let Some(mpt_account) = self.contain_mpt(address) else{
+            return Account::new();
+        };
+        self.add_cache(address, &mpt_account);
+        if let Some(cache_account) = self.cache.get(address).cloned() {
+            return cache_account;
+        };
+        return Account::new();
+    }
+
+
 }
 
