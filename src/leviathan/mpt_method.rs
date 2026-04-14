@@ -114,5 +114,18 @@ impl State for WorldState2 {
         Some(mpt_account.balance)
     }
 
+    fn get_code(&mut self, address: &Address) -> Option<Vec<u8>> {
+        //cache調査
+        if let Some(cache_account) = self.cache.get(address) {
+            return Some(cache_account.code.clone());
+        }
+        //MPTを調査
+        let Some(mpt_account) = self.contain_mpt(address) else{
+            return None;
+        };
+        self.add_cache(address, &mpt_account);
+        let code = self.code_storage.get(&mpt_account.code_hash).cloned().unwrap();
+        Some(code)
+    }
 }
 
