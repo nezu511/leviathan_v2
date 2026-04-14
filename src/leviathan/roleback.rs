@@ -14,8 +14,7 @@ pub enum Action {
     AddNonce(Address),
     StoreCode(Address, Vec<u8>),
     AccountCreation(Address),
-    DeleteAccount(Address, Account),
-    ResetStorage(Address, HashMap<U256, U256>),
+    ResetStorage(Address, HashMap<U256, U256>),     //(Address, B256)
     SetBalance(Address, U256),
 }
 
@@ -40,12 +39,12 @@ impl Action {
 
             Action::AccountCreation(_) => self,
 
-            Action::DeleteAccount(address, _) => {
-                let account = state.get_account(&address);
-                Action::DeleteAccount(address, account)
-            }
 
             Action::ResetStorage(address, _) => {
+                /*
+                 *  let cache_account = state.cache.get(&address).unwrap();
+                 *  Action::ResetStorage(address, cache_account.storage_hash);
+                 */
                 let account = state.get_account(&address);
                 let storage = account.storage.clone();
                 Action::ResetStorage(address, storage)
@@ -63,7 +62,6 @@ impl Action {
 impl RoleBack for LEVIATHAN {
     fn roleback(&mut self, state: &mut WorldState) -> Result<(), &'static str> {
         tracing::info!("ロールバック起動");
-        //println!("{:?}", self.journal);
         while !self.journal.is_empty() {
             let action = self.journal.pop();
             match action.unwrap() {
@@ -91,14 +89,15 @@ impl RoleBack for LEVIATHAN {
                     state.delete_account(&address);
                 }
 
-                Action::DeleteAccount(address, account) => {
-                    state.add_account(&address, account);
-                }
 
                 Action::ResetStorage(address, storage) => {
                     for (key, value) in storage {
                         state.set_storage(&address, key, value);
                     }
+                    /*
+                     * let cache_account = state.cache.get_mut(&address).unwrap();
+                     * cache_account.storage_hash = storage;
+                     */
                 }
 
                 Action::SetBalance(address, pre_value) => {

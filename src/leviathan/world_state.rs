@@ -5,7 +5,7 @@ use sha3::Digest;
 use std::collections::HashMap;
 use std::sync::Arc;
 use eth_trie::{MemoryDB, EthTrie, Trie};
-use alloy_rlp::{RlpEncodable, RlpDecodable};
+use alloy_rlp::{RlpEncodable, RlpDecodable, Decodable};
 
 // 空のMPTツリーのルートハッシュ (Keccak256(RLP("")))
 pub const EMPTY_STORAGE_ROOT: B256 = b256!("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
@@ -43,6 +43,24 @@ impl WorldState2 {
         let code = self.code_storage.get(&mpt_accout.code_hash).cloned().unwrap();
         let account = Account::make(nonce, balance, code, shash);
         self.cache.insert(address.clone(), account);
+    }
+
+    pub fn contain_mpt(&mut self, address: &Address) -> Option<MptAccount> {
+        //MPTを調査
+        let address_hash = keccak256(address);
+        let result = self.eth_trie.get(address_hash.as_slice()).unwrap();
+        match result {
+            Some(rlp_bytes) => {
+                let mut slice = rlp_bytes.as_slice();
+                let Ok(account) = MptAccount::decode(&mut slice) else {
+                    tracing::warn!("[contain_mpt] MptAccount::decodeでエラー");
+                    return None;
+                };
+                return Some(account);
+            }
+
+            None => return None,
+        }
     }
 
 }
