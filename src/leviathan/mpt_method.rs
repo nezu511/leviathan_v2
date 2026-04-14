@@ -86,5 +86,33 @@ impl State for WorldState2 {
         }
     }
 
+
+    fn is_storage_empty(&mut self, address: &Address) -> bool {
+        //空だとtrue;
+        //cache調査
+        if let Some(cache_account) = self.cache.get(address) {
+            return cache_account.storage_hash == EMPTY_STORAGE_ROOT 
+        }
+        //MPTを調査
+        let Some(mpt_account) = self.contain_mpt(address) else{
+            return true;
+        };
+        self.add_cache(address, &mpt_account);
+        mpt_account.storage_root == EMPTY_STORAGE_ROOT 
+    }
+
+    fn get_balance(&mut self, address: &Address) -> Option<U256> {
+        //cache調査
+        if let Some(cache_account) = self.cache.get(address) {
+            return Some(cache_account.balance);
+        }
+        //MPTを調査
+        let Some(mpt_account) = self.contain_mpt(address) else{
+            return None;
+        };
+        self.add_cache(address, &mpt_account);
+        Some(mpt_account.balance)
+    }
+
 }
 
