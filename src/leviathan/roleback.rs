@@ -14,7 +14,6 @@ pub enum Action {
     AddNonce(Address),
     StoreCode(Address, Vec<u8>),
     AccountCreation(Address),
-    DeleteAccount(Address, Account),
     ResetStorage(Address, HashMap<U256, U256>),     //(Address, B256)
     SetBalance(Address, U256),
 }
@@ -40,10 +39,6 @@ impl Action {
 
             Action::AccountCreation(_) => self,
 
-            Action::DeleteAccount(address, _) => {
-                let account = state.get_account(&address);
-                Action::DeleteAccount(address, account)
-            }
 
             Action::ResetStorage(address, _) => {
                 /*
@@ -94,9 +89,6 @@ impl RoleBack for LEVIATHAN {
                     state.delete_account(&address);
                 }
 
-                Action::DeleteAccount(address, account) => {
-                    state.add_account(&address, account);
-                }
 
                 Action::ResetStorage(address, storage) => {
                     for (key, value) in storage {

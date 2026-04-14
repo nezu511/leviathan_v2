@@ -179,23 +179,6 @@ impl State for WorldState2 {
     }
 
 
-    //非推奨
-    fn get_account(&mut self, address: &Address) -> Account {
-        //cache調査
-        if let Some(cache_account) = self.cache.get(address).cloned() {
-            return cache_account;
-        }
-        //MPTを調査
-        let Some(mpt_account) = self.contain_mpt(address) else{
-            return Account::new();
-        };
-        self.add_cache(address, &mpt_account);
-        if let Some(cache_account) = self.cache.get(address).cloned() {
-            return cache_account;
-        };
-        return Account::new();
-    }
-
     fn reset_storage(&mut self, address: &Address) {
         //アカウントがcacheにある前提
         let account = self.cache.get_mut(address).unwrap();
