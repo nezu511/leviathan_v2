@@ -61,21 +61,11 @@ impl State for WorldState2 {
                 return false
             }else{
                 //MPTを調査
-                let address_hash = keccak256(address);
-                let result = self.eth_trie.get(address_hash.as_slice()).unwrap();
-                match result {
-                    Some(rlp_bytes) => {
-                        let mut slice = rlp_bytes.as_slice();
-                        let Ok(account) = MptAccount::decode(&mut slice) else {
-                            tracing::warn!("[is_empty] MptAccount::decodeでエラー");
-                            return false;
-                        };
-                        self.add_cache(address, &account);
-                        return false;
-                    }
-
-                    None => return true,
-                }
+                let Some(account) = self.contain_mpt(address) else{
+                    return true;
+                };
+                self.add_cache(address, &account);
+                return false;
             }
         } else {
             return self.is_empty(address);
@@ -88,21 +78,11 @@ impl State for WorldState2 {
             return true
         }else{
             //MPTを調査
-            let address_hash = keccak256(address);
-            let result = self.eth_trie.get(address_hash.as_slice()).unwrap();
-            match result {
-                Some(rlp_bytes) => {
-                    let mut slice = rlp_bytes.as_slice();
-                    let Ok(account) = MptAccount::decode(&mut slice) else {
-                        tracing::warn!("[is_empty] MptAccount::decodeでエラー");
-                        return true;
-                    };
-                    self.add_cache(address, &account);
-                    return true;
-                }
-
-                None => return false,
-            }
+            let Some(account) = self.contain_mpt(address) else{
+                return false;
+            };
+            self.add_cache(address, &account);
+            return true;
         }
     }
 

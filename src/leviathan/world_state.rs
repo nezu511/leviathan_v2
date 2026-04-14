@@ -53,7 +53,7 @@ impl WorldState2 {
             Some(rlp_bytes) => {
                 let mut slice = rlp_bytes.as_slice();
                 let Ok(account) = MptAccount::decode(&mut slice) else {
-                    tracing::warn!("[is_empty] MptAccount::decodeでエラー");
+                    tracing::warn!("[contain_mpt] MptAccount::decodeでエラー");
                     return None;
                 };
                 return Some(account);
