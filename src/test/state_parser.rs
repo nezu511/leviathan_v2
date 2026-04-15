@@ -10,12 +10,11 @@ pub struct StateTestSuite {
 
 #[derive(Deserialize, Debug)]
 pub struct StateTestCase {
-    pub env: EnvData,
-    #[serde(default)]
-    pub pre: HashMap<String, AccountData>,
+    pub _info: Option<serde_json::Value>,
+    pub env: EnvData,                           
+    pub pre: HashMap<String, AccountData>,      
     pub transaction: TransactionData,
-    #[serde(default)]
-    pub expect: Vec<ExpectData>,
+    pub post: HashMap<String, Vec<PostState>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -55,6 +54,13 @@ pub struct ExpectData {
     pub network: Vec<String>,
     pub result: HashMap<String, AccountData>,
     pub indexes: Option<TestIndexes>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PostState {
+    pub hash: String,
+    pub indexes: TestIndexes,                   
+    pub logs: String,
 }
 
 // ▼▼▼ `state_parser.rs` の一番下の部分をこれに置き換える ▼▼▼

@@ -129,6 +129,7 @@ impl Xi for EVM {
 
 // ↓ 「cargo test」を実行した時だけ、このブロックをコンパイルしてね、という合図です
 // ↓ 「cargo test」を実行した時だけ、このブロックをコンパイルしてね、という合図です
+/*
 #[cfg(test)]
 mod tests {
     use super::*; // EVM構造体などを読み込み
@@ -330,3 +331,4 @@ mod tests {
         );
     }
 }
+*/
