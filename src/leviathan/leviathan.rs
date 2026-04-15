@@ -545,26 +545,61 @@ mod state_tests {
                         let value_str = &test_data.transaction.value[value_idx];
 
                         println!("  [Matrix {}] Network: {}", post_idx, network_str);
-
                         // 1. WorldStateの初期化 (必ず毎ループ初期化する！)
                         let mut state = WorldState::new();
+
                         for (addr_str, acc_data) in &test_data.pre {
+                            let addr = parse_address(addr_str);
+
+                            // 🌟 【追加】アカウントごとに初期の Storage Trie を構築する！
+                            let mut storage_trie = EthTrie::new(state.data.clone());
                             let mut storage = HashMap::new();
+
                             if let Some(st) = &acc_data.storage {
                                 for (k, v) in st {
-                                    storage.insert(parse_u256(k), parse_u256(v));
+                                    let key_u256 = parse_u256(k);
+                                    let val_u256 = parse_u256(v);
+                                    storage.insert(key_u256, val_u256);
+
+                                    // MPTに初期ストレージの値をインサート
+                                    let key_byte: [u8; 32] = key_u256.to_be_bytes();
+                                    let key_hash = keccak256(key_byte);
+                                    let val_rlp = alloy_rlp::encode(val_u256);
+                                    storage_trie.insert(key_hash.as_slice(), val_rlp.as_slice()).unwrap();
                                 }
                             }
+                            // 初期ストレージの正しいルートハッシュを確定させる！
+                            let initial_storage_root = storage_trie.root_hash().unwrap();
+
+                            let nonce = acc_data.nonce.as_ref().map(|n| parse_u256(n).try_into().unwrap_or(0)).unwrap_or(0);
+                            let balance = acc_data.balance.as_ref().map(|b| parse_u256(b)).unwrap_or(U256::ZERO);
+                            let code = acc_data.code.as_ref().map(|c| parse_code(c)).unwrap_or_default();
+
+                            let code_hash = keccak256(&code);
+                            state.code_storage.insert(code_hash, code.clone());
+
                             let account = Account {
-                                nonce: acc_data.nonce.as_ref().map(|n| parse_u256(n).try_into().unwrap_or(0)).unwrap_or(0),
-                                balance: acc_data.balance.as_ref().map(|b| parse_u256(b)).unwrap_or(U256::ZERO),
+                                nonce,
+                                balance,
                                 storage,
-                                code: acc_data.code.as_ref().map(|c| parse_code(c)).unwrap_or_default(),
-                                storage_hash: alloy_primitives::B256::ZERO, // 初期ダミー
+                                code,
+                                storage_hash: initial_storage_root, // 🌟 ダミーではなく本物をセット！
                             };
-                            let addr = parse_address(addr_str);
                             state.add_account(&addr, account);
+
+                            // 🌟 【追加】さらに全体デスク (State Trie) にもアカウントを登録しておく！
+                            let mpt_account = MptAccount::new(nonce, balance, initial_storage_root, code_hash);
+                            let addr_hash = keccak256(&addr);
+                            let mut mpt_rlp = Vec::new();
+                            mpt_account.encode(&mut mpt_rlp);
+                            state.eth_trie.insert(addr_hash.as_slice(), mpt_rlp.as_slice()).unwrap();
                         }
+
+                        // 🌟 【追加】トランザクション実行「前」の State Root を確認してみる！
+                        let pre_state_root = state.eth_trie.root_hash().unwrap();
+                        println!("    [Pre-State] Initial State Root: {}", pre_state_root);
+
+                        // --- ここから下が Env情報の構築 と トランザクション実行 (leviathan.execution) ---
 
                         // Env情報の構築
                         let block_header = BlockHeader {
