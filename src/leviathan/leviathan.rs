@@ -4,12 +4,14 @@ use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
     BackupSubstate, BlockHeader, Log, SubState, Transaction, VersionId,
 };
-use crate::leviathan::world_state::{Account, WorldState};
+use crate::leviathan::world_state::{Account, WorldState, MptAccount};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{U256, hex};
+use alloy_primitives::{U256, hex, keccak256};
 use sha3::Digest;
+use alloy_rlp::Encodable;
+use eth_trie::{EthTrie, Trie};
 
 pub struct LEVIATHAN {
     pub journal: Vec<Action>,
@@ -216,10 +218,42 @@ impl TransactionExecution for LEVIATHAN {
                     "[マイナーへの支払い]",
                 );
                 //MPT更新
+                for (address, cache_account) in state.cache.iter() {
+                    let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
+                    //storageの値を書き込む
+                    for (key, value) in cache_account.storage.iter() {
+                        let key_byte: [u8;32] = key.to_be_bytes();
+                        let key_hash = keccak256(key_byte);
+                        if value.is_zero() {
+                            storage_trie.remove(key_hash.as_slice());
+                        } else {
+                            let val_rlp_bytes = alloy_rlp::encode(value);
+                            storage_trie.insert(key_hash.as_slice(), val_rlp_bytes.as_slice()).unwrap();
+                        }
+                    }
+                    //新しいstorage_rootを取得
+                    let storage_root = storage_trie.root_hash().unwrap();
+                    //コードハッシュを取得
+                    let code_hash = keccak256(cache_account.code.clone());
+                    state.code_storage.entry(code_hash).or_insert(cache_account.code.clone());
+                    let mpt_account = MptAccount::new(cache_account.nonce, 
+                                                  cache_account.balance,
+                                                  storage_root,
+                                                  code_hash
+                                                  );
+                    //MPTに書き込む
+                    let address_hash = keccak256(address);
+                    let mut mpt_accout_rlp_bytes = Vec::new();
+                    mpt_account.encode(&mut mpt_accout_rlp_bytes);
+                    state.eth_trie.insert(address_hash.as_slice(), mpt_accout_rlp_bytes.as_slice()).unwrap();
+                }
                 //substate.a_desの処理
                 while let Some(address) = substate.a_des.pop() {
                     state.delete_account(&address);
                 }
+                //eth_trieのルートハッシュを取得
+                let new_state_root  = state.eth_trie.root_hash().unwrap();
+                state.update_eth_trie(new_state_root);
 
                 Ok((final_billed_gas, substate.a_log.clone()))
             }
@@ -256,6 +290,39 @@ impl TransactionExecution for LEVIATHAN {
                     final_billed_gas = %final_billed_gas,
                     "[Err:マイナーへの支払い]",
                 );
+                //MPT更新
+                for (address, cache_account) in state.cache.iter() {
+                    let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
+                    //storageの値を書き込む
+                    for (key, value) in cache_account.storage.iter() {
+                        let key_byte: [u8;32] = key.to_be_bytes();
+                        let key_hash = keccak256(key_byte);
+                        if value.is_zero() {
+                            storage_trie.remove(key_hash.as_slice());
+                        } else {
+                            let val_rlp_bytes = alloy_rlp::encode(value);
+                            storage_trie.insert(key_hash.as_slice(), val_rlp_bytes.as_slice()).unwrap();
+                        }
+                    }
+                    //新しいstorage_rootを取得
+                    let storage_root = storage_trie.root_hash().unwrap();
+                    //コードハッシュを取得
+                    let code_hash = keccak256(cache_account.code.clone());
+                    state.code_storage.entry(code_hash).or_insert(cache_account.code.clone());
+                    let mpt_account = MptAccount::new(cache_account.nonce, 
+                                                  cache_account.balance,
+                                                  storage_root,
+                                                  code_hash
+                                                  );
+                    //MPTに書き込む
+                    let address_hash = keccak256(address);
+                    let mut mpt_accout_rlp_bytes = Vec::new();
+                    mpt_account.encode(&mut mpt_accout_rlp_bytes);
+                    state.eth_trie.insert(address_hash.as_slice(), mpt_accout_rlp_bytes.as_slice()).unwrap();
+                }
+                //eth_trieのルートハッシュを取得
+                let new_state_root  = state.eth_trie.root_hash().unwrap();
+                state.update_eth_trie(new_state_root);
                 Err((final_billed_gas, Vec::new()))
             }
         }

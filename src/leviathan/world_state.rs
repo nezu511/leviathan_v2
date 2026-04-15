@@ -62,6 +62,12 @@ impl WorldState {
         }
     }
 
+    pub fn update_eth_trie(&mut self, state_root:B256) {
+        let new_eth_trie = EthTrie::from(self.data.clone(), state_root).unwrap();
+        self.eth_trie = new_eth_trie;
+    }
+
+
 }
         
 
