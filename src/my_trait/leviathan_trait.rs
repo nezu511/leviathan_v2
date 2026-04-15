@@ -21,7 +21,7 @@ pub trait State {
 
 
     // 書き込み系
-    fn set_balance(&mut self, address: &Address, value: U256);
+    fn add_balance(&mut self, address: &Address, value: U256);
 
     fn inc_nonce(&mut self, address: &Address);
 
