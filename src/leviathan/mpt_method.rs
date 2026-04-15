@@ -181,7 +181,7 @@ impl State for WorldState2 {
     //=============Setterメソッド===============
     //事前にチェックして，&mut self系は呼ぶ
     //パニックは絶対に生じない
-    fn set_balance(&mut self, address: &Address, value: U256) {
+    fn add_balance(&mut self, address: &Address, value: U256) {
         let cache_account = self.cache.get_mut(address)
             .expect("[set_balance]アカウントが存在しない.事前にadd_account");
         cache_account.balance += value;

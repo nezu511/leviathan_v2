@@ -81,7 +81,7 @@ impl State for WorldState {
     }
 
 
-    fn set_balance(&mut self, address: &Address, value: U256) {
+    fn add_balance(&mut self, address: &Address, value: U256) {
         let account = self
             .0
             .get_mut(address)
