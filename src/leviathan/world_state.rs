@@ -75,12 +75,8 @@ pub struct MptAccount { //MPT専用
 }
 
 impl MptAccount {
-    pub fn new(state: &mut WorldState)  -> Self{
-        //storage_root取得
-        let mut storage_trie = EthTrie::new(state.data.clone());
-        let storage_root = storage_trie.root_hash().unwrap();
-        let code_hash = alloy_primitives::KECCAK256_EMPTY;
-        Self {nonce: 0u64, balance: U256::ZERO, storage_root, code_hash}
+    pub fn new(nonce: u64, balance: U256, storage_root: B256, code_hash: B256)  -> Self{
+        Self {nonce, balance, storage_root, code_hash}
     }
 }
 

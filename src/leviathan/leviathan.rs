@@ -215,6 +215,7 @@ impl TransactionExecution for LEVIATHAN {
                     final_billed_gas = %final_billed_gas,
                     "[マイナーへの支払い]",
                 );
+                //MPT更新
                 //substate.a_desの処理
                 while let Some(address) = substate.a_des.pop() {
                     state.delete_account(&address);
