@@ -9,7 +9,7 @@ use crate::leviathan::structs::{
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
 use crate::my_trait::leviathan_trait::{ContractCreation, RoleBack, State};
-use alloy_primitives::{U256, hex, Address};
+use alloy_primitives::{U256, hex, Address, B256};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use sha3::{Digest, Keccak256};
@@ -111,7 +111,7 @@ impl ContractCreation for LEVIATHAN {
         Action::SendEth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
         //storageRootを空にする
-        Action::ResetStorage(contract_address.clone(), HashMap::<U256, U256>::new())
+        Action::ResetStorage(contract_address.clone(), B256::ZERO)
             .push(self, state); //ロールバック用
         state.reset_storage(&contract_address);
         //codehashに空配列をセット

@@ -13,16 +13,15 @@ pub const EMPTY_STORAGE_ROOT: B256 = b256!("56e81f171bcc55a6ff8345e692c0f86e5b48
 pub const EMPTY_CODE_HASH: B256 = b256!("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");
 
 
-pub struct WorldState(pub HashMap<Address, Account>);
 
-pub struct WorldState2{
+pub struct WorldState{
     pub cache: HashMap<Address, Account>,
     pub data: Arc<MemoryDB>,
     pub eth_trie: EthTrie<MemoryDB>,
     pub code_storage: HashMap<B256, Vec<u8>>
 }
 
-impl WorldState2 {
+impl WorldState {
     pub fn new() -> Self {
         let data = Arc::new(MemoryDB::new(true));
         let cache = HashMap::<Address, Account>::new();
@@ -76,7 +75,7 @@ pub struct MptAccount { //MPT専用
 }
 
 impl MptAccount {
-    pub fn new(state: &mut WorldState2)  -> Self{
+    pub fn new(state: &mut WorldState)  -> Self{
         //storage_root取得
         let mut storage_trie = EthTrie::new(state.data.clone());
         let storage_root = storage_trie.root_hash().unwrap();

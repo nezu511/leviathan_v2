@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 
 use crate::leviathan::structs::VersionId;
-use crate::leviathan::world_state::{Account, WorldState2, MptAccount, EMPTY_STORAGE_ROOT, EMPTY_CODE_HASH};
+use crate::leviathan::world_state::{Account, WorldState, MptAccount, EMPTY_STORAGE_ROOT, EMPTY_CODE_HASH};
 use crate::my_trait::leviathan_trait::State;
 use alloy_primitives::{U256, hex, Address, b256, B256, keccak256};
 use eth_trie::{Trie, EthTrie};
 use alloy_rlp::{Decodable};
 
 
-impl State for WorldState2 {
+impl State for WorldState {
     fn add_account(&mut self, address: &Address, account: Account) {
         self.cache.insert(address.clone(), account);
     }
