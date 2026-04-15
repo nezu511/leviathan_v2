@@ -187,13 +187,13 @@ impl TransactionExecution for LEVIATHAN {
                 //送信者への返金
                 let reimburse = return_gas.saturating_mul(transaction.t_price);
                 if state.is_empty(&sender_address) {
-                    //set_balance前の確認
+                    //add_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
                         state.add_account(&sender_address, Account::new()); //アカウントを追加
                         Action::Account_creation(sender_address.clone()).push(self, state); //アカウントが存在しない場合
                     }
                 }
-                state.set_balance(&sender_address, reimburse);
+                state.add_balance(&sender_address, reimburse);
                 //マイナーへの支払い
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);
                 let f = if self.version < VersionId::London {
@@ -203,14 +203,14 @@ impl TransactionExecution for LEVIATHAN {
                 };
                 let reward = final_billed_gas.saturating_mul(f);
                 if state.is_empty(&block_header.h_beneficiary) {
-                    //set_balance前の確認
+                    //add_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
                         Action::Account_creation(block_header.h_beneficiary.clone())
                             .push(self, state); //アカウントが存在しない場合
                     }
                 }
-                state.set_balance(&block_header.h_beneficiary, reward);
+                state.add_balance(&block_header.h_beneficiary, reward);
                 //デバック用
                 tracing::info!(
                     beneficiary =  format_args!("0x{}", hex::encode(block_header.h_beneficiary.0)),
@@ -231,13 +231,13 @@ impl TransactionExecution for LEVIATHAN {
                 //送信者への返金
                 let reimburse = gas.saturating_mul(transaction.t_price);
                 if state.is_empty(&sender_address) {
-                    //set_balance前の確認
+                    //add_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
                         state.add_account(&sender_address, Account::new()); //アカウントを追加
                         Action::Account_creation(sender_address.clone()).push(self, state); //アカウントが存在しない場合
                     }
                 }
-                state.set_balance(&sender_address, reimburse);
+                state.add_balance(&sender_address, reimburse);
                 //マイナーへの支払い
                 let final_billed_gas = transaction.t_gas_limit.saturating_sub(gas);
                 let f = if self.version < VersionId::London {
@@ -247,14 +247,14 @@ impl TransactionExecution for LEVIATHAN {
                 };
                 let reward = final_billed_gas.saturating_mul(f);
                 if state.is_empty(&block_header.h_beneficiary) {
-                    //set_balance前の確認
+                    //add_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
                         Action::Account_creation(block_header.h_beneficiary.clone())
                             .push(self, state); //アカウントが存在しない場合
                     }
                 }
-                state.set_balance(&block_header.h_beneficiary, reward);
+                state.add_balance(&block_header.h_beneficiary, reward);
                 //デバック用
                 tracing::info!(
                     beneficiary =  format_args!("0x{}", hex::encode(block_header.h_beneficiary.0)),

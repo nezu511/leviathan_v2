@@ -18,7 +18,7 @@ pub enum Action {
     Account_creation(Address),
     Delete_account(Address, Account),
     Reset_storage(Address, HashMap<U256, U256>),
-    Set_balance(Address, U256),
+    Reset_balance(Address, U256),
 }
 
 impl Action {
@@ -53,9 +53,9 @@ impl Action {
                 Action::Reset_storage(address, storage)
             }
 
-            Action::Set_balance(address, _) => {
+            Action::Reset_balance(address, _) => {
                 let pre_value = state.get_balance(&address).unwrap_or(U256::ZERO);
-                Action::Set_balance(address, pre_value)
+                Action::Reset_balance(address, pre_value)
             }
         };
         leviathan.journal.push(action);
@@ -103,8 +103,8 @@ impl RoleBack for LEVIATHAN {
                     }
                 }
 
-                Action::Set_balance(address, pre_value) => {
-                    state.set_balance(&address, pre_value);
+                Action::Reset_balance(address, pre_value) => {
+                    state.add_balance(&address, pre_value);
                 }
 
                 _ => return Err("不明なAction"),
