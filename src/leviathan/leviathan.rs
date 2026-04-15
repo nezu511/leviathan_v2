@@ -249,7 +249,8 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 //substate.a_desの処理
                 while let Some(address) = substate.a_des.pop() {
-                    state.delete_account(&address);
+                    let address_hash = keccak256(address);
+                    state.eth_trie.remove(address_hash.as_slice());
                 }
                 //eth_trieのルートハッシュを取得
                 let new_state_root  = state.eth_trie.root_hash().unwrap();
@@ -657,7 +658,28 @@ mod state_tests {
                             println!("    => FAILED!");
                             println!("       Expected: {}", expected_hash);
                             println!("       Actual  : {}", actual_hash);
-                            // 失敗した時だけ panic させてテストを止める（デバッグしやすくするため）
+                            println!("\n=== 🔍 最終ステートのダンプ (Cache内の最新状態) ===");
+                            for (address, account) in &state.cache {
+                                println!("Address: 0x{}", alloy_primitives::hex::encode(address.0));
+                                println!("  Nonce       : {}", account.nonce);
+                                println!("  Balance     : {}", account.balance);
+                                println!("  Code (len)  : {} bytes", account.code.len());
+                                println!("  Storage:");
+                                if account.storage.is_empty() {
+                                    println!("    (empty)");
+                                } else {
+                                    // 見やすいようにキーでソートして出力
+                                    let mut keys: Vec<_> = account.storage.keys().collect();
+                                    keys.sort();
+                                    for k in keys {
+                                        let v = account.storage.get(k).unwrap();
+                                        println!("    [{}] -> {}", k, v);
+                                    }
+                                }
+                                println!("  StorageRoot : {}", account.storage_hash);
+                                println!("---------------------------------------------------");
+                            }
+                            println!("===================================================\n");
                             assert_eq!(actual_hash, expected_hash, "State root mismatch in test: {}", test_name);
                         }
                     }

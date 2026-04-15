@@ -256,8 +256,7 @@ impl State for WorldState {
     }
 
     fn delete_account(&mut self, address: &Address) {
-        let address_hash = keccak256(address);
-        self.eth_trie.remove(address_hash.as_slice());
+        self.cache.remove(address);
     }
 
 
