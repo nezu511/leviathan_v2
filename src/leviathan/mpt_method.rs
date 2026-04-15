@@ -218,6 +218,36 @@ impl State for WorldState2 {
         cache_account.code = code;
     }
 
+    fn send_eth(&mut self, from: &Address, to: &Address, eth: U256) -> Result<(), &'static str> {
+        let cache_from_account = self.cache.get_mut(from)
+            .expect("[send_eth]: fromアカウントが存在しない");
+        if cache_from_account.balance >= eth {
+            cache_from_account.balance -= eth;
+        } else {
+            return Err("残高不足"); //事前チェックを済ませているため発生しない
+        }
+        let cache_to_account = self.cache.get_mut(to).expect("[send_eth]: toアカウントが存在しない");
+        cache_to_account.balance += eth;
+        Ok(())
+    }
+
+    fn buy_gas(
+        &mut self,
+        address: &Address,
+        limit: U256,
+        price: U256,
+    ) -> Result<U256, &'static str> {
+        let cache_from_account = self.cache.get_mut(address)
+            .expect("[buy_gas]送信元のアカウントが存在しない");
+        let need_eth = limit.saturating_mul(price);
+        if cache_from_account.balance >= need_eth {
+            cache_from_account.balance -= need_eth;
+        } else {
+            return Err("残高不足");
+        }
+        Ok(limit)
+    }
+
     fn reset_storage(&mut self, address: &Address) {
         //アカウントがcacheにある前提
         let cache_account = self.cache.get_mut(address)
