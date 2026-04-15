@@ -255,5 +255,16 @@ impl State for WorldState2 {
         cache_account.storage_hash = EMPTY_STORAGE_ROOT;
     }
 
+    fn delete_account(&mut self, address: &Address) {
+        let address_hash = keccak256(address);
+        self.eth_trie.remove(address_hash.as_slice());
+    }
+
+
+    fn reset_balance(&mut self, address: &Address) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[reset_balance]: アカウントが存在しない");
+        cache_account.balance = U256::ZERO;
+    }
 }
 
