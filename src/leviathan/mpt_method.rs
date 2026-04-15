@@ -194,10 +194,35 @@ impl State for WorldState2 {
         cache_account.nonce += 1
     }
 
+    fn dec_nonce(&mut self, address: &Address) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[dec_nonce]: アカウントが存在しない");
+        cache_account.nonce -= 1
+    }
+
+    fn set_storage(&mut self, address: &Address, key: U256, value: U256) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[set_storage] アカウントが存在しない");
+        cache_account.storage.insert(key, value);
+    }
+
+    fn remove_storage(&mut self, address: &Address, key: U256) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[remove_storage] アカウントが存在しない");
+        cache_account.storage.insert(key, U256::ZERO);
+    }
+
+    fn set_code(&mut self, address: &Address, code: Vec<u8>) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[set_code] アカウントが存在しない");
+        cache_account.code = code;
+    }
+
     fn reset_storage(&mut self, address: &Address) {
         //アカウントがcacheにある前提
-        let account = self.cache.get_mut(address).unwrap();
-        account.storage_hash = EMPTY_STORAGE_ROOT;
+        let cache_account = self.cache.get_mut(address)
+            .expect("[reset_storage] アカウントが存在しない");
+        cache_account.storage_hash = EMPTY_STORAGE_ROOT;
     }
 
 }
