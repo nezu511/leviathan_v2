@@ -178,6 +178,21 @@ impl State for WorldState2 {
         Some(mpt_account.nonce)
     }
 
+    //=============Setterメソッド===============
+    //事前にチェックして，&mut self系は呼ぶ
+    //パニックは絶対に生じない
+    fn add_balance(&mut self, address: &Address, value: U256) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[set_balance]アカウントが存在しない.事前にadd_account");
+        cache_account.balance += value;
+    }
+
+    fn inc_nonce(&mut self, address: &Address) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[inc_nonce]アカウントが存在しない.事前にadd_account");
+        tracing::info!("[inc_nonce]アドレス:0x{}", hex::encode(address.0)); //アドレス
+        cache_account.nonce += 1
+    }
 
     fn reset_storage(&mut self, address: &Address) {
         //アカウントがcacheにある前提
