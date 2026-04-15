@@ -259,8 +259,8 @@ impl Ofunction for EVM {
                             .push(leviathan, state); //ロールバック用
                         state.send_eth(from_address, &to_address, balance);
                     }
-                    substate.a_des.push(from_address.clone());
                 }
+                substate.a_des.push(from_address.clone());
                 return Some(false);
             }
 

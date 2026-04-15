@@ -217,6 +217,12 @@ impl TransactionExecution for LEVIATHAN {
                     final_billed_gas = %final_billed_gas,
                     "[マイナーへの支払い]",
                 );
+                //substate.a_desの処理
+                while let Some(address) = substate.a_des.pop() {
+                    let address_hash = keccak256(address);
+                    state.eth_trie.remove(address_hash.as_slice());
+                    state.cache.remove(&address);
+                }
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
                     let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
@@ -247,11 +253,13 @@ impl TransactionExecution for LEVIATHAN {
                     mpt_account.encode(&mut mpt_accout_rlp_bytes);
                     state.eth_trie.insert(address_hash.as_slice(), mpt_accout_rlp_bytes.as_slice()).unwrap();
                 }
+                /*
                 //substate.a_desの処理
                 while let Some(address) = substate.a_des.pop() {
                     let address_hash = keccak256(address);
                     state.eth_trie.remove(address_hash.as_slice());
                 }
+                */
                 //eth_trieのルートハッシュを取得
                 let new_state_root  = state.eth_trie.root_hash().unwrap();
                 state.update_eth_trie(new_state_root);
