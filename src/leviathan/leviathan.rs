@@ -189,7 +189,6 @@ impl TransactionExecution for LEVIATHAN {
                     //add_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
                         state.add_account(&sender_address, Account::new()); //アカウントを追加
-                        Action::AccountCreation(sender_address.clone()).push(self, state); //アカウントが存在しない場合
                     }
                 }
                 state.add_balance(&sender_address, reimburse);
@@ -205,8 +204,6 @@ impl TransactionExecution for LEVIATHAN {
                     //add_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
-                        Action::AccountCreation(block_header.h_beneficiary.clone())
-                            .push(self, state); //アカウントが存在しない場合
                     }
                 }
                 state.add_balance(&block_header.h_beneficiary, reward);
@@ -232,7 +229,6 @@ impl TransactionExecution for LEVIATHAN {
                     //add_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
                         state.add_account(&sender_address, Account::new()); //アカウントを追加
-                        Action::AccountCreation(sender_address.clone()).push(self, state); //アカウントが存在しない場合
                     }
                 }
                 state.add_balance(&sender_address, reimburse);
@@ -248,8 +244,6 @@ impl TransactionExecution for LEVIATHAN {
                     //add_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
-                        Action::AccountCreation(block_header.h_beneficiary.clone())
-                            .push(self, state); //アカウントが存在しない場合
                     }
                 }
                 state.add_balance(&block_header.h_beneficiary, reward);
