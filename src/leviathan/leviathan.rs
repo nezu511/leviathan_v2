@@ -226,10 +226,6 @@ impl TransactionExecution for LEVIATHAN {
                 //substate.a_touchの処理
                 while let Some(address) = substate.a_touch.pop() {
                     if state.is_dead(self.version,&address) {
-                        tracing::info!(
-                            empty_accout = format_args!("0x{}", hex::encode(address)),
-                            "[a_touchの処理]",
-                            );
                         let address_hash = keccak256(address);
                         state.eth_trie.remove(address_hash.as_slice());
                         state.cache.remove(&address);
@@ -291,11 +287,23 @@ impl TransactionExecution for LEVIATHAN {
                     let address_hash = keccak256(address);
                     let mut mpt_account_rlp_bytes = Vec::new();
                     mpt_account.encode(&mut mpt_account_rlp_bytes);
-                    //アカウントは変化しているのかを確認
-                    let new_mpt_account_hash = keccak256(mpt_account_rlp_bytes.clone());
-                    if new_mpt_account_hash != cache_account.account_hash {
-                        tracing::debug!("更新");
-                        println!("Address: {}, RLP: {}", address, hex::encode(&mpt_account_rlp_bytes));
+
+                    //MPTに現在登録されているRLPを取得
+                    let existing_mpt_val = state.eth_trie.get(address_hash.as_slice()).unwrap_or(None);
+
+                    // 更新すべきか判定
+                    let should_insert = match existing_mpt_val {
+                        None => true, // MPTに存在しない（新規アカウント）なら絶対に挿入
+                        Some(old_rlp) => {
+                            // MPTに存在するなら、RLPの中身が変化している場合のみ挿入
+                            old_rlp != mpt_account_rlp_bytes
+                        }
+                    };
+
+                    // 更新
+                    if should_insert {
+                        tracing::debug!("更新: 0x{}", hex::encode(address));
+                        let _ = state.eth_trie.remove(address_hash.as_slice());
                         state.eth_trie.insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice()).unwrap();
                     }
                 }
@@ -393,9 +401,22 @@ impl TransactionExecution for LEVIATHAN {
                     let address_hash = keccak256(address);
                     let mut mpt_account_rlp_bytes = Vec::new();
                     mpt_account.encode(&mut mpt_account_rlp_bytes);
-                    //アカウントは変化しているのかを確認
-                    let new_mpt_account_hash = keccak256(mpt_account_rlp_bytes.clone());
-                    if new_mpt_account_hash != cache_account.account_hash {
+                    //MPTに現在登録されているRLPを取得
+                    let existing_mpt_val = state.eth_trie.get(address_hash.as_slice()).unwrap_or(None);
+
+                    // 更新すべきか判定
+                    let should_insert = match existing_mpt_val {
+                        None => true, // MPTに存在しない（新規アカウント）なら絶対に挿入
+                        Some(old_rlp) => {
+                            // MPTに存在するなら、RLPの中身が変化している場合のみ挿入
+                            old_rlp != mpt_account_rlp_bytes
+                        }
+                    };
+
+                    // 更新
+                    if should_insert {
+                        tracing::debug!("更新: 0x{}", hex::encode(address));
+                        let _ = state.eth_trie.remove(address_hash.as_slice());
                         state.eth_trie.insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice()).unwrap();
                     }
                 }
