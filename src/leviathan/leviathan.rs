@@ -253,9 +253,13 @@ impl TransactionExecution for LEVIATHAN {
                                                   );
                     //MPTに書き込む
                     let address_hash = keccak256(address);
-                    let mut mpt_accout_rlp_bytes = Vec::new();
-                    mpt_account.encode(&mut mpt_accout_rlp_bytes);
-                    state.eth_trie.insert(address_hash.as_slice(), mpt_accout_rlp_bytes.as_slice()).unwrap();
+                    let mut mpt_account_rlp_bytes = Vec::new();
+                    mpt_account.encode(&mut mpt_account_rlp_bytes);
+                    //アカウントは変化しているのかを確認
+                    let new_mpt_account_hash = keccak256(mpt_account_rlp_bytes.clone());
+                    if new_mpt_account_hash != cache_account.account_hash {
+                        state.eth_trie.insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice()).unwrap();
+                    }
                 }
                 //eth_trieのルートハッシュを取得
                 let new_state_root  = state.eth_trie.root_hash().unwrap();
@@ -328,9 +332,13 @@ impl TransactionExecution for LEVIATHAN {
                                                   );
                     //MPTに書き込む
                     let address_hash = keccak256(address);
-                    let mut mpt_accout_rlp_bytes = Vec::new();
-                    mpt_account.encode(&mut mpt_accout_rlp_bytes);
-                    state.eth_trie.insert(address_hash.as_slice(), mpt_accout_rlp_bytes.as_slice()).unwrap();
+                    let mut mpt_account_rlp_bytes = Vec::new();
+                    mpt_account.encode(&mut mpt_account_rlp_bytes);
+                    //アカウントは変化しているのかを確認
+                    let new_mpt_account_hash = keccak256(mpt_account_rlp_bytes.clone());
+                    if new_mpt_account_hash != cache_account.account_hash {
+                        state.eth_trie.insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice()).unwrap();
+                    }
                 }
                 //eth_trieのルートハッシュを取得
                 let new_state_root  = state.eth_trie.root_hash().unwrap();
@@ -505,7 +513,7 @@ mod state_tests {
             .try_init();
 
         // 対象のディレクトリ
-        let test_dir = "MPTTest/stStackTests";
+        let test_dir = "MPTTest/stCreate2";
 
         let paths = std::fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));
@@ -591,12 +599,19 @@ mod state_tests {
                             let code_hash = keccak256(&code);
                             state.code_storage.insert(code_hash, code.clone());
 
+                            let mpt_account = MptAccount::new(nonce, balance, initial_storage_root, code_hash);
+                            let addr_hash = keccak256(&addr);
+                            let mut mpt_rlp = Vec::new();
+                            mpt_account.encode(&mut mpt_rlp);
+                            let account_hash = keccak256(&mpt_rlp);
+
                             let account = Account {
                                 nonce,
                                 balance,
                                 storage,
                                 code,
                                 storage_hash: initial_storage_root, // 🌟 ダミーではなく本物をセット！
+                                account_hash,
                             };
                             state.add_account(&addr, account);
 
