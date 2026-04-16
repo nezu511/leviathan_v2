@@ -113,6 +113,10 @@ impl TransactionExecution for LEVIATHAN {
         //ここからロールバックの起点:ロールバックが起きたらこの状態にする
         let mut substate = SubState::new();
 
+        //a_touchにトランザクションの基本要素（送信者，ブロックの受取人）を追加
+        substate.a_touch.push(sender_address.clone());
+        substate.a_touch.push(block_header.h_beneficiary.clone());
+
         //gasから初期ガスを引く
         let mut gas = gas.unwrap();
         gas = gas.saturating_sub(all_gas);
@@ -144,6 +148,8 @@ impl TransactionExecution for LEVIATHAN {
             )
         } else {
             let to_address = transaction.t_to.unwrap();
+            //a_touchにトランザクションの基本要素（宛先）を追加
+            substate.a_touch.push(to_address.clone());
             //デバック出力
             tracing::info!(
             sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),

@@ -85,6 +85,11 @@ impl ContractCreation for LEVIATHAN {
             return Err((U256::ZERO, None, None));
         }
 
+        //サブステートのa_touchに追加
+        if !substate.a_touch.contains(&contract_address) {
+            substate.a_touch.push(contract_address.clone())
+        }
+
         //サブステートのアクセス済みアカウントに追加
         if !substate.a_access.contains(&contract_address) {
             substate.a_access.push(contract_address.clone())
