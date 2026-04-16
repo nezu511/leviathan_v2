@@ -94,6 +94,7 @@ pub struct Account {
     pub storage: HashMap<U256, U256>,
     pub code: Vec<u8>,
     pub storage_hash: B256,
+    pub is_dirty: bool,
 }
 
 impl Default for Account {
@@ -110,12 +111,13 @@ impl Account {
             storage: HashMap::new(),
             code: Vec::new(),
             storage_hash: EMPTY_STORAGE_ROOT,
+            is_dirty: false,
         }
     }
 
     pub fn make(nonce: u64, balance: U256, code: Vec<u8>, shash: B256) -> Self {
         let storage = HashMap::<U256, U256>::new();
-        Self {nonce, balance, storage, code, storage_hash:shash}
+        Self {nonce, balance, storage, code, storage_hash:shash, is_dirty:false}
     }
 
 }
