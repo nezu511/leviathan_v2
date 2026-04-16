@@ -109,13 +109,24 @@ impl Default for Account {
 
 impl Account {
     pub fn new() -> Self {
+        let empty_mpt = MptAccount::new(
+            0,
+            U256::ZERO,
+            EMPTY_STORAGE_ROOT,
+            EMPTY_CODE_HASH
+        );
+
+        // 2. RLPエンコードして正確なKeccak256ハッシュを動的に計算
+        let mut rlp_bytes = Vec::new();
+        empty_mpt.encode(&mut rlp_bytes);
+        let correct_empty_hash = keccak256(&rlp_bytes);
         Self {
             nonce: 0u64,
             balance: U256::ZERO,
             storage: HashMap::new(),
             code: Vec::new(),
             storage_hash: EMPTY_STORAGE_ROOT,
-            account_hash: EMPTY_STORAGE_ROOT,
+            account_hash: correct_empty_hash,
         }
     }
 

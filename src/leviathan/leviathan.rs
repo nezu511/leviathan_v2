@@ -226,26 +226,44 @@ impl TransactionExecution for LEVIATHAN {
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
                     let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
+                    let mut storage_changed = false;
+
                     //storageの値を書き込む
                     for (key, value) in cache_account.storage.iter() {
                         let key_byte: [u8;32] = key.to_be_bytes();
                         let key_hash = keccak256(key_byte);
+                        let existing_val_opt = storage_trie.get(key_hash.as_slice()).unwrap_or(None);
+
                         if value.is_zero() {
-                            storage_trie.remove(key_hash.as_slice());
+                            if existing_val_opt.is_some() {
+                                storage_trie.remove(key_hash.as_slice());
+                                storage_changed = true;
+                            }
                         } else {
                             let val_rlp_bytes = alloy_rlp::encode(value);
-                            storage_trie.insert(key_hash.as_slice(), val_rlp_bytes.as_slice()).unwrap();
+                            if existing_val_opt != Some(val_rlp_bytes.clone()) {
+                                storage_trie.insert(key_hash.as_slice(), val_rlp_bytes.as_slice()).unwrap();
+                                storage_changed = true;
+                            }
                         }
                     }
                     //新しいstorage_rootを取得
-                    let storage_root = storage_trie.root_hash().unwrap();
-                    tracing::info!(
-                        address =  format_args!("0x{}", hex::encode(address.0)),
-                        storage_root = format_args!("0x{}", storage_root)
-                        );
+                    let storage_root = if storage_changed {
+                        storage_trie.root_hash().unwrap()
+                    } else {
+                        cache_account.storage_hash
+                    };
                     //コードハッシュを取得
                     let code_hash = keccak256(cache_account.code.clone());
                     state.code_storage.entry(code_hash).or_insert(cache_account.code.clone());
+                    tracing::info!(
+                        address =  format_args!("0x{}", hex::encode(address.0)),
+                        nonce = %cache_account.nonce,
+                        balance = %cache_account.balance,
+                        storage_root = format_args!("{}", storage_root),
+                        code_hash = format_args!("{}", code_hash)
+                        );
+                    //mpt_accout作成
                     let mpt_account = MptAccount::new(cache_account.nonce, 
                                                   cache_account.balance,
                                                   storage_root,
@@ -258,6 +276,8 @@ impl TransactionExecution for LEVIATHAN {
                     //アカウントは変化しているのかを確認
                     let new_mpt_account_hash = keccak256(mpt_account_rlp_bytes.clone());
                     if new_mpt_account_hash != cache_account.account_hash {
+                        tracing::debug!("更新");
+                        println!("Address: {}, RLP: {}", address, hex::encode(&mpt_account_rlp_bytes));
                         state.eth_trie.insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice()).unwrap();
                     }
                 }
@@ -309,19 +329,32 @@ impl TransactionExecution for LEVIATHAN {
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
                     let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
+                    let mut storage_changed = false;
                     //storageの値を書き込む
                     for (key, value) in cache_account.storage.iter() {
                         let key_byte: [u8;32] = key.to_be_bytes();
                         let key_hash = keccak256(key_byte);
+                        let existing_val_opt = storage_trie.get(key_hash.as_slice()).unwrap_or(None);
+
                         if value.is_zero() {
-                            storage_trie.remove(key_hash.as_slice());
+                            if existing_val_opt.is_some() {
+                                storage_trie.remove(key_hash.as_slice());
+                                storage_changed = true;
+                            }
                         } else {
                             let val_rlp_bytes = alloy_rlp::encode(value);
-                            storage_trie.insert(key_hash.as_slice(), val_rlp_bytes.as_slice()).unwrap();
+                            if existing_val_opt != Some(val_rlp_bytes.clone()) {
+                                storage_trie.insert(key_hash.as_slice(), val_rlp_bytes.as_slice()).unwrap();
+                                storage_changed = true;
+                            }
                         }
                     }
                     //新しいstorage_rootを取得
-                    let storage_root = storage_trie.root_hash().unwrap();
+                    let storage_root = if storage_changed {
+                        storage_trie.root_hash().unwrap()
+                    } else {
+                        cache_account.storage_hash
+                    };
                     //コードハッシュを取得
                     let code_hash = keccak256(cache_account.code.clone());
                     state.code_storage.entry(code_hash).or_insert(cache_account.code.clone());
@@ -513,7 +546,7 @@ mod state_tests {
             .try_init();
 
         // 対象のディレクトリ
-        let test_dir = "MPTTest/stCreate2";
+        let test_dir = "MPTTest/stCallCodes";
 
         let paths = std::fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));

@@ -1783,6 +1783,10 @@ impl Ofunction for EVM {
                     let active_words = self.memory.len() / 32; //アクティブなword数を更新
                     self.active_words = active_words;
                 }
+                tracing::info!(
+                return_gas = %return_gas,
+                "[CALLCODE] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
