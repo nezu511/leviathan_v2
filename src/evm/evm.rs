@@ -109,6 +109,7 @@ impl Xi for EVM {
             opcode = format_args!("0x{:x}", opcode),
             self_gas = %self.gas,
             consumption_gas = %consumption_gas,
+            active_words = self.active_words,
             );
 
             //O関数による状態遷移

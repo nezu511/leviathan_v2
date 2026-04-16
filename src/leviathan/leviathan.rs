@@ -239,6 +239,10 @@ impl TransactionExecution for LEVIATHAN {
                     }
                     //新しいstorage_rootを取得
                     let storage_root = storage_trie.root_hash().unwrap();
+                    tracing::info!(
+                        address =  format_args!("0x{}", hex::encode(address.0)),
+                        storage_root = format_args!("0x{}", storage_root)
+                        );
                     //コードハッシュを取得
                     let code_hash = keccak256(cache_account.code.clone());
                     state.code_storage.entry(code_hash).or_insert(cache_account.code.clone());
@@ -253,13 +257,6 @@ impl TransactionExecution for LEVIATHAN {
                     mpt_account.encode(&mut mpt_accout_rlp_bytes);
                     state.eth_trie.insert(address_hash.as_slice(), mpt_accout_rlp_bytes.as_slice()).unwrap();
                 }
-                /*
-                //substate.a_desの処理
-                while let Some(address) = substate.a_des.pop() {
-                    let address_hash = keccak256(address);
-                    state.eth_trie.remove(address_hash.as_slice());
-                }
-                */
                 //eth_trieのルートハッシュを取得
                 let new_state_root  = state.eth_trie.root_hash().unwrap();
                 state.update_eth_trie(new_state_root);
@@ -299,6 +296,12 @@ impl TransactionExecution for LEVIATHAN {
                     final_billed_gas = %final_billed_gas,
                     "[Err:マイナーへの支払い]",
                 );
+                //substate.a_desの処理
+                while let Some(address) = substate.a_des.pop() {
+                    let address_hash = keccak256(address);
+                    state.eth_trie.remove(address_hash.as_slice());
+                    state.cache.remove(&address);
+                }
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
                     let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
@@ -502,7 +505,7 @@ mod state_tests {
             .try_init();
 
         // 対象のディレクトリ
-        let test_dir = "MPTTest/stCreate2";
+        let test_dir = "MPTTest/stStackTests";
 
         let paths = std::fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));
@@ -569,12 +572,13 @@ mod state_tests {
                                     let key_u256 = parse_u256(k);
                                     let val_u256 = parse_u256(v);
                                     storage.insert(key_u256, val_u256);
-
-                                    // MPTに初期ストレージの値をインサート
-                                    let key_byte: [u8; 32] = key_u256.to_be_bytes();
-                                    let key_hash = keccak256(key_byte);
-                                    let val_rlp = alloy_rlp::encode(val_u256);
-                                    storage_trie.insert(key_hash.as_slice(), val_rlp.as_slice()).unwrap();
+                                    
+                                    if !val_u256.is_zero() {
+                                        let key_byte: [u8; 32] = key_u256.to_be_bytes();
+                                        let key_hash = keccak256(key_byte);
+                                        let val_rlp = alloy_rlp::encode(val_u256);
+                                        storage_trie.insert(key_hash.as_slice(), val_rlp.as_slice()).unwrap();
+                                    }
                                 }
                             }
                             // 初期ストレージの正しいルートハッシュを確定させる！
