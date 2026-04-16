@@ -259,8 +259,8 @@ impl Ofunction for EVM {
                             .push(leviathan, state); //ロールバック用
                         state.send_eth(from_address, &to_address, balance);
                     }
-                    substate.a_des.push(from_address.clone());
                 }
+                substate.a_des.push(from_address.clone());
                 return Some(false);
             }
 
@@ -303,6 +303,8 @@ impl Ofunction for EVM {
         if max_end > self.memory.len() {
             let words = max_end.saturating_add(31) / 32;
             self.memory.resize(words.saturating_mul(32), 0);
+            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+            self.active_words = active_words;
         }
         if in_size > 0 {
             let required_size = in_offset.saturating_add(in_size);
@@ -382,8 +384,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 tracing::info!(
                 return_gas = %return_gas,
@@ -406,8 +406,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 //Returndata バッファの更新
                 self.return_back = return_data;
@@ -1444,6 +1442,8 @@ impl Ofunction for EVM {
             if required_size > self.memory.len() {
                 let words = required_size.saturating_add(31) / 32;
                 self.memory.resize(words.saturating_mul(32), 0);
+                let active_words = self.memory.len() / 32; //アクティブなword数を更新
+                self.active_words = active_words;
             }
             let slice = &self.memory[offset..required_size];
             data = slice.to_vec();
@@ -1567,6 +1567,8 @@ impl Ofunction for EVM {
             if required_size > self.memory.len() {
                 let words = required_size.saturating_add(31) / 32;
                 self.memory.resize(words.saturating_mul(32), 0);
+                let active_words = self.memory.len() / 32; //アクティブなword数を更新
+                self.active_words = active_words;
             }
             let slice = &self.memory[offset..required_size];
             data = slice.to_vec();
@@ -1703,6 +1705,8 @@ impl Ofunction for EVM {
         if max_end > self.memory.len() {
             let words = max_end.saturating_add(31) / 32;
             self.memory.resize(words.saturating_mul(32), 0);
+            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+            self.active_words = active_words;
         }
         if in_size > 0 {
             let required_size = in_offset.saturating_add(in_size);
@@ -1780,9 +1784,11 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
+                tracing::info!(
+                return_gas = %return_gas,
+                "[CALLCODE] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -1801,8 +1807,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 //Returndata バッファの更新
                 self.return_back = return_data;
@@ -1853,6 +1857,8 @@ impl Ofunction for EVM {
         if max_end > self.memory.len() {
             let words = max_end.saturating_add(31) / 32;
             self.memory.resize(words.saturating_mul(32), 0);
+            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+            self.active_words = active_words;
         }
         if in_size > 0 {
             let required_size = in_offset.saturating_add(in_size);
@@ -1919,8 +1925,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 //Returndata バッファの更新
                 self.return_back = return_data;
@@ -1940,8 +1944,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 //Returndata バッファの更新
                 self.return_back = return_data;
@@ -1992,6 +1994,8 @@ impl Ofunction for EVM {
         if max_end > self.memory.len() {
             let words = max_end.saturating_add(31) / 32;
             self.memory.resize(words.saturating_mul(32), 0);
+            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+            self.active_words = active_words;
         }
         if in_size > 0 {
             let required_size = in_offset.saturating_add(in_size);
@@ -2059,8 +2063,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 //Returndata バッファの更新
                 self.return_back = return_data;
@@ -2080,8 +2082,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 //Returndata バッファの更新
                 self.return_back = return_data;

@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 
 use crate::leviathan::structs::VersionId;
-use crate::leviathan::world_state::{Account, WorldState2, MptAccount, EMPTY_STORAGE_ROOT, EMPTY_CODE_HASH};
+use crate::leviathan::world_state::{Account, WorldState, MptAccount, EMPTY_STORAGE_ROOT, EMPTY_CODE_HASH};
 use crate::my_trait::leviathan_trait::State;
 use alloy_primitives::{U256, hex, Address, b256, B256, keccak256};
 use eth_trie::{Trie, EthTrie};
 use alloy_rlp::{Decodable};
 
 
-impl State for WorldState2 {
+impl State for WorldState {
     fn add_account(&mut self, address: &Address, account: Account) {
         self.cache.insert(address.clone(), account);
     }
@@ -194,11 +194,76 @@ impl State for WorldState2 {
         cache_account.nonce += 1
     }
 
-    fn reset_storage(&mut self, address: &Address) {
-        //アカウントがcacheにある前提
-        let account = self.cache.get_mut(address).unwrap();
-        account.storage_hash = EMPTY_STORAGE_ROOT;
+    fn dec_nonce(&mut self, address: &Address) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[dec_nonce]: アカウントが存在しない");
+        cache_account.nonce -= 1
     }
 
+    fn set_storage(&mut self, address: &Address, key: U256, value: U256) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[set_storage] アカウントが存在しない");
+        cache_account.storage.insert(key, value);
+    }
+
+    fn remove_storage(&mut self, address: &Address, key: U256) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[remove_storage] アカウントが存在しない");
+        cache_account.storage.insert(key, U256::ZERO);
+    }
+
+    fn set_code(&mut self, address: &Address, code: Vec<u8>) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[set_code] アカウントが存在しない");
+        cache_account.code = code;
+    }
+
+    fn send_eth(&mut self, from: &Address, to: &Address, eth: U256) -> Result<(), &'static str> {
+        let cache_from_account = self.cache.get_mut(from)
+            .expect("[send_eth]: fromアカウントが存在しない");
+        if cache_from_account.balance >= eth {
+            cache_from_account.balance -= eth;
+        } else {
+            return Err("残高不足"); //事前チェックを済ませているため発生しない
+        }
+        let cache_to_account = self.cache.get_mut(to).expect("[send_eth]: toアカウントが存在しない");
+        cache_to_account.balance += eth;
+        Ok(())
+    }
+
+    fn buy_gas(
+        &mut self,
+        address: &Address,
+        limit: U256,
+        price: U256,
+    ) -> Result<U256, &'static str> {
+        let cache_from_account = self.cache.get_mut(address)
+            .expect("[buy_gas]送信元のアカウントが存在しない");
+        let need_eth = limit.saturating_mul(price);
+        if cache_from_account.balance >= need_eth {
+            cache_from_account.balance -= need_eth;
+        } else {
+            return Err("残高不足");
+        }
+        Ok(limit)
+    }
+
+    fn reset_storage(&mut self, address: &Address) {
+        //アカウントがcacheにある前提
+        let cache_account = self.cache.get_mut(address)
+            .expect("[reset_storage] アカウントが存在しない");
+        cache_account.storage_hash = EMPTY_STORAGE_ROOT;
+    }
+
+    fn delete_account(&mut self, address: &Address) {
+        self.cache.remove(address);
+    }
+
+
+    fn reset_balance(&mut self, address: &Address) {
+        let cache_account = self.cache.get_mut(address)
+            .expect("[reset_balance]: アカウントが存在しない");
+        cache_account.balance = U256::ZERO;
+    }
 }
 

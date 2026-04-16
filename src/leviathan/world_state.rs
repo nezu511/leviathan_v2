@@ -5,7 +5,7 @@ use sha3::Digest;
 use std::collections::HashMap;
 use std::sync::Arc;
 use eth_trie::{MemoryDB, EthTrie, Trie};
-use alloy_rlp::{RlpEncodable, RlpDecodable, Decodable};
+use alloy_rlp::{RlpEncodable, RlpDecodable, Decodable, Encodable};
 
 // 空のMPTツリーのルートハッシュ (Keccak256(RLP("")))
 pub const EMPTY_STORAGE_ROOT: B256 = b256!("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
@@ -13,16 +13,15 @@ pub const EMPTY_STORAGE_ROOT: B256 = b256!("56e81f171bcc55a6ff8345e692c0f86e5b48
 pub const EMPTY_CODE_HASH: B256 = b256!("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");
 
 
-pub struct WorldState(pub HashMap<Address, Account>);
 
-pub struct WorldState2{
+pub struct WorldState{
     pub cache: HashMap<Address, Account>,
     pub data: Arc<MemoryDB>,
     pub eth_trie: EthTrie<MemoryDB>,
     pub code_storage: HashMap<B256, Vec<u8>>
 }
 
-impl WorldState2 {
+impl WorldState {
     pub fn new() -> Self {
         let data = Arc::new(MemoryDB::new(true));
         let cache = HashMap::<Address, Account>::new();
@@ -36,12 +35,16 @@ impl WorldState2 {
         Self {cache, data, eth_trie, code_storage}
     }
 
-    pub fn add_cache(&mut self, address: &Address, mpt_accout: &MptAccount) {
-        let nonce = mpt_accout.nonce;
-        let balance = mpt_accout.balance;
-        let shash = mpt_accout.storage_root;
-        let code = self.code_storage.get(&mpt_accout.code_hash).cloned().unwrap();
-        let account = Account::make(nonce, balance, code, shash);
+    pub fn add_cache(&mut self, address: &Address, mpt_account: &MptAccount) {
+        let nonce = mpt_account.nonce;
+        let balance = mpt_account.balance;
+        let shash = mpt_account.storage_root;
+        let code = self.code_storage.get(&mpt_account.code_hash).cloned().unwrap();
+        //mpt_accoutのhashを取得
+        let mut mpt_account_rlp_bytes = Vec::new();
+        mpt_account.encode(&mut mpt_account_rlp_bytes);
+        let mpt_account_hash = keccak256(mpt_account_rlp_bytes);
+        let account = Account::make(nonce, balance, code, shash, mpt_account_hash);
         self.cache.insert(address.clone(), account);
     }
 
@@ -63,6 +66,12 @@ impl WorldState2 {
         }
     }
 
+    pub fn update_eth_trie(&mut self, state_root:B256) {
+        let new_eth_trie = EthTrie::from(self.data.clone(), state_root).unwrap();
+        self.eth_trie = new_eth_trie;
+    }
+
+
 }
         
 
@@ -76,12 +85,8 @@ pub struct MptAccount { //MPT専用
 }
 
 impl MptAccount {
-    pub fn new(state: &mut WorldState2)  -> Self{
-        //storage_root取得
-        let mut storage_trie = EthTrie::new(state.data.clone());
-        let storage_root = storage_trie.root_hash().unwrap();
-        let code_hash = alloy_primitives::KECCAK256_EMPTY;
-        Self {nonce: 0u64, balance: U256::ZERO, storage_root, code_hash}
+    pub fn new(nonce: u64, balance: U256, storage_root: B256, code_hash: B256)  -> Self{
+        Self {nonce, balance, storage_root, code_hash}
     }
 }
 
@@ -93,6 +98,7 @@ pub struct Account {
     pub storage: HashMap<U256, U256>,
     pub code: Vec<u8>,
     pub storage_hash: B256,
+    pub account_hash: B256,
 }
 
 impl Default for Account {
@@ -103,18 +109,30 @@ impl Default for Account {
 
 impl Account {
     pub fn new() -> Self {
+        let empty_mpt = MptAccount::new(
+            0,
+            U256::ZERO,
+            EMPTY_STORAGE_ROOT,
+            EMPTY_CODE_HASH
+        );
+
+        // 2. RLPエンコードして正確なKeccak256ハッシュを動的に計算
+        let mut rlp_bytes = Vec::new();
+        empty_mpt.encode(&mut rlp_bytes);
+        let correct_empty_hash = keccak256(&rlp_bytes);
         Self {
             nonce: 0u64,
             balance: U256::ZERO,
             storage: HashMap::new(),
             code: Vec::new(),
             storage_hash: EMPTY_STORAGE_ROOT,
+            account_hash: correct_empty_hash,
         }
     }
 
-    pub fn make(nonce: u64, balance: U256, code: Vec<u8>, shash: B256) -> Self {
+    pub fn make(nonce: u64, balance: U256, code: Vec<u8>, shash: B256, account_hash: B256) -> Self {
         let storage = HashMap::<U256, U256>::new();
-        Self {nonce, balance, storage, code, storage_hash:shash}
+        Self {nonce, balance, storage, code, storage_hash:shash, account_hash}
     }
 
 }
