@@ -223,6 +223,18 @@ impl TransactionExecution for LEVIATHAN {
                     final_billed_gas = %final_billed_gas,
                     "[マイナーへの支払い]",
                 );
+                //substate.a_touchの処理
+                while let Some(address) = substate.a_touch.pop() {
+                    if state.is_dead(self.version,&address) {
+                        tracing::info!(
+                            empty_accout = format_args!("0x{}", hex::encode(address)),
+                            "[a_touchの処理]",
+                            );
+                        let address_hash = keccak256(address);
+                        state.eth_trie.remove(address_hash.as_slice());
+                        state.cache.remove(&address);
+                    }
+                }
                 //substate.a_desの処理
                 while let Some(address) = substate.a_des.pop() {
                     let address_hash = keccak256(address);
@@ -326,6 +338,14 @@ impl TransactionExecution for LEVIATHAN {
                     final_billed_gas = %final_billed_gas,
                     "[Err:マイナーへの支払い]",
                 );
+                //substate.a_touchの処理
+                while let Some(address) = substate.a_touch.pop() {
+                    if state.is_dead(self.version,&address) {
+                        let address_hash = keccak256(address);
+                        state.eth_trie.remove(address_hash.as_slice());
+                        state.cache.remove(&address);
+                    }
+                }
                 //substate.a_desの処理
                 while let Some(address) = substate.a_des.pop() {
                     let address_hash = keccak256(address);
@@ -552,7 +572,7 @@ mod state_tests {
             .try_init();
 
         // 対象のディレクトリ
-        let test_dir = "MPTTest/stCallCodes";
+        let test_dir = "MPTTest/stCallCreateCallCodeTest";
 
         let paths = std::fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));
