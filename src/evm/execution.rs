@@ -237,6 +237,10 @@ impl Ofunction for EVM {
                 }
                 let val1 = self.pop();
                 let to_address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
+                //サブステートのa_touchに追加
+                if !substate.a_touch.contains(&to_address) {
+                    substate.a_touch.push(to_address.clone())
+                }
                 //デバック用
                 tracing::info!(
                     recipient = format_args!("0x{}", hex::encode(to_address.0)),
@@ -312,6 +316,10 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         } else {
             data = Vec::<u8>::new();
+        }
+        //サブステートのa_touchに追加
+        if !substate.a_touch.contains(&to_address) {
+            substate.a_touch.push(to_address.clone())
         }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
@@ -1517,6 +1525,10 @@ impl Ofunction for EVM {
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
                 let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
+                //サブステートのa_touchに追加
+                if !substate.a_touch.contains(&contract_address) {
+                    substate.a_touch.push(contract_address.clone())
+                }
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&contract_address) {
                     substate.a_access.push(contract_address.clone())
@@ -1641,6 +1653,10 @@ impl Ofunction for EVM {
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
                 let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
+                //サブステートのa_touchに追加
+                if !substate.a_touch.contains(&contract_address) {
+                    substate.a_touch.push(contract_address.clone())
+                }
                 //アクセス済みリストの更新
                 if !substate.a_access.contains(&contract_address) {
                     substate.a_access.push(contract_address.clone())
@@ -1714,6 +1730,10 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         } else {
             data = Vec::<u8>::new();
+        }
+        //サブステートのa_touchに追加
+        if !substate.a_touch.contains(&to_address) {
+            substate.a_touch.push(to_address.clone())
         }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
@@ -1872,6 +1892,10 @@ impl Ofunction for EVM {
             self.push(U256::ZERO);
             return;
         };
+        //サブステートのa_touchに追加
+        if !substate.a_touch.contains(&to_address) {
+            substate.a_touch.push(to_address.clone())
+        }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
@@ -2003,6 +2027,10 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         } else {
             data = Vec::<u8>::new();
+        }
+        //サブステートのa_touchに追加
+        if !substate.a_touch.contains(&to_address) {
+            substate.a_touch.push(to_address.clone())
         }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
