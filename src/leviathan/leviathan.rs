@@ -347,6 +347,7 @@ impl TransactionExecution for LEVIATHAN {
                     "[Err:マイナーへの支払い]",
                 );
                 //substate.a_touchの処理
+                tracing::debug!("{:?}", substate.a_touch);
                 while let Some(address) = substate.a_touch.pop() {
                     if state.is_dead(self.version,&address) {
                         let address_hash = keccak256(address);

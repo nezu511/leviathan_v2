@@ -637,13 +637,13 @@ impl Gfunction for EVM {
                     let my_address = &execution_environment.i_address;
                     let balance = state.get_balance(my_address).unwrap_or(U256::ZERO);
                     let create_cost = if self.version >= VersionId::SpuriousDragon{
-                        if balance > U256::ZERO && state.is_empty(&address){
+                        if balance > U256::ZERO && !state.is_physically_exist(&address){
                             25000
                         } else {
                             0
                         }
                     }else{
-                        if state.is_empty(&address){
+                        if !state.is_physically_exist(&address){
                             25000
                         } else {
                             0

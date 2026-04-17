@@ -1528,14 +1528,6 @@ impl Ofunction for EVM {
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
                 let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
-                //サブステートのa_touchに追加
-                if !substate.a_touch.contains(&contract_address) {
-                    substate.a_touch.push(contract_address.clone())
-                }
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&contract_address) {
-                    substate.a_access.push(contract_address.clone())
-                }
                 tracing::info!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
@@ -1656,14 +1648,6 @@ impl Ofunction for EVM {
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
                 let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
-                //サブステートのa_touchに追加
-                if !substate.a_touch.contains(&contract_address) {
-                    substate.a_touch.push(contract_address.clone())
-                }
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&contract_address) {
-                    substate.a_access.push(contract_address.clone())
-                }
                 tracing::info!("CREATE2:0x{}", hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
