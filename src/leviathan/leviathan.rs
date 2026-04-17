@@ -347,6 +347,7 @@ impl TransactionExecution for LEVIATHAN {
                     "[Err:マイナーへの支払い]",
                 );
                 //substate.a_touchの処理
+                tracing::debug!("{:?}", substate.a_touch);
                 while let Some(address) = substate.a_touch.pop() {
                     if state.is_dead(self.version,&address) {
                         let address_hash = keccak256(address);
@@ -593,7 +594,7 @@ mod state_tests {
             .try_init();
 
         // 対象のディレクトリ
-        let test_dir = "MPTTest/stInitCodeTest";
+        let test_dir = "MPTTest/stCreateTest";
 
         let paths = std::fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));

@@ -635,13 +635,19 @@ impl Gfunction for EVM {
                     let address = Address::from_word(B256::from(data.to_be_bytes::<32>()));
                     //新規アカウント作成のペナルティ
                     let my_address = &execution_environment.i_address;
-                    let create_cost = if state.get_balance(my_address).unwrap_or(U256::from(0))
-                        > U256::from(0)
-                        && state.is_empty(&address)
-                    {
-                        25000
-                    } else {
-                        0
+                    let balance = state.get_balance(my_address).unwrap_or(U256::ZERO);
+                    let create_cost = if self.version >= VersionId::SpuriousDragon{
+                        if balance > U256::ZERO && !state.is_physically_exist(&address){
+                            25000
+                        } else {
+                            0
+                        }
+                    }else{
+                        if !state.is_physically_exist(&address){
+                            25000
+                        } else {
+                            0
+                        }
                     };
                     let access_state_cost = 0usize;
                     if self.version > VersionId::Berlin {

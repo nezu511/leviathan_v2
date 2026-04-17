@@ -85,10 +85,6 @@ impl ContractCreation for LEVIATHAN {
             return Err((U256::ZERO, None, None));
         }
 
-        //サブステートのa_touchに追加
-        if !substate.a_touch.contains(&contract_address) {
-            substate.a_touch.push(contract_address.clone())
-        }
 
         //サブステートのアクセス済みアカウントに追加
         if !substate.a_access.contains(&contract_address) {
@@ -96,6 +92,10 @@ impl ContractCreation for LEVIATHAN {
         }
         self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
 
+        //サブステートのa_touchに追加
+        if !substate.a_touch.contains(&contract_address) {
+            substate.a_touch.push(contract_address.clone())
+        }
         //Nonceを1にする．
         if state.is_empty(&contract_address) && !state.is_physically_exist(&contract_address) {
             state.add_account(&contract_address, Account::new()); //アカウントを追加

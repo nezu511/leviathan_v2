@@ -241,20 +241,23 @@ impl Ofunction for EVM {
                 if !substate.a_touch.contains(&to_address) {
                     substate.a_touch.push(to_address.clone())
                 }
+                let balance = state.get_balance(from_address).unwrap();
                 //デバック用
                 tracing::info!(
                     recipient = format_args!("0x{}", hex::encode(to_address.0)),
+                    from_address_balance = %balance,
                     "SELFDESTRUCT"
                 );
-                let balance = state.get_balance(from_address).unwrap();
                 if from_address.clone() == to_address {
                     Action::ResetBalance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
                     state.reset_balance(from_address)
+                }else if self.version <= VersionId::TangerineWhistle  && balance == U256::ZERO{
+                    if state.is_empty(&to_address) && !state.is_physically_exist(&to_address) {
+                        state.add_account(&to_address, Account::new()); //アカウントを追加
+                        Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
+                    }
                 } else {
                     if balance != U256::ZERO {
-                        if state.is_empty(from_address) {
-                            return Some(false);
-                        }
                         if state.is_empty(&to_address) && !state.is_physically_exist(&to_address) {
                             state.add_account(&to_address, Account::new()); //アカウントを追加
                             Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
@@ -1525,14 +1528,6 @@ impl Ofunction for EVM {
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
                 let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
-                //サブステートのa_touchに追加
-                if !substate.a_touch.contains(&contract_address) {
-                    substate.a_touch.push(contract_address.clone())
-                }
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&contract_address) {
-                    substate.a_access.push(contract_address.clone())
-                }
                 tracing::info!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
@@ -1653,14 +1648,6 @@ impl Ofunction for EVM {
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
                 let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
-                //サブステートのa_touchに追加
-                if !substate.a_touch.contains(&contract_address) {
-                    substate.a_touch.push(contract_address.clone())
-                }
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&contract_address) {
-                    substate.a_access.push(contract_address.clone())
-                }
                 tracing::info!("CREATE2:0x{}", hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
