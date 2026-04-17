@@ -165,6 +165,10 @@ impl Zfunction for EVM {
             tracing::warn!("不正な命令の実行: フォーク依存的0xfd");
             return false;
         }
+        if self.version < VersionId::TangerineWhistle && opcode == 0xfa {
+            tracing::warn!("不正な命令の実行: フォーク依存的0xfa");
+            return false;
+        }
 
         //現在の命令が要求する要素数に対して，スタックの中身は足りるか？
         let pop_number = op_info[0] as usize;
