@@ -56,6 +56,7 @@ impl Ofunction for EVM {
         match opcode {
             0x00 => {
                 //STOP
+                self.return_back = Vec::new();
                 return Some(false);
             }
 
@@ -198,6 +199,8 @@ impl Ofunction for EVM {
                     }
                     let slice = &self.memory[offset..required_size];
                     self.return_back = slice.to_vec();
+                }else{
+                    self.return_back.clear();
                 }
                 //アクティブなword数を更新
                 let active_words = self.memory.len() / 32;
@@ -222,6 +225,8 @@ impl Ofunction for EVM {
                     }
                     let slice = &self.memory[offset..required_size];
                     self.return_back = slice.to_vec();
+                }else{
+                    self.return_back.clear();
                 }
                 //アクティブなword数を更新
                 let active_words = self.memory.len() / 32;
@@ -268,6 +273,7 @@ impl Ofunction for EVM {
                     }
                 }
                 substate.a_des.push(from_address.clone());
+                self.return_back = Vec::new();
                 return Some(false);
             }
 
@@ -428,6 +434,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
@@ -1825,6 +1832,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
@@ -1966,6 +1974,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
@@ -2108,6 +2117,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
