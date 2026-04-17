@@ -643,7 +643,7 @@ impl Gfunction for EVM {
                             0
                         }
                     }else{
-                        if state.is_physically_exist(&address){
+                        if state.is_empty(&address){
                             25000
                         } else {
                             0
