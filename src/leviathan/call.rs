@@ -94,25 +94,49 @@ impl MessageCall for LEVIATHAN {
 
             val if val == U256::from(5) => {
                 //EXPMOD
-                LEVIATHAN::expmod(gas, &execution_environment.i_data)
+                if self.version >= VersionId::Byzantium {
+                    LEVIATHAN::expmod(gas, &execution_environment.i_data)
+                }else{
+                    Ok((gas, Vec::new()))
+                }
             }
 
             val if val == U256::from(6) => {
                 //BN_ADD
-                LEVIATHAN::bn_add(gas, &execution_environment.i_data)
+                if self.version >= VersionId::Byzantium {
+                    LEVIATHAN::bn_add(gas, &execution_environment.i_data)
+                }else{
+                    Ok((gas, Vec::new()))
+                }
             }
 
             val if val == U256::from(7) => {
                 //BN_MUL
-                LEVIATHAN::bn_mul(gas, &execution_environment.i_data)
+                if self.version >= VersionId::Byzantium {
+                    LEVIATHAN::bn_mul(gas, &execution_environment.i_data)
+                }else{
+                    Ok((gas, Vec::new()))
+                }
             }
 
             val if val == U256::from(8) => {
                 //SNARKV
-                LEVIATHAN::bn_pairing(gas, &execution_environment.i_data)
+                if self.version >= VersionId::Byzantium {
+                    LEVIATHAN::bn_pairing(gas, &execution_environment.i_data)
+                }else{
+                    Ok((gas, Vec::new()))
+                }
             }
 
-            val if val == U256::from(9) => todo!(), //BLAKE2_F
+            val if val == U256::from(9) => { 
+                //BLAKE2_F
+                if self.version >= VersionId::Istanbul {
+                    todo!()
+                }else{
+                    todo!()
+                    //Ok((gas, Vec::new()))
+                }
+            }
 
             _ => {
                 //通常のスマートコントラクト呼び出し

@@ -161,11 +161,11 @@ impl Zfunction for EVM {
             tracing::warn!("不正な命令の実行: フォーク依存的0xf5");
             return false;
         }
-        if self.version < VersionId::SpuriousDragon && opcode == 0xfd {
+        if self.version < VersionId::Byzantium && opcode == 0xfd {
             tracing::warn!("不正な命令の実行: フォーク依存的0xfd");
             return false;
         }
-        if self.version < VersionId::TangerineWhistle && opcode == 0xfa {
+        if self.version < VersionId::Byzantium && opcode == 0xfa {
             tracing::warn!("不正な命令の実行: フォーク依存的0xfa");
             return false;
         }
