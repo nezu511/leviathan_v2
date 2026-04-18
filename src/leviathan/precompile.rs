@@ -176,7 +176,7 @@ impl CompiledContract for LEVIATHAN {
 
     // プリコンパイルコントラクト: Identity (Address 5)
     #[inline(never)]
-    fn expmod(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    fn expmod(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         //ヘルパー関数
         let get_padded_data = |start: usize, len: usize| -> Vec<u8> {
             let mut out = vec![0u8; len];
@@ -220,7 +220,11 @@ impl CompiledContract for LEVIATHAN {
 
             (rest * U256::from(8)) + U256::from(e_top.bit_len())
         };
-        let g_cost1 = (val1 * val2) / U256::from(3);
+        let g_cost1 = if version >= VersionId::Berlin {
+            (val1 * val2) / U256::from(3)
+        }else{
+            (val1 * val2) / U256::from(20)
+        };
         let used_gas = g_cost1.max(U256::from(200));
         // ガス検証
         if gas < used_gas {
@@ -422,7 +426,7 @@ impl CompiledContract for LEVIATHAN {
         Ok((return_gas, tmp))
     }
 
-    fn bn_pairing(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    fn bn_pairing(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         //要件確認1
         if data.len().rem(192) != 0 {
             return Err((U256::ZERO, None));
@@ -430,9 +434,16 @@ impl CompiledContract for LEVIATHAN {
         let k = data.len() / 192;
 
         // ガス検証
-        let used_gas = U256::from(34000)
-            .saturating_mul(U256::from(k))
-            .saturating_add(U256::from(45000));
+        let used_gas = if version >= VersionId::Istanbul {
+            U256::from(34000)
+                .saturating_mul(U256::from(k))
+                .saturating_add(U256::from(45000))
+        }else{
+            U256::from(80000)
+                .saturating_mul(U256::from(k))
+                .saturating_add(U256::from(100000))
+        };
+
         if gas < used_gas {
             return Err((U256::ZERO, None));
         }

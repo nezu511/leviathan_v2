@@ -1945,6 +1945,10 @@ impl Ofunction for EVM {
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
                 }
+                tracing::info!(
+                return_gas = %return_gas,
+                "[DELEGATECALL] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -2088,6 +2092,10 @@ impl Ofunction for EVM {
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
                 }
+                tracing::info!(
+                return_gas = %return_gas,
+                "[STATICCALL] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
