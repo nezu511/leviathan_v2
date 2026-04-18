@@ -34,6 +34,10 @@ impl MessageCall for LEVIATHAN {
             substate.a_access.push(recipient.clone())
         }
         self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
+        //サブステートのa_touchに追加
+        if !substate.a_touch.contains(&recipient) {
+            substate.a_touch.push(recipient.clone())
+        }
 
         //残高の移動
         if eth != U256::ZERO {
