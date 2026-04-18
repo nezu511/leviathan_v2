@@ -173,6 +173,10 @@ impl Zfunction for EVM {
             tracing::warn!("不正な命令の実行: フォーク依存的0x3d");
             return false;
         }
+        if self.version < VersionId::Homestead && opcode == 0xf2 {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x3d");
+            return false;
+        }
 
         //現在の命令が要求する要素数に対して，スタックの中身は足りるか？
         let pop_number = op_info[0] as usize;
