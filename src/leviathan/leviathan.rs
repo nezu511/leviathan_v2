@@ -100,7 +100,7 @@ impl TransactionExecution for LEVIATHAN {
 
         //=======ステップ2===========
         //【Nonceの加算】
-        if state.is_empty(&sender_address) {
+        if state.is_dead(self.version,&sender_address) {
             return Err((U256::ZERO, Vec::new())); //sender_addressが見つからないのは異常
         }
         state.inc_nonce(&sender_address);
@@ -193,7 +193,7 @@ impl TransactionExecution for LEVIATHAN {
                 let return_gas = gas.saturating_add(reimburse);
                 //送信者への返金
                 let reimburse = return_gas.saturating_mul(transaction.t_price);
-                if state.is_empty(&sender_address) {
+                if state.is_dead(self.version, &sender_address) {
                     //add_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
                         state.add_account(&sender_address, Account::new()); //アカウントを追加
@@ -208,7 +208,7 @@ impl TransactionExecution for LEVIATHAN {
                     transaction.t_price - block_header.h_basefee
                 };
                 let reward = final_billed_gas.saturating_mul(f);
-                if state.is_empty(&block_header.h_beneficiary) {
+                if state.is_dead(self.version, &block_header.h_beneficiary) {
                     //add_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
@@ -324,7 +324,7 @@ impl TransactionExecution for LEVIATHAN {
             Err((gas, _, _)) => {
                 //送信者への返金
                 let reimburse = gas.saturating_mul(transaction.t_price);
-                if state.is_empty(&sender_address) {
+                if state.is_dead(self.version, &sender_address) {
                     //add_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
                         state.add_account(&sender_address, Account::new()); //アカウントを追加
@@ -339,7 +339,7 @@ impl TransactionExecution for LEVIATHAN {
                     transaction.t_price - block_header.h_basefee
                 };
                 let reward = final_billed_gas.saturating_mul(f);
-                if state.is_empty(&block_header.h_beneficiary) {
+                if state.is_dead(self.version, &block_header.h_beneficiary) {
                     //add_balance前の確認
                     if !state.is_physically_exist(&block_header.h_beneficiary) {
                         state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加

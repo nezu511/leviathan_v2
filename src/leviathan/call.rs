@@ -41,10 +41,10 @@ impl MessageCall for LEVIATHAN {
 
         //残高の移動
         if eth != U256::ZERO {
-            if state.is_empty(&sender) {
+            if state.is_dead(self.version, &sender) {
                 return Err((gas, None, None));
             }
-            if state.is_empty(&recipient) && !state.is_physically_exist(&recipient) {
+            if state.is_dead(self.version, &recipient) && !state.is_physically_exist(&recipient) {
                 state.add_account(&recipient, Account::new()); //アカウントを追加
                 Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
             }
@@ -54,7 +54,7 @@ impl MessageCall for LEVIATHAN {
             }
         } else if self.version < VersionId::SpuriousDragon {
             //Ethereumの初期はvalue=0であっても無条件でアカウントを作成
-            if state.is_empty(&recipient) && !state.is_physically_exist(&recipient) {
+            if state.is_dead(self.version, &recipient) && !state.is_physically_exist(&recipient) {
                 state.add_account(&recipient, Account::new()); //アカウントを追加
                 Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
             }
