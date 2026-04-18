@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-
+use crate::leviathan::structs::VersionId;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::my_trait::evm_trait::Ofunction;
 use crate::my_trait::leviathan_trait::CompiledContract;
@@ -274,7 +274,7 @@ impl CompiledContract for LEVIATHAN {
         Ok((return_gas, result_val_byte))
     }
 
-    fn bn_add(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    fn bn_add(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         //ヘルパー関数
         let get_padded_data = |start: usize, len: usize| -> Vec<u8> {
             let mut out = vec![0u8; len];
@@ -285,10 +285,18 @@ impl CompiledContract for LEVIATHAN {
             out
         };
         // ガス検証
-        if gas < U256::from(150) {
-            return Err((U256::ZERO, None));
-        }
-        let return_gas = gas - U256::from(150);
+        let return_gas = if version >= VersionId::Istanbul{
+            if gas < U256::from(150) {
+                return Err((U256::ZERO, None));
+            }
+            gas - U256::from(150)
+        }else{
+            if gas < U256::from(500) {
+                return Err((U256::ZERO, None));
+            }
+            gas - U256::from(500)
+        };
+
         //データ抽出
         let x1_byte = get_padded_data(0, 32);
         let y1_byte = get_padded_data(32, 32);
@@ -347,7 +355,7 @@ impl CompiledContract for LEVIATHAN {
         Ok((return_gas, tmp))
     }
 
-    fn bn_mul(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    fn bn_mul(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         //ヘルパー関数
         let get_padded_data = |start: usize, len: usize| -> Vec<u8> {
             let mut out = vec![0u8; len];
@@ -358,10 +366,18 @@ impl CompiledContract for LEVIATHAN {
             out
         };
         // ガス検証
-        if gas < U256::from(6000) {
-            return Err((U256::ZERO, None));
-        }
-        let return_gas = gas - U256::from(6000);
+        let return_gas = if version >= VersionId::Istanbul {
+            if gas < U256::from(6000) {
+                return Err((U256::ZERO, None));
+            }
+            gas - U256::from(6000)
+        }else{
+            if gas < U256::from(40000) {
+                return Err((U256::ZERO, None));
+            }
+            gas - U256::from(40000)
+        };
+
         //データ抽出
         let x_byte = get_padded_data(0, 32);
         let y_byte = get_padded_data(32, 32);

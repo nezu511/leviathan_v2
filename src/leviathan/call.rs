@@ -104,7 +104,7 @@ impl MessageCall for LEVIATHAN {
             val if val == U256::from(6) => {
                 //BN_ADD
                 if self.version >= VersionId::Byzantium {
-                    LEVIATHAN::bn_add(gas, &execution_environment.i_data)
+                    LEVIATHAN::bn_add(gas, &execution_environment.i_data, self.version)
                 }else{
                     Ok((gas, Vec::new()))
                 }
@@ -113,7 +113,7 @@ impl MessageCall for LEVIATHAN {
             val if val == U256::from(7) => {
                 //BN_MUL
                 if self.version >= VersionId::Byzantium {
-                    LEVIATHAN::bn_mul(gas, &execution_environment.i_data)
+                    LEVIATHAN::bn_mul(gas, &execution_environment.i_data, self.version)
                 }else{
                     Ok((gas, Vec::new()))
                 }
