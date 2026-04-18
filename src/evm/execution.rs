@@ -257,13 +257,13 @@ impl Ofunction for EVM {
                     Action::ResetBalance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
                     state.reset_balance(from_address)
                 }else if self.version <= VersionId::TangerineWhistle  && balance == U256::ZERO{
-                    if state.is_empty(&to_address) && !state.is_physically_exist(&to_address) {
+                    if state.is_dead(self.version, &to_address) && !state.is_physically_exist(&to_address) {
                         state.add_account(&to_address, Account::new()); //アカウントを追加
                         Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
                     }
                 } else {
                     if balance != U256::ZERO {
-                        if state.is_empty(&to_address) && !state.is_physically_exist(&to_address) {
+                        if state.is_dead(self.version, &to_address) && !state.is_physically_exist(&to_address) {
                             state.add_account(&to_address, Account::new()); //アカウントを追加
                             Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
                         }

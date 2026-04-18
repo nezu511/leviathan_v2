@@ -24,7 +24,6 @@ impl State for WorldState {
             if account.nonce != 0
                 || !account.balance.is_zero()
                 || account.code.len() != 0
-                || account.storage_hash != EMPTY_STORAGE_ROOT
             {
                 return false;
             }
@@ -46,7 +45,6 @@ impl State for WorldState {
                     if account.nonce != 0
                         || !account.balance.is_zero()
                             || account.code_hash != EMPTY_CODE_HASH
-                            || account.storage_root != EMPTY_STORAGE_ROOT
                             {
                                 return false;
                             }

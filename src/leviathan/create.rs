@@ -97,7 +97,7 @@ impl ContractCreation for LEVIATHAN {
             substate.a_touch.push(contract_address.clone())
         }
         //Nonceを1にする．
-        if state.is_empty(&contract_address) && !state.is_physically_exist(&contract_address) {
+        if state.is_dead(self.version, &contract_address) && !state.is_physically_exist(&contract_address) {
             state.add_account(&contract_address, Account::new()); //アカウントを追加
             Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
         }
@@ -106,10 +106,10 @@ impl ContractCreation for LEVIATHAN {
             state.inc_nonce(&contract_address);
         }
         //送金する
-        if state.is_empty(&sender) {
+        if state.is_dead(self.version, &sender) {
             return Err((gas, None, None));
         }
-        if state.is_empty(&contract_address) && !state.is_physically_exist(&contract_address) {
+        if state.is_dead(self.version, &contract_address) && !state.is_physically_exist(&contract_address) {
             state.add_account(&contract_address, Account::new()); //アカウントを追加
             Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
         }
