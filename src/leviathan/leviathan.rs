@@ -436,6 +436,7 @@ mod state_tests {
     use super::*;
     use std::collections::HashMap;
     use std::fs;
+    use crate::test::state_parser::{IndexType, StateTestSuite};
 
     // alloy_primitives の hex を使用して E0433 を解消
     use alloy_primitives::{U256, hex, Address};
@@ -449,7 +450,6 @@ mod state_tests {
     use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
     use crate::leviathan::world_state::{Account, WorldState};
     use crate::my_trait::leviathan_trait::TransactionExecution;
-    use crate::test::state_parser::StateTestSuite;
 
     // --- ヘルパー関数 ---
 
@@ -627,8 +627,32 @@ mod state_tests {
                 println!("--------------------------------------------------");
                 println!("▶ Running State Test: {}", test_name);
 
-                // 🌟 改修ポイント：postの中のネットワーク(フォーク)ごとにループを回す
-                for (network_str, post_states) in &test_data.post {
+                // 🌟 修正ポイント: 実行順序がランダムになるのを防ぐため、
+                // ネットワーク(フォーク)を「時代順」にソートして順序を固定する！
+                let mut networks: Vec<_> = test_data.post.keys().collect();
+                networks.sort_by_key(|net| {
+                    let clean_str = net.trim_start_matches(">=").trim_start_matches('>');
+                    match clean_str {
+                        "Frontier" => 10,
+                        "Homestead" => 20,
+                        "EIP150" | "TangerineWhistle" => 30,
+                        "EIP158" | "SpuriousDragon" => 40,
+                        "Byzantium" => 50,
+                        "Constantinople" => 60,
+                        "ConstantinopleFix" | "Petersburg" => 65,
+                        "Istanbul" => 70,
+                        "Berlin" => 80,
+                        "London" => 90,
+                        "Merge" | "Paris" => 100,
+                        "Shanghai" => 110,
+                        "Cancun" => 120,
+                        _ => 999, // 未知のフォークは最後
+                    }
+                });
+
+                // 🌟 ソート済みのネットワーク配列でループを回す
+                for network_str in networks {
+                    let post_states = &test_data.post[network_str];
                     let version = parse_version(network_str);
 
                     // 現在サポートしていない古いフォークや未来のフォークをスキップしたい場合はここで弾く
@@ -637,15 +661,22 @@ mod state_tests {
                     for (post_idx, post_state) in post_states.iter().enumerate() {
                         total_cases_count += 1;
 
-                        let data_idx = post_state.indexes.data.first() as usize;
-                        let gas_idx = post_state.indexes.gas.first() as usize;
-                        let value_idx = post_state.indexes.value.first() as usize;
-
+                        let get_usize = |idx: &IndexType| -> usize {
+                            match idx {
+                                IndexType::Single(n) => (*n).max(0) as usize,
+                                IndexType::Multi(arr) => arr.first().copied().unwrap_or(0).max(0) as usize, // 🌟 Multiple ではなく Multi が大正解です！
+                            }
+                        };
+                        let data_idx = get_usize(&post_state.indexes.data);
+                        let gas_idx = get_usize(&post_state.indexes.gas);
+                        let value_idx = get_usize(&post_state.indexes.value);
                         let tx_data_str = &test_data.transaction.data[data_idx];
                         let gas_limit_str = &test_data.transaction.gas_limit[gas_idx];
                         let value_str = &test_data.transaction.value[value_idx];
 
-                        println!("  [Matrix {}] Network: {}", post_idx, network_str);
+                        // 🌟 表示も分かりやすく修正（フォーク名とインデックスを固定）
+                        println!("  [Network: {:<17}] Matrix {}", network_str, post_idx);
+
                         // 1. WorldStateの初期化 (必ず毎ループ初期化する！)
                         let mut state = WorldState::new();
 
