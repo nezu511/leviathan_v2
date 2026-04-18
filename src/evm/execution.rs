@@ -1725,10 +1725,6 @@ impl Ofunction for EVM {
         } else {
             data = Vec::<u8>::new();
         }
-        //サブステートのa_touchに追加
-        if !substate.a_touch.contains(&to_address) {
-            substate.a_touch.push(to_address.clone())
-        }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
@@ -1887,10 +1883,6 @@ impl Ofunction for EVM {
             self.push(U256::ZERO);
             return;
         };
-        //サブステートのa_touchに追加
-        if !substate.a_touch.contains(&to_address) {
-            substate.a_touch.push(to_address.clone())
-        }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
