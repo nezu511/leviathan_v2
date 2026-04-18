@@ -97,6 +97,7 @@ impl MessageCall for LEVIATHAN {
                 if self.version >= VersionId::Byzantium {
                     LEVIATHAN::expmod(gas, &execution_environment.i_data, self.version)
                 }else{
+                    tracing::info!("expmodがフォークに対応していないため実行できない");
                     Ok((gas, Vec::new()))
                 }
             }
@@ -106,6 +107,7 @@ impl MessageCall for LEVIATHAN {
                 if self.version >= VersionId::Byzantium {
                     LEVIATHAN::bn_add(gas, &execution_environment.i_data, self.version)
                 }else{
+                    tracing::info!("bn_addがフォークに対応していないため実行できない");
                     Ok((gas, Vec::new()))
                 }
             }
@@ -115,6 +117,7 @@ impl MessageCall for LEVIATHAN {
                 if self.version >= VersionId::Byzantium {
                     LEVIATHAN::bn_mul(gas, &execution_environment.i_data, self.version)
                 }else{
+                    tracing::info!("bn_mulがフォークに対応していないため実行できない");
                     Ok((gas, Vec::new()))
                 }
             }
@@ -124,6 +127,7 @@ impl MessageCall for LEVIATHAN {
                 if self.version >= VersionId::Byzantium {
                     LEVIATHAN::bn_pairing(gas, &execution_environment.i_data, self.version)
                 }else{
+                    tracing::info!("bn_pairingがフォークに対応していないため実行できない");
                     Ok((gas, Vec::new()))
                 }
             }

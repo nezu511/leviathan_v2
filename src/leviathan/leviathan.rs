@@ -229,6 +229,10 @@ impl TransactionExecution for LEVIATHAN {
                         let address_hash = keccak256(address);
                         state.eth_trie.remove(address_hash.as_slice());
                         state.cache.remove(&address);
+                        tracing::info!(
+                            address =  format_args!("0x{}", hex::encode(address.0)),
+                            "[a_touchによる削除]"
+                            );
                     }
                 }
                 //substate.a_desの処理
@@ -236,6 +240,10 @@ impl TransactionExecution for LEVIATHAN {
                     let address_hash = keccak256(address);
                     state.eth_trie.remove(address_hash.as_slice());
                     state.cache.remove(&address);
+                    tracing::info!(
+                        address =  format_args!("0x{}", hex::encode(address.0)),
+                        "[a_desによる削除]"
+                        );
                 }
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
@@ -353,6 +361,10 @@ impl TransactionExecution for LEVIATHAN {
                         let address_hash = keccak256(address);
                         state.eth_trie.remove(address_hash.as_slice());
                         state.cache.remove(&address);
+                        tracing::info!(
+                            address =  format_args!("0x{}", hex::encode(address.0)),
+                            "[a_touchによる削除]"
+                            );
                     }
                 }
                 //substate.a_desの処理
@@ -360,6 +372,10 @@ impl TransactionExecution for LEVIATHAN {
                     let address_hash = keccak256(address);
                     state.eth_trie.remove(address_hash.as_slice());
                     state.cache.remove(&address);
+                    tracing::info!(
+                        address =  format_args!("0x{}", hex::encode(address.0)),
+                        "[a_desによる削除]"
+                        );
                 }
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
@@ -725,6 +741,7 @@ mod state_tests {
                                 storage_hash: initial_storage_root, // 🌟 ダミーではなく本物をセット！
                                 account_hash,
                             };
+
                             state.add_account(&addr, account);
 
                             // 🌟 【追加】さらに全体デスク (State Trie) にもアカウントを登録しておく！

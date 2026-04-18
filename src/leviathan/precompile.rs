@@ -177,6 +177,22 @@ impl CompiledContract for LEVIATHAN {
     // プリコンパイルコントラクト: Identity (Address 5)
     #[inline(never)]
     fn expmod(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+
+        if data.is_empty() {
+            let used_gas = if version >= VersionId::Berlin {
+                U256::from(200) // Berlin以降は最低200ガス
+            } else {
+                U256::ZERO      // Byzantium等は0ガス
+            };
+
+            // OOGチェック
+            if gas < used_gas {
+                return Err((U256::ZERO, None)); // ガス欠
+            }
+
+            // ステータス「成功(Ok)」で、残ガスと空の配列を返す
+            return Ok((gas - used_gas, Vec::new()));
+        }
         //ヘルパー関数
         let get_padded_data = |start: usize, len: usize| -> Vec<u8> {
             let mut out = vec![0u8; len];
@@ -186,6 +202,7 @@ impl CompiledContract for LEVIATHAN {
             }
             out
         };
+
         //データ抽出
         let b_len_byte = get_padded_data(0, 32);
         let e_len_byte = get_padded_data(32, 32);

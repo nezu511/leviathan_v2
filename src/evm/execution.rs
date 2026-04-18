@@ -1818,6 +1818,10 @@ impl Ofunction for EVM {
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
                 }
+                tracing::warn!(
+                return_gas = %return_gas,
+                "[CALLCODE] Revert"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -1827,6 +1831,7 @@ impl Ofunction for EVM {
             }
 
             Err((_return_gas, None, _)) => {
+                tracing::warn!("[CALLCODE] 例外停止");
                 //結果push
                 self.return_back.clear();
                 self.push(U256::ZERO);
