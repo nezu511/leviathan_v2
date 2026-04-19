@@ -4,7 +4,7 @@ use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
 use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionChecks};
-use alloy_primitives::{U256, Address};
+use alloy_primitives::{Address, U256};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use secp256k1::{

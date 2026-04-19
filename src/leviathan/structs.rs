@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{U256, Address};
+use alloy_primitives::{Address, U256};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -116,7 +116,8 @@ impl SubState {
     pub fn road_backup(&mut self, backup: BackupSubstate, version: VersionId) {
         self.a_des.drain(backup.a_des..);
         self.a_log.drain(backup.a_log..);
-        let ripemd_addr = Address::from([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3]);
+        let ripemd_addr =
+            Address::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3]);
         let mut has_ripemd_anomaly = false;
 
         if version >= VersionId::SpuriousDragon {

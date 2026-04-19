@@ -1,6 +1,6 @@
 use crate::leviathan::structs::{BlockHeader, Log, SubState, Transaction, VersionId};
 use crate::leviathan::world_state::{Account, WorldState};
-use alloy_primitives::{U256, Address};
+use alloy_primitives::{Address, U256};
 
 pub trait State {
     fn is_empty(&mut self, address: &Address) -> bool; //空だとtrue;
@@ -18,7 +18,6 @@ pub trait State {
     fn get_storage_value(&mut self, address: &Address, key: &U256) -> Option<U256>;
 
     fn get_nonce(&mut self, address: &Address) -> Option<u64>;
-
 
     // 書き込み系
     fn add_balance(&mut self, address: &Address, value: U256);
@@ -128,11 +127,27 @@ pub trait CompiledContract {
         data: &[u8],
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn expmod(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn expmod(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn bn_add(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn bn_add(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn bn_mul(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn bn_mul(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn bn_pairing(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn bn_pairing(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 }

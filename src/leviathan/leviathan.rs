@@ -4,14 +4,14 @@ use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
     BackupSubstate, BlockHeader, Log, SubState, Transaction, VersionId,
 };
-use crate::leviathan::world_state::{Account, WorldState, MptAccount};
+use crate::leviathan::world_state::{Account, MptAccount, WorldState};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{U256, hex, keccak256, Address};
-use sha3::Digest;
+use alloy_primitives::{Address, U256, hex, keccak256};
 use alloy_rlp::Encodable;
 use eth_trie::{EthTrie, Trie};
+use sha3::Digest;
 
 pub struct LEVIATHAN {
     pub journal: Vec<Action>,
@@ -100,7 +100,7 @@ impl TransactionExecution for LEVIATHAN {
 
         //=======ステップ2===========
         //【Nonceの加算】
-        if state.is_dead(self.version,&sender_address) {
+        if state.is_dead(self.version, &sender_address) {
             return Err((U256::ZERO, Vec::new())); //sender_addressが見つからないのは異常
         }
         state.inc_nonce(&sender_address);
@@ -225,14 +225,14 @@ impl TransactionExecution for LEVIATHAN {
                 );
                 //substate.a_touchの処理
                 while let Some(address) = substate.a_touch.pop() {
-                    if state.is_dead(self.version,&address) {
+                    if state.is_dead(self.version, &address) {
                         let address_hash = keccak256(address);
                         state.eth_trie.remove(address_hash.as_slice());
                         state.cache.remove(&address);
                         tracing::info!(
-                            address =  format_args!("0x{}", hex::encode(address.0)),
+                            address = format_args!("0x{}", hex::encode(address.0)),
                             "[a_touchによる削除]"
-                            );
+                        );
                     }
                 }
                 //substate.a_desの処理
@@ -241,20 +241,22 @@ impl TransactionExecution for LEVIATHAN {
                     state.eth_trie.remove(address_hash.as_slice());
                     state.cache.remove(&address);
                     tracing::info!(
-                        address =  format_args!("0x{}", hex::encode(address.0)),
+                        address = format_args!("0x{}", hex::encode(address.0)),
                         "[a_desによる削除]"
-                        );
+                    );
                 }
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
-                    let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
+                    let mut storage_trie =
+                        EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
                     let mut storage_changed = false;
 
                     //storageの値を書き込む
                     for (key, value) in cache_account.storage.iter() {
-                        let key_byte: [u8;32] = key.to_be_bytes();
+                        let key_byte: [u8; 32] = key.to_be_bytes();
                         let key_hash = keccak256(key_byte);
-                        let existing_val_opt = storage_trie.get(key_hash.as_slice()).unwrap_or(None);
+                        let existing_val_opt =
+                            storage_trie.get(key_hash.as_slice()).unwrap_or(None);
 
                         if value.is_zero() {
                             if existing_val_opt.is_some() {
@@ -264,7 +266,9 @@ impl TransactionExecution for LEVIATHAN {
                         } else {
                             let val_rlp_bytes = alloy_rlp::encode(value);
                             if existing_val_opt != Some(val_rlp_bytes.clone()) {
-                                storage_trie.insert(key_hash.as_slice(), val_rlp_bytes.as_slice()).unwrap();
+                                storage_trie
+                                    .insert(key_hash.as_slice(), val_rlp_bytes.as_slice())
+                                    .unwrap();
                                 storage_changed = true;
                             }
                         }
@@ -277,27 +281,32 @@ impl TransactionExecution for LEVIATHAN {
                     };
                     //コードハッシュを取得
                     let code_hash = keccak256(cache_account.code.clone());
-                    state.code_storage.entry(code_hash).or_insert(cache_account.code.clone());
+                    state
+                        .code_storage
+                        .entry(code_hash)
+                        .or_insert(cache_account.code.clone());
                     tracing::info!(
-                        address =  format_args!("0x{}", hex::encode(address.0)),
-                        nonce = %cache_account.nonce,
-                        balance = %cache_account.balance,
-                        storage_root = format_args!("{}", storage_root),
-                        code_hash = format_args!("{}", code_hash)
-                        );
+                    address =  format_args!("0x{}", hex::encode(address.0)),
+                    nonce = %cache_account.nonce,
+                    balance = %cache_account.balance,
+                    storage_root = format_args!("{}", storage_root),
+                    code_hash = format_args!("{}", code_hash)
+                    );
                     //mpt_accout作成
-                    let mpt_account = MptAccount::new(cache_account.nonce, 
-                                                  cache_account.balance,
-                                                  storage_root,
-                                                  code_hash
-                                                  );
+                    let mpt_account = MptAccount::new(
+                        cache_account.nonce,
+                        cache_account.balance,
+                        storage_root,
+                        code_hash,
+                    );
                     //MPTに書き込む
                     let address_hash = keccak256(address);
                     let mut mpt_account_rlp_bytes = Vec::new();
                     mpt_account.encode(&mut mpt_account_rlp_bytes);
 
                     //MPTに現在登録されているRLPを取得
-                    let existing_mpt_val = state.eth_trie.get(address_hash.as_slice()).unwrap_or(None);
+                    let existing_mpt_val =
+                        state.eth_trie.get(address_hash.as_slice()).unwrap_or(None);
 
                     // 更新すべきか判定
                     let should_insert = match existing_mpt_val {
@@ -312,11 +321,14 @@ impl TransactionExecution for LEVIATHAN {
                     if should_insert {
                         tracing::debug!("更新: 0x{}", hex::encode(address));
                         let _ = state.eth_trie.remove(address_hash.as_slice());
-                        state.eth_trie.insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice()).unwrap();
+                        state
+                            .eth_trie
+                            .insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice())
+                            .unwrap();
                     }
                 }
                 //eth_trieのルートハッシュを取得
-                let new_state_root  = state.eth_trie.root_hash().unwrap();
+                let new_state_root = state.eth_trie.root_hash().unwrap();
                 state.update_eth_trie(new_state_root);
 
                 Ok((final_billed_gas, substate.a_log.clone()))
@@ -357,14 +369,14 @@ impl TransactionExecution for LEVIATHAN {
                 //substate.a_touchの処理
                 tracing::debug!("{:?}", substate.a_touch);
                 while let Some(address) = substate.a_touch.pop() {
-                    if state.is_dead(self.version,&address) {
+                    if state.is_dead(self.version, &address) {
                         let address_hash = keccak256(address);
                         state.eth_trie.remove(address_hash.as_slice());
                         state.cache.remove(&address);
                         tracing::info!(
-                            address =  format_args!("0x{}", hex::encode(address.0)),
+                            address = format_args!("0x{}", hex::encode(address.0)),
                             "[a_touchによる削除]"
-                            );
+                        );
                     }
                 }
                 //substate.a_desの処理
@@ -373,19 +385,21 @@ impl TransactionExecution for LEVIATHAN {
                     state.eth_trie.remove(address_hash.as_slice());
                     state.cache.remove(&address);
                     tracing::info!(
-                        address =  format_args!("0x{}", hex::encode(address.0)),
+                        address = format_args!("0x{}", hex::encode(address.0)),
                         "[a_desによる削除]"
-                        );
+                    );
                 }
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
-                    let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
+                    let mut storage_trie =
+                        EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
                     let mut storage_changed = false;
                     //storageの値を書き込む
                     for (key, value) in cache_account.storage.iter() {
-                        let key_byte: [u8;32] = key.to_be_bytes();
+                        let key_byte: [u8; 32] = key.to_be_bytes();
                         let key_hash = keccak256(key_byte);
-                        let existing_val_opt = storage_trie.get(key_hash.as_slice()).unwrap_or(None);
+                        let existing_val_opt =
+                            storage_trie.get(key_hash.as_slice()).unwrap_or(None);
 
                         if value.is_zero() {
                             if existing_val_opt.is_some() {
@@ -395,7 +409,9 @@ impl TransactionExecution for LEVIATHAN {
                         } else {
                             let val_rlp_bytes = alloy_rlp::encode(value);
                             if existing_val_opt != Some(val_rlp_bytes.clone()) {
-                                storage_trie.insert(key_hash.as_slice(), val_rlp_bytes.as_slice()).unwrap();
+                                storage_trie
+                                    .insert(key_hash.as_slice(), val_rlp_bytes.as_slice())
+                                    .unwrap();
                                 storage_changed = true;
                             }
                         }
@@ -408,18 +424,23 @@ impl TransactionExecution for LEVIATHAN {
                     };
                     //コードハッシュを取得
                     let code_hash = keccak256(cache_account.code.clone());
-                    state.code_storage.entry(code_hash).or_insert(cache_account.code.clone());
-                    let mpt_account = MptAccount::new(cache_account.nonce, 
-                                                  cache_account.balance,
-                                                  storage_root,
-                                                  code_hash
-                                                  );
+                    state
+                        .code_storage
+                        .entry(code_hash)
+                        .or_insert(cache_account.code.clone());
+                    let mpt_account = MptAccount::new(
+                        cache_account.nonce,
+                        cache_account.balance,
+                        storage_root,
+                        code_hash,
+                    );
                     //MPTに書き込む
                     let address_hash = keccak256(address);
                     let mut mpt_account_rlp_bytes = Vec::new();
                     mpt_account.encode(&mut mpt_account_rlp_bytes);
                     //MPTに現在登録されているRLPを取得
-                    let existing_mpt_val = state.eth_trie.get(address_hash.as_slice()).unwrap_or(None);
+                    let existing_mpt_val =
+                        state.eth_trie.get(address_hash.as_slice()).unwrap_or(None);
 
                     // 更新すべきか判定
                     let should_insert = match existing_mpt_val {
@@ -434,11 +455,14 @@ impl TransactionExecution for LEVIATHAN {
                     if should_insert {
                         tracing::debug!("更新: 0x{}", hex::encode(address));
                         let _ = state.eth_trie.remove(address_hash.as_slice());
-                        state.eth_trie.insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice()).unwrap();
+                        state
+                            .eth_trie
+                            .insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice())
+                            .unwrap();
                     }
                 }
                 //eth_trieのルートハッシュを取得
-                let new_state_root  = state.eth_trie.root_hash().unwrap();
+                let new_state_root = state.eth_trie.root_hash().unwrap();
                 state.update_eth_trie(new_state_root);
                 Err((final_billed_gas, Vec::new()))
             }
@@ -450,12 +474,12 @@ impl TransactionExecution for LEVIATHAN {
 #[cfg(test)]
 mod state_tests {
     use super::*;
+    use crate::test::state_parser::{IndexType, StateTestSuite};
     use std::collections::HashMap;
     use std::fs;
-    use crate::test::state_parser::{IndexType, StateTestSuite};
 
     // alloy_primitives の hex を使用して E0433 を解消
-    use alloy_primitives::{U256, hex, Address};
+    use alloy_primitives::{Address, U256, hex};
 
     // 署名生成のためのクレート
     use alloy_rlp::{Encodable, Header};
@@ -672,12 +696,13 @@ mod state_tests {
                     let version = parse_version(network_str);
 
                     for (post_idx, post_state) in post_states.iter().enumerate() {
-
                         // 🌟 修正ポイント1: 先頭だけではなく、インデックスの配列をすべて取得する
                         let get_usize_vec = |idx: &IndexType| -> Vec<usize> {
                             match idx {
                                 IndexType::Single(n) => vec![(*n).max(0) as usize],
-                                IndexType::Multi(arr) => arr.iter().map(|n| (*n).max(0) as usize).collect(),
+                                IndexType::Multi(arr) => {
+                                    arr.iter().map(|n| (*n).max(0) as usize).collect()
+                                }
                             }
                         };
 
@@ -699,7 +724,7 @@ mod state_tests {
                                     println!(
                                         "  [Network: {:<17}] Matrix {} (data: {}, gas: {}, value: {})",
                                         network_str, post_idx, data_idx, gas_idx, value_idx
-                                        );
+                                    );
 
                                     // 1. WorldStateの初期化 (必ず毎ループ初期化する！)
                                     let mut state = WorldState::new();
@@ -720,16 +745,34 @@ mod state_tests {
                                                     let key_byte: [u8; 32] = key_u256.to_be_bytes();
                                                     let key_hash = keccak256(key_byte);
                                                     let val_rlp = alloy_rlp::encode(val_u256);
-                                                    storage_trie.insert(key_hash.as_slice(), val_rlp.as_slice()).unwrap();
+                                                    storage_trie
+                                                        .insert(
+                                                            key_hash.as_slice(),
+                                                            val_rlp.as_slice(),
+                                                        )
+                                                        .unwrap();
                                                 }
                                             }
                                         }
                                         // 初期ストレージの正しいルートハッシュを確定させる！
-                                        let initial_storage_root = storage_trie.root_hash().unwrap();
+                                        let initial_storage_root =
+                                            storage_trie.root_hash().unwrap();
 
-                                        let nonce = acc_data.nonce.as_ref().map(|n| parse_u256(n).try_into().unwrap_or(0)).unwrap_or(0);
-                                        let balance = acc_data.balance.as_ref().map(|b| parse_u256(b)).unwrap_or(U256::ZERO);
-                                        let code = acc_data.code.as_ref().map(|c| parse_code(c)).unwrap_or_default();
+                                        let nonce = acc_data
+                                            .nonce
+                                            .as_ref()
+                                            .map(|n| parse_u256(n).try_into().unwrap_or(0))
+                                            .unwrap_or(0);
+                                        let balance = acc_data
+                                            .balance
+                                            .as_ref()
+                                            .map(|b| parse_u256(b))
+                                            .unwrap_or(U256::ZERO);
+                                        let code = acc_data
+                                            .code
+                                            .as_ref()
+                                            .map(|c| parse_code(c))
+                                            .unwrap_or_default();
 
                                         let code_hash = keccak256(&code);
                                         state.code_storage.insert(code_hash, code.clone());
@@ -745,20 +788,33 @@ mod state_tests {
 
                                         state.add_account(&addr, account);
 
-                                        let mpt_account = MptAccount::new(nonce, balance, initial_storage_root, code_hash);
+                                        let mpt_account = MptAccount::new(
+                                            nonce,
+                                            balance,
+                                            initial_storage_root,
+                                            code_hash,
+                                        );
                                         let addr_hash = keccak256(&addr);
                                         let mut mpt_rlp = Vec::new();
                                         mpt_account.encode(&mut mpt_rlp);
-                                        state.eth_trie.insert(addr_hash.as_slice(), mpt_rlp.as_slice()).unwrap();
+                                        state
+                                            .eth_trie
+                                            .insert(addr_hash.as_slice(), mpt_rlp.as_slice())
+                                            .unwrap();
                                     }
 
                                     let pre_state_root = state.eth_trie.root_hash().unwrap();
-                                    println!("    [Pre-State] Initial State Root: {}", pre_state_root);
+                                    println!(
+                                        "    [Pre-State] Initial State Root: {}",
+                                        pre_state_root
+                                    );
 
                                     // --- ここから下が Env情報の構築 と トランザクション実行 (leviathan.execution) ---
 
                                     let block_header = BlockHeader {
-                                        h_beneficiary: parse_address(&test_data.env.current_coinbase),
+                                        h_beneficiary: parse_address(
+                                            &test_data.env.current_coinbase,
+                                        ),
                                         h_timestamp: parse_u256(&test_data.env.current_timestamp),
                                         h_number: parse_u256(&test_data.env.current_number),
                                         h_prevrandao: parse_u256(&test_data.env.current_difficulty),
@@ -776,11 +832,18 @@ mod state_tests {
                                     };
                                     let nonce = parse_u256(&test_data.transaction.nonce);
                                     let gas_price = parse_u256(&test_data.transaction.gas_price);
-                                    let secret_key_hex = test_data.transaction.secret_key.trim_start_matches("0x");
+                                    let secret_key_hex =
+                                        test_data.transaction.secret_key.trim_start_matches("0x");
 
                                     let (v, r, s) = sign_transaction(
-                                        nonce, gas_price, gas_limit, to_address.clone(), value, &tx_data, secret_key_hex,
-                                        );
+                                        nonce,
+                                        gas_price,
+                                        gas_limit,
+                                        to_address.clone(),
+                                        value,
+                                        &tx_data,
+                                        secret_key_hex,
+                                    );
 
                                     let transaction = Transaction {
                                         data: tx_data,
@@ -789,37 +852,54 @@ mod state_tests {
                                         t_price: gas_price,
                                         t_value: value,
                                         t_nonce: nonce.try_into().unwrap_or(0),
-                                        t_w: v, t_r: r, t_s: s,
+                                        t_w: v,
+                                        t_r: r,
+                                        t_s: s,
                                     };
 
                                     // 2. 実行
                                     let mut leviathan = LEVIATHAN::new(version);
-                                    let _result = leviathan.execution(&mut state, transaction, &block_header);
+                                    let _result =
+                                        leviathan.execution(&mut state, transaction, &block_header);
 
                                     // 3. 🌟 究極の検証フェーズ：State Root Hashの比較
-                                    let expected_hash: alloy_primitives::B256 = post_state.hash.parse()
+                                    let expected_hash: alloy_primitives::B256 = post_state
+                                        .hash
+                                        .parse()
                                         .expect("Failed to parse expected hash");
 
                                     let actual_hash = state.eth_trie.root_hash().unwrap();
 
                                     if actual_hash == expected_hash {
-                                        println!("    => Success! State Root Matches: {}", expected_hash);
+                                        println!(
+                                            "    => Success! State Root Matches: {}",
+                                            expected_hash
+                                        );
                                         pass_cases_count += 1;
                                     } else {
                                         println!("    => FAILED!");
                                         println!("       Expected: {}", expected_hash);
                                         println!("       Actual  : {}", actual_hash);
-                                        println!("\n=== 🔍 最終ステートのダンプ (Cache内の最新状態) ===");
+                                        println!(
+                                            "\n=== 🔍 最終ステートのダンプ (Cache内の最新状態) ==="
+                                        );
                                         for (address, account) in &state.cache {
-                                            println!("Address: 0x{}", alloy_primitives::hex::encode(address.0));
+                                            println!(
+                                                "Address: 0x{}",
+                                                alloy_primitives::hex::encode(address.0)
+                                            );
                                             println!("  Nonce       : {}", account.nonce);
                                             println!("  Balance     : {}", account.balance);
-                                            println!("  Code (len)  : {} bytes", account.code.len());
+                                            println!(
+                                                "  Code (len)  : {} bytes",
+                                                account.code.len()
+                                            );
                                             println!("  Storage:");
                                             if account.storage.is_empty() {
                                                 println!("    (empty)");
                                             } else {
-                                                let mut keys: Vec<_> = account.storage.keys().collect();
+                                                let mut keys: Vec<_> =
+                                                    account.storage.keys().collect();
                                                 keys.sort();
                                                 for k in keys {
                                                     let v = account.storage.get(k).unwrap();
@@ -827,10 +907,18 @@ mod state_tests {
                                                 }
                                             }
                                             println!("  StorageRoot : {}", account.storage_hash);
-                                            println!("---------------------------------------------------");
+                                            println!(
+                                                "---------------------------------------------------"
+                                            );
                                         }
-                                        println!("===================================================\n");
-                                        assert_eq!(actual_hash, expected_hash, "State root mismatch in test: {}", test_name);
+                                        println!(
+                                            "===================================================\n"
+                                        );
+                                        assert_eq!(
+                                            actual_hash, expected_hash,
+                                            "State root mismatch in test: {}",
+                                            test_name
+                                        );
                                     }
                                 }
                             }
@@ -840,7 +928,10 @@ mod state_tests {
             }
         }
         println!("\n==================================================");
-        println!("最終結果: {} ファイル中、{} / {} のテストケースをクリアしました！", total_files, pass_cases_count, total_cases_count);
+        println!(
+            "最終結果: {} ファイル中、{} / {} のテストケースをクリアしました！",
+            total_files, pass_cases_count, total_cases_count
+        );
         println!("==================================================\n");
     }
 }

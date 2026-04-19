@@ -11,8 +11,8 @@ pub struct StateTestSuite {
 #[derive(Deserialize, Debug)]
 pub struct StateTestCase {
     pub _info: Option<serde_json::Value>,
-    pub env: EnvData,                           
-    pub pre: HashMap<String, AccountData>,      
+    pub env: EnvData,
+    pub pre: HashMap<String, AccountData>,
     pub transaction: TransactionData,
     pub post: HashMap<String, Vec<PostState>>,
 }
@@ -59,7 +59,7 @@ pub struct ExpectData {
 #[derive(Debug, Deserialize)]
 pub struct PostState {
     pub hash: String,
-    pub indexes: TestIndexes,                   
+    pub indexes: TestIndexes,
     pub logs: String,
 }
 

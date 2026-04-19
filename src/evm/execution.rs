@@ -7,7 +7,7 @@ use crate::leviathan::structs::{ExecutionEnvironment, Log, SubState, VersionId};
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::{ContractCreation, MessageCall, State};
-use alloy_primitives::{I256, U256, hex, Address, B256};
+use alloy_primitives::{Address, B256, I256, U256, hex};
 use sha3::{Digest, Keccak256};
 
 impl Ofunction for EVM {
@@ -199,7 +199,7 @@ impl Ofunction for EVM {
                     }
                     let slice = &self.memory[offset..required_size];
                     self.return_back = slice.to_vec();
-                }else{
+                } else {
                     self.return_back.clear();
                 }
                 //アクティブなword数を更新
@@ -225,7 +225,7 @@ impl Ofunction for EVM {
                     }
                     let slice = &self.memory[offset..required_size];
                     self.return_back = slice.to_vec();
-                }else{
+                } else {
                     self.return_back.clear();
                 }
                 //アクティブなword数を更新
@@ -256,14 +256,18 @@ impl Ofunction for EVM {
                 if from_address.clone() == to_address {
                     Action::ResetBalance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
                     state.reset_balance(from_address)
-                }else if self.version <= VersionId::TangerineWhistle  && balance == U256::ZERO{
-                    if state.is_dead(self.version, &to_address) && !state.is_physically_exist(&to_address) {
+                } else if self.version <= VersionId::TangerineWhistle && balance == U256::ZERO {
+                    if state.is_dead(self.version, &to_address)
+                        && !state.is_physically_exist(&to_address)
+                    {
                         state.add_account(&to_address, Account::new()); //アカウントを追加
                         Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
                     }
                 } else {
                     if balance != U256::ZERO {
-                        if state.is_dead(self.version, &to_address) && !state.is_physically_exist(&to_address) {
+                        if state.is_dead(self.version, &to_address)
+                            && !state.is_physically_exist(&to_address)
+                        {
                             state.add_account(&to_address, Account::new()); //アカウントを追加
                             Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
                         }

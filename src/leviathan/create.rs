@@ -9,7 +9,7 @@ use crate::leviathan::structs::{
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
 use crate::my_trait::leviathan_trait::{ContractCreation, RoleBack, State};
-use alloy_primitives::{U256, hex, Address, B256};
+use alloy_primitives::{Address, B256, U256, hex};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use sha3::{Digest, Keccak256};
@@ -85,7 +85,6 @@ impl ContractCreation for LEVIATHAN {
             return Err((U256::ZERO, None, None));
         }
 
-
         //サブステートのアクセス済みアカウントに追加
         if !substate.a_access.contains(&contract_address) {
             substate.a_access.push(contract_address.clone())
@@ -97,7 +96,9 @@ impl ContractCreation for LEVIATHAN {
             substate.a_touch.push(contract_address.clone())
         }
         //Nonceを1にする．
-        if state.is_dead(self.version, &contract_address) && !state.is_physically_exist(&contract_address) {
+        if state.is_dead(self.version, &contract_address)
+            && !state.is_physically_exist(&contract_address)
+        {
             state.add_account(&contract_address, Account::new()); //アカウントを追加
             Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
         }
@@ -109,15 +110,16 @@ impl ContractCreation for LEVIATHAN {
         if state.is_dead(self.version, &sender) {
             return Err((gas, None, None));
         }
-        if state.is_dead(self.version, &contract_address) && !state.is_physically_exist(&contract_address) {
+        if state.is_dead(self.version, &contract_address)
+            && !state.is_physically_exist(&contract_address)
+        {
             state.add_account(&contract_address, Account::new()); //アカウントを追加
             Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
         }
         Action::SendEth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
         //storageRootを空にする
-        Action::ResetStorage(contract_address.clone(), B256::ZERO)
-            .push(self, state); //ロールバック用
+        Action::ResetStorage(contract_address.clone(), B256::ZERO).push(self, state); //ロールバック用
         state.reset_storage(&contract_address);
         //codehashに空配列をセット
         Action::StoreCode(contract_address.clone(), Vec::new()).push(self, state); //ロールバック用

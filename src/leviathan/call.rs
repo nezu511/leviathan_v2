@@ -9,7 +9,7 @@ use crate::leviathan::structs::{
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
 use crate::my_trait::leviathan_trait::{CompiledContract, MessageCall, RoleBack, State};
-use alloy_primitives::{U256, Address};
+use alloy_primitives::{Address, U256};
 use sha3::Digest;
 
 impl MessageCall for LEVIATHAN {
@@ -100,7 +100,7 @@ impl MessageCall for LEVIATHAN {
                 //EXPMOD
                 if self.version >= VersionId::Byzantium {
                     LEVIATHAN::expmod(gas, &execution_environment.i_data, self.version)
-                }else{
+                } else {
                     tracing::info!("expmodがフォークに対応していないため実行できない");
                     Ok((gas, Vec::new()))
                 }
@@ -110,7 +110,7 @@ impl MessageCall for LEVIATHAN {
                 //BN_ADD
                 if self.version >= VersionId::Byzantium {
                     LEVIATHAN::bn_add(gas, &execution_environment.i_data, self.version)
-                }else{
+                } else {
                     tracing::info!("bn_addがフォークに対応していないため実行できない");
                     Ok((gas, Vec::new()))
                 }
@@ -120,7 +120,7 @@ impl MessageCall for LEVIATHAN {
                 //BN_MUL
                 if self.version >= VersionId::Byzantium {
                     LEVIATHAN::bn_mul(gas, &execution_environment.i_data, self.version)
-                }else{
+                } else {
                     tracing::info!("bn_mulがフォークに対応していないため実行できない");
                     Ok((gas, Vec::new()))
                 }
@@ -130,17 +130,17 @@ impl MessageCall for LEVIATHAN {
                 //SNARKV
                 if self.version >= VersionId::Byzantium {
                     LEVIATHAN::bn_pairing(gas, &execution_environment.i_data, self.version)
-                }else{
+                } else {
                     tracing::info!("bn_pairingがフォークに対応していないため実行できない");
                     Ok((gas, Vec::new()))
                 }
             }
 
-            val if val == U256::from(9) => { 
+            val if val == U256::from(9) => {
                 //BLAKE2_F
                 if self.version >= VersionId::Istanbul {
                     todo!()
-                }else{
+                } else {
                     todo!()
                     //Ok((gas, Vec::new()))
                 }

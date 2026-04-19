@@ -1,24 +1,24 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{U256, B256, Address, keccak256, b256};
+use alloy_primitives::{Address, B256, U256, b256, keccak256};
+use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
+use eth_trie::{EthTrie, MemoryDB, Trie};
 use sha3::Digest;
 use std::collections::HashMap;
 use std::sync::Arc;
-use eth_trie::{MemoryDB, EthTrie, Trie};
-use alloy_rlp::{RlpEncodable, RlpDecodable, Decodable, Encodable};
 
 // 空のMPTツリーのルートハッシュ (Keccak256(RLP("")))
-pub const EMPTY_STORAGE_ROOT: B256 = b256!("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
-// 空のコードのハッシュ (Keccak256("")) 
-pub const EMPTY_CODE_HASH: B256 = b256!("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");
+pub const EMPTY_STORAGE_ROOT: B256 =
+    b256!("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
+// 空のコードのハッシュ (Keccak256(""))
+pub const EMPTY_CODE_HASH: B256 =
+    b256!("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");
 
-
-
-pub struct WorldState{
+pub struct WorldState {
     pub cache: HashMap<Address, Account>,
     pub data: Arc<MemoryDB>,
     pub eth_trie: EthTrie<MemoryDB>,
-    pub code_storage: HashMap<B256, Vec<u8>>
+    pub code_storage: HashMap<B256, Vec<u8>>,
 }
 
 impl WorldState {
@@ -32,14 +32,23 @@ impl WorldState {
         let hash = keccak256(&empty_code);
         code_storage.insert(hash, empty_code);
 
-        Self {cache, data, eth_trie, code_storage}
+        Self {
+            cache,
+            data,
+            eth_trie,
+            code_storage,
+        }
     }
 
     pub fn add_cache(&mut self, address: &Address, mpt_account: &MptAccount) {
         let nonce = mpt_account.nonce;
         let balance = mpt_account.balance;
         let shash = mpt_account.storage_root;
-        let code = self.code_storage.get(&mpt_account.code_hash).cloned().unwrap();
+        let code = self
+            .code_storage
+            .get(&mpt_account.code_hash)
+            .cloned()
+            .unwrap();
         //mpt_accoutのhashを取得
         let mut mpt_account_rlp_bytes = Vec::new();
         mpt_account.encode(&mut mpt_account_rlp_bytes);
@@ -66,30 +75,31 @@ impl WorldState {
         }
     }
 
-    pub fn update_eth_trie(&mut self, state_root:B256) {
+    pub fn update_eth_trie(&mut self, state_root: B256) {
         let new_eth_trie = EthTrie::from(self.data.clone(), state_root).unwrap();
         self.eth_trie = new_eth_trie;
     }
-
-
 }
-        
-
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
-pub struct MptAccount { //MPT専用
+pub struct MptAccount {
+    //MPT専用
     pub nonce: u64,
     pub balance: U256,
-    pub storage_root: B256, 
+    pub storage_root: B256,
     pub code_hash: B256,
 }
 
 impl MptAccount {
-    pub fn new(nonce: u64, balance: U256, storage_root: B256, code_hash: B256)  -> Self{
-        Self {nonce, balance, storage_root, code_hash}
+    pub fn new(nonce: u64, balance: U256, storage_root: B256, code_hash: B256) -> Self {
+        Self {
+            nonce,
+            balance,
+            storage_root,
+            code_hash,
+        }
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Account {
@@ -109,12 +119,7 @@ impl Default for Account {
 
 impl Account {
     pub fn new() -> Self {
-        let empty_mpt = MptAccount::new(
-            0,
-            U256::ZERO,
-            EMPTY_STORAGE_ROOT,
-            EMPTY_CODE_HASH
-        );
+        let empty_mpt = MptAccount::new(0, U256::ZERO, EMPTY_STORAGE_ROOT, EMPTY_CODE_HASH);
 
         // 2. RLPエンコードして正確なKeccak256ハッシュを動的に計算
         let mut rlp_bytes = Vec::new();
@@ -132,7 +137,13 @@ impl Account {
 
     pub fn make(nonce: u64, balance: U256, code: Vec<u8>, shash: B256, account_hash: B256) -> Self {
         let storage = HashMap::<U256, U256>::new();
-        Self {nonce, balance, storage, code, storage_hash:shash, account_hash}
+        Self {
+            nonce,
+            balance,
+            storage,
+            code,
+            storage_hash: shash,
+            account_hash,
+        }
     }
-
 }

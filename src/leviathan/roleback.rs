@@ -4,7 +4,7 @@ use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::Ofunction;
 use crate::my_trait::leviathan_trait::{RoleBack, State};
-use alloy_primitives::{U256, Address, B256};
+use alloy_primitives::{Address, B256, U256};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -14,7 +14,7 @@ pub enum Action {
     AddNonce(Address),
     StoreCode(Address, Vec<u8>),
     AccountCreation(Address),
-    ResetStorage(Address, B256),     //(Address, B256)
+    ResetStorage(Address, B256), //(Address, B256)
     ResetBalance(Address, U256),
 }
 
@@ -38,7 +38,6 @@ impl Action {
             }
 
             Action::AccountCreation(_) => self,
-
 
             Action::ResetStorage(address, _) => {
                 let cache_account = state.cache.get(&address).unwrap();
@@ -83,7 +82,6 @@ impl RoleBack for LEVIATHAN {
                 Action::AccountCreation(address) => {
                     state.delete_account(&address);
                 }
-
 
                 Action::ResetStorage(address, storage) => {
                     let cache_account = state.cache.get_mut(&address).unwrap();

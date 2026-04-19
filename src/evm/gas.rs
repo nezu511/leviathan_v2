@@ -5,10 +5,10 @@
 */
 use crate::evm::evm::EVM;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
-use crate::leviathan::world_state::{WorldState};
+use crate::leviathan::world_state::WorldState;
 use crate::my_trait::evm_trait::Gfunction;
 use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::{U256, Address, B256};
+use alloy_primitives::{Address, B256, U256};
 
 //GAS table固定費
 static GAS_TABLE: [u8; 256] = {
@@ -636,14 +636,14 @@ impl Gfunction for EVM {
                     //新規アカウント作成のペナルティ
                     let my_address = &execution_environment.i_address;
                     let balance = state.get_balance(my_address).unwrap_or(U256::ZERO);
-                    let create_cost = if self.version >= VersionId::SpuriousDragon{
-                        if balance > U256::ZERO && !state.is_physically_exist(&address){
+                    let create_cost = if self.version >= VersionId::SpuriousDragon {
+                        if balance > U256::ZERO && !state.is_physically_exist(&address) {
                             25000
                         } else {
                             0
                         }
-                    }else{
-                        if !state.is_physically_exist(&address){
+                    } else {
+                        if !state.is_physically_exist(&address) {
                             25000
                         } else {
                             0
