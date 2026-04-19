@@ -56,6 +56,7 @@ impl Ofunction for EVM {
         match opcode {
             0x00 => {
                 //STOP
+                self.return_back = Vec::new();
                 return Some(false);
             }
 
@@ -198,6 +199,8 @@ impl Ofunction for EVM {
                     }
                     let slice = &self.memory[offset..required_size];
                     self.return_back = slice.to_vec();
+                }else{
+                    self.return_back.clear();
                 }
                 //アクティブなword数を更新
                 let active_words = self.memory.len() / 32;
@@ -222,6 +225,8 @@ impl Ofunction for EVM {
                     }
                     let slice = &self.memory[offset..required_size];
                     self.return_back = slice.to_vec();
+                }else{
+                    self.return_back.clear();
                 }
                 //アクティブなword数を更新
                 let active_words = self.memory.len() / 32;
@@ -252,13 +257,13 @@ impl Ofunction for EVM {
                     Action::ResetBalance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
                     state.reset_balance(from_address)
                 }else if self.version <= VersionId::TangerineWhistle  && balance == U256::ZERO{
-                    if state.is_empty(&to_address) && !state.is_physically_exist(&to_address) {
+                    if state.is_dead(self.version, &to_address) && !state.is_physically_exist(&to_address) {
                         state.add_account(&to_address, Account::new()); //アカウントを追加
                         Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
                     }
                 } else {
                     if balance != U256::ZERO {
-                        if state.is_empty(&to_address) && !state.is_physically_exist(&to_address) {
+                        if state.is_dead(self.version, &to_address) && !state.is_physically_exist(&to_address) {
                             state.add_account(&to_address, Account::new()); //アカウントを追加
                             Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
                         }
@@ -268,6 +273,7 @@ impl Ofunction for EVM {
                     }
                 }
                 substate.a_des.push(from_address.clone());
+                self.return_back = Vec::new();
                 return Some(false);
             }
 
@@ -319,10 +325,6 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         } else {
             data = Vec::<u8>::new();
-        }
-        //サブステートのa_touchに追加
-        if !substate.a_touch.contains(&to_address) {
-            substate.a_touch.push(to_address.clone())
         }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
@@ -428,6 +430,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
@@ -1718,10 +1721,6 @@ impl Ofunction for EVM {
         } else {
             data = Vec::<u8>::new();
         }
-        //サブステートのa_touchに追加
-        if !substate.a_touch.contains(&to_address) {
-            substate.a_touch.push(to_address.clone())
-        }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
@@ -1815,6 +1814,10 @@ impl Ofunction for EVM {
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
                 }
+                tracing::warn!(
+                return_gas = %return_gas,
+                "[CALLCODE] Revert"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -1824,7 +1827,9 @@ impl Ofunction for EVM {
             }
 
             Err((_return_gas, None, _)) => {
+                tracing::warn!("[CALLCODE] 例外停止");
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
@@ -1879,10 +1884,6 @@ impl Ofunction for EVM {
             self.push(U256::ZERO);
             return;
         };
-        //サブステートのa_touchに追加
-        if !substate.a_touch.contains(&to_address) {
-            substate.a_touch.push(to_address.clone())
-        }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
             substate.a_access.push(to_address.clone())
@@ -1937,6 +1938,10 @@ impl Ofunction for EVM {
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
                 }
+                tracing::info!(
+                return_gas = %return_gas,
+                "[DELEGATECALL] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -1966,6 +1971,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
@@ -2014,10 +2020,6 @@ impl Ofunction for EVM {
             data = slice.to_vec();
         } else {
             data = Vec::<u8>::new();
-        }
-        //サブステートのa_touchに追加
-        if !substate.a_touch.contains(&to_address) {
-            substate.a_touch.push(to_address.clone())
         }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
@@ -2079,6 +2081,10 @@ impl Ofunction for EVM {
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
                 }
+                tracing::info!(
+                return_gas = %return_gas,
+                "[STATICCALL] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -2108,6 +2114,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }

@@ -128,11 +128,11 @@ pub trait CompiledContract {
         data: &[u8],
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn expmod(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn expmod(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn bn_add(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn bn_add(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn bn_mul(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn bn_mul(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn bn_pairing(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn bn_pairing(gas: U256, data: &[u8], version: VersionId) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 }

@@ -10,6 +10,10 @@ use alloy_rlp::{Decodable};
 
 impl State for WorldState {
     fn add_account(&mut self, address: &Address, account: Account) {
+        tracing::info!(
+            address =  format_args!("0x{}", hex::encode(address.0)),
+            "[add_acout]"
+            );
         self.cache.insert(address.clone(), account);
     }
 
@@ -20,7 +24,6 @@ impl State for WorldState {
             if account.nonce != 0
                 || !account.balance.is_zero()
                 || account.code.len() != 0
-                || account.storage_hash != EMPTY_STORAGE_ROOT
             {
                 return false;
             }
@@ -42,7 +45,6 @@ impl State for WorldState {
                     if account.nonce != 0
                         || !account.balance.is_zero()
                             || account.code_hash != EMPTY_CODE_HASH
-                            || account.storage_root != EMPTY_STORAGE_ROOT
                             {
                                 return false;
                             }

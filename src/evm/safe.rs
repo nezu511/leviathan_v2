@@ -157,12 +157,62 @@ impl Zfunction for EVM {
             tracing::warn!("不正な命令の実行: フォーク依存的0xf4");
             return false;
         }
+        //=====================Byzantium========================
+        if self.version < VersionId::Byzantium && opcode == 0xfd {
+            tracing::warn!("不正な命令の実行: フォーク依存的0xfd");
+            return false;
+        }
+        if self.version < VersionId::Byzantium && opcode == 0xfa {
+            tracing::warn!("不正な命令の実行: フォーク依存的0xfa");
+            return false;
+        }
+        if self.version < VersionId::Byzantium && opcode == 0x3d {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x3d");
+            return false;
+        }
+        if self.version < VersionId::Byzantium && opcode == 0x3e {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x3e");
+            return false;
+        }
+
+        //=====================Constantinople========================
         if self.version < VersionId::Constantinople && opcode == 0xf5 {
             tracing::warn!("不正な命令の実行: フォーク依存的0xf5");
             return false;
         }
-        if self.version < VersionId::SpuriousDragon && opcode == 0xfd {
-            tracing::warn!("不正な命令の実行: フォーク依存的0xfd");
+        if self.version < VersionId::Constantinople && opcode == 0x1b {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x1b");
+            return false;
+        }
+        if self.version < VersionId::Constantinople && opcode == 0x1c {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x1c");
+            return false;
+        }
+        if self.version < VersionId::Constantinople && opcode == 0x1d {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x1d");
+            return false;
+        }
+        if self.version < VersionId::Constantinople && opcode == 0x3f {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x3f");
+            return false;
+        }
+        //======================Istanbul=============================
+        if self.version < VersionId::Istanbul && opcode == 0x46 {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x46");
+            return false;
+        }
+        if self.version < VersionId::Istanbul && opcode == 0x47 {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x47");
+            return false;
+        }
+        //======================London=============================
+        if self.version < VersionId::London && opcode == 0x48 {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x48");
+            return false;
+        }
+        //======================Shanghai=============================
+        if self.version < VersionId::London && opcode == 0x5f {
+            tracing::warn!("不正な命令の実行: フォーク依存的0x5f");
             return false;
         }
 
