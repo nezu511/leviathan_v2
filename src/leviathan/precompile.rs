@@ -447,7 +447,7 @@ impl CompiledContract for LEVIATHAN {
         }
         let result_bytes_x = p_result_affine.x.into_bigint().to_bytes_be();
         let result_bytes_y = p_result_affine.y.into_bigint().to_bytes_be();
-        let mut tmp = vec![0u8, 64];
+        let mut tmp = vec![0u8; 64];
         tmp[32 - result_bytes_x.len()..32].copy_from_slice(&result_bytes_x[..]);
         tmp[64 - result_bytes_y.len()..64].copy_from_slice(&result_bytes_y[..]);
 
