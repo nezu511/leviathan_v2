@@ -230,21 +230,21 @@ tateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは、
 ### P - S
 | テストスイート | 進捗 | 備考 |
 | :--- | :---: | :--- |
-| stPreCompiledContracts | ❌ | Balance不一致 |
-| stPreCompiledContracts2 | ❌ | Balance不一致 |
+| stPreCompiledContracts | 🔄 | Balance不一致 |
+| stPreCompiledContracts2 | 🔄 | Balance不一致 |
 | stQuadraticComplexityTest | ✅ | **Pass** (16ファイル・124ケース) |
 | stRandom | ✅ | **Pass** (313ファイル・1250ケース) |
 | stRandom2 | 🔄 | 未着手 |
 | stRecursiveCreate | ✅ | **Pass** (2ファイル・12ケース) |
 | **stRefundTest** | ✅ | **Pass** (19ファイル・166ケース） |
-| stReturnDataTest | ❌ | MLOADの値が不一致 |
+| stReturnDataTest | 🔄 | MLOADの値が不一致 |
 | **stRevertTest** | ✅ | **Pass** (43ファイル・1188)|
 | **stSStoreTest** | ✅ | **Pass** (1ファイル・2ケース) |
 | stShift | ✅ | **Pass** (40ファイル・268ケース） |
 | **stSolidityTest** | ✅ | **Pass** (16ファイル・38ケース）|
-| stSpecialTest | ❌ |   |
+| stSpecialTest | 🔄 |   |
 | stStackTests | ✅ | **Pass** (7ファイル・637ケース） |
-| stStaticCall | ❌ | 呼び出し元の残ガスが6ガス相違 |
+| stStaticCall | 🔄 | 呼び出し元の残ガスが6ガス相違 |
 | stSystemOperationsTest | 🔄 | 挙動確認中 |
 
 ### T - Z
@@ -256,7 +256,7 @@ tateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは、
 | **stWalletTest** | ✅ | **Pass** (42ファイル・169ケース) |
 | stZeroCallsRevert | ✅ | **Pass** (16ファイル・48ケース） |
 | stZeroCallsTest | ✅ | **Pass** (24ファイル・168ケース） |
-| stZeroKnowledge | ❌ | 0x00 ~ 0006 でエラーあり |
+| stZeroKnowledge | 🔄 | 0x00 ~ 0006 でエラーあり |
 | stZeroKnowledge2 | 🔄 | 未着手 |
 
 
