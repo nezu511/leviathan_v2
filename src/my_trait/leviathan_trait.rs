@@ -1,30 +1,26 @@
-use crate::leviathan::structs::{
-    BlockHeader, Log, SubState, Transaction, VersionId,
-};
-use crate::leviathan::world_state::{Account, Address, WorldState};
-use alloy_primitives::U256;
+use crate::leviathan::structs::{BlockHeader, Log, SubState, Transaction, VersionId};
+use crate::leviathan::world_state::{Account, WorldState};
+use alloy_primitives::{Address, U256};
 
 pub trait State {
-    fn is_empty(&self, address: &Address) -> bool; //空だとtrue;
+    fn is_empty(&mut self, address: &Address) -> bool; //空だとtrue;
 
-    fn is_dead(&self, version: VersionId, address: &Address) -> bool; //DEADだとtrue
+    fn is_dead(&mut self, version: VersionId, address: &Address) -> bool; //DEADだとtrue
 
-    fn is_physically_exist(&self, address: &Address) -> bool; //存在してたらtrue
+    fn is_physically_exist(&mut self, address: &Address) -> bool; //存在してたらtrue
 
-    fn is_storage_empty(&self, address: &Address) -> bool; //空だとtrue;
+    fn is_storage_empty(&mut self, address: &Address) -> bool; //空だとtrue;
 
-    fn get_balance(&self, address: &Address) -> Option<U256>;
+    fn get_balance(&mut self, address: &Address) -> Option<U256>;
 
-    fn get_code(&self, address: &Address) -> Option<Vec<u8>>;
+    fn get_code(&mut self, address: &Address) -> Option<Vec<u8>>;
 
-    fn get_storage_value(&self, address: &Address, key: &U256) -> Option<U256>;
+    fn get_storage_value(&mut self, address: &Address, key: &U256) -> Option<U256>;
 
-    fn get_nonce(&self, address: &Address) -> Option<u32>;
-
-    fn get_account(&self, address: &Address) -> Account;
+    fn get_nonce(&mut self, address: &Address) -> Option<u64>;
 
     // 書き込み系
-    fn set_balance(&mut self, address: &Address, value: U256);
+    fn add_balance(&mut self, address: &Address, value: U256);
 
     fn inc_nonce(&mut self, address: &Address);
 
@@ -64,7 +60,6 @@ pub trait TransactionChecks {
         block_header: &BlockHeader,
     ) -> Result<Address, &'static str>;
 }
-
 
 pub trait TransactionExecution {
     fn execution(
@@ -132,13 +127,27 @@ pub trait CompiledContract {
         data: &[u8],
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn expmod(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn expmod(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn bn_add(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn bn_add(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn bn_mul(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn bn_mul(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
-    fn bn_pairing(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+    fn bn_pairing(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 }
-
-

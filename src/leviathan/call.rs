@@ -6,12 +6,10 @@ use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
     BackupSubstate, BlockHeader, ExecutionEnvironment, SubState, VersionId,
 };
-use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
-use crate::my_trait::leviathan_trait::{
-    CompiledContract, MessageCall, RoleBack, State,
-};
-use alloy_primitives::U256;
+use crate::my_trait::leviathan_trait::{CompiledContract, MessageCall, RoleBack, State};
+use alloy_primitives::{Address, U256};
 use sha3::Digest;
 
 impl MessageCall for LEVIATHAN {
@@ -36,28 +34,30 @@ impl MessageCall for LEVIATHAN {
             substate.a_access.push(recipient.clone())
         }
         self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
+        //サブステートのa_touchに追加
+        if !substate.a_touch.contains(&recipient) {
+            substate.a_touch.push(recipient.clone())
+        }
 
         //残高の移動
         if eth != U256::ZERO {
-            if state.is_empty(&sender) {
+            if state.is_dead(self.version, &sender) {
                 return Err((gas, None, None));
             }
-            if state.is_empty(&recipient)
-                && !state.is_physically_exist(&recipient) {
-                    state.add_account(&recipient, Account::new()); //アカウントを追加
-                    Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
-                }
+            if state.is_dead(self.version, &recipient) && !state.is_physically_exist(&recipient) {
+                state.add_account(&recipient, Account::new()); //アカウントを追加
+                Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+            }
             if sender != recipient {
                 Action::SendEth(sender.clone(), recipient.clone(), eth).push(self, state); //ロールバック用
                 state.send_eth(&sender, &recipient, eth); //残高の移動
             }
         } else if self.version < VersionId::SpuriousDragon {
             //Ethereumの初期はvalue=0であっても無条件でアカウントを作成
-            if state.is_empty(&recipient)
-                && !state.is_physically_exist(&recipient) {
-                    state.add_account(&recipient, Account::new()); //アカウントを追加
-                    Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
-                }
+            if state.is_dead(self.version, &recipient) && !state.is_physically_exist(&recipient) {
+                state.add_account(&recipient, Account::new()); //アカウントを追加
+                Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+            }
         }
 
         //Execution Environmentの構築
@@ -75,7 +75,7 @@ impl MessageCall for LEVIATHAN {
         ));
 
         //プリコンパイル判定と実行の要件
-        let contract_u256 = contract.to_u256();
+        let contract_u256 = U256::from_be_bytes(contract.into_word().0);
         let result = match contract_u256 {
             val if val == U256::from(1) => {
                 //ECDSA公開鍵復元
@@ -98,25 +98,53 @@ impl MessageCall for LEVIATHAN {
 
             val if val == U256::from(5) => {
                 //EXPMOD
-                LEVIATHAN::expmod(gas, &execution_environment.i_data)
+                if self.version >= VersionId::Byzantium {
+                    LEVIATHAN::expmod(gas, &execution_environment.i_data, self.version)
+                } else {
+                    tracing::info!("expmodがフォークに対応していないため実行できない");
+                    Ok((gas, Vec::new()))
+                }
             }
 
             val if val == U256::from(6) => {
                 //BN_ADD
-                LEVIATHAN::bn_add(gas, &execution_environment.i_data)
+                if self.version >= VersionId::Byzantium {
+                    LEVIATHAN::bn_add(gas, &execution_environment.i_data, self.version)
+                } else {
+                    tracing::info!("bn_addがフォークに対応していないため実行できない");
+                    Ok((gas, Vec::new()))
+                }
             }
 
             val if val == U256::from(7) => {
                 //BN_MUL
-                LEVIATHAN::bn_mul(gas, &execution_environment.i_data)
+                if self.version >= VersionId::Byzantium {
+                    LEVIATHAN::bn_mul(gas, &execution_environment.i_data, self.version)
+                } else {
+                    tracing::info!("bn_mulがフォークに対応していないため実行できない");
+                    Ok((gas, Vec::new()))
+                }
             }
 
             val if val == U256::from(8) => {
                 //SNARKV
-                LEVIATHAN::bn_pairing(gas, &execution_environment.i_data)
+                if self.version >= VersionId::Byzantium {
+                    LEVIATHAN::bn_pairing(gas, &execution_environment.i_data, self.version)
+                } else {
+                    tracing::info!("bn_pairingがフォークに対応していないため実行できない");
+                    Ok((gas, Vec::new()))
+                }
             }
 
-            val if val == U256::from(9) => todo!(), //BLAKE2_F
+            val if val == U256::from(9) => {
+                //BLAKE2_F
+                if self.version >= VersionId::Istanbul {
+                    todo!()
+                } else {
+                    todo!()
+                    //Ok((gas, Vec::new()))
+                }
+            }
 
             _ => {
                 //通常のスマートコントラクト呼び出し
@@ -152,7 +180,7 @@ impl MessageCall for LEVIATHAN {
                 //REVERT
                 tracing::info!("[MessageCall] Revert");
                 self.roleback(state); //Roleback実行
-                substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
+                substate.road_backup(self.substate_backup.clone(), self.version); //SubStateの巻き戻し
                 Err((revert_gas, Some(revert_data), None))
             }
 
@@ -160,7 +188,7 @@ impl MessageCall for LEVIATHAN {
                 //Z関数による停止
                 tracing::info!("[MessageCall] 例外停止");
                 self.roleback(state); //Roleback実行
-                substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
+                substate.road_backup(self.substate_backup.clone(), self.version); //SubStateの巻き戻し
                 Err((U256::ZERO, None, None))
             }
         }

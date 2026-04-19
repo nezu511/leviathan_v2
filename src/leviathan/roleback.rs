@@ -1,26 +1,25 @@
 #![allow(dead_code)]
 
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::Ofunction;
 use crate::my_trait::leviathan_trait::{RoleBack, State};
-use alloy_primitives::U256;
+use alloy_primitives::{Address, B256, U256};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub enum Action {
-    Sstorage(Address, U256, U256),    //Address, Key, pre_value
+    Sstorage(Address, U256, U256),   //Address, Key, pre_value
     SendEth(Address, Address, U256), //from, to, eth
     AddNonce(Address),
     StoreCode(Address, Vec<u8>),
     AccountCreation(Address),
-    DeleteAccount(Address, Account),
-    ResetStorage(Address, HashMap<U256, U256>),
-    SetBalance(Address, U256),
+    ResetStorage(Address, B256), //(Address, B256)
+    ResetBalance(Address, U256),
 }
 
 impl Action {
-    pub fn push(self, leviathan: &mut LEVIATHAN, state: &WorldState) {
+    pub fn push(self, leviathan: &mut LEVIATHAN, state: &mut WorldState) {
         let action = match self {
             Action::Sstorage(address, key, _) => {
                 let pre_value = state
@@ -40,20 +39,14 @@ impl Action {
 
             Action::AccountCreation(_) => self,
 
-            Action::DeleteAccount(address, _) => {
-                let account = state.get_account(&address);
-                Action::DeleteAccount(address, account)
-            }
-
             Action::ResetStorage(address, _) => {
-                let account = state.get_account(&address);
-                let storage = account.storage.clone();
-                Action::ResetStorage(address, storage)
+                let cache_account = state.cache.get(&address).unwrap();
+                Action::ResetStorage(address, cache_account.storage_hash)
             }
 
-            Action::SetBalance(address, _) => {
+            Action::ResetBalance(address, _) => {
                 let pre_value = state.get_balance(&address).unwrap_or(U256::ZERO);
-                Action::SetBalance(address, pre_value)
+                Action::ResetBalance(address, pre_value)
             }
         };
         leviathan.journal.push(action);
@@ -63,7 +56,6 @@ impl Action {
 impl RoleBack for LEVIATHAN {
     fn roleback(&mut self, state: &mut WorldState) -> Result<(), &'static str> {
         tracing::info!("ロールバック起動");
-        //println!("{:?}", self.journal);
         while !self.journal.is_empty() {
             let action = self.journal.pop();
             match action.unwrap() {
@@ -91,18 +83,14 @@ impl RoleBack for LEVIATHAN {
                     state.delete_account(&address);
                 }
 
-                Action::DeleteAccount(address, account) => {
-                    state.add_account(&address, account);
-                }
-
                 Action::ResetStorage(address, storage) => {
-                    for (key, value) in storage {
-                        state.set_storage(&address, key, value);
-                    }
+                    let cache_account = state.cache.get_mut(&address).unwrap();
+                    cache_account.storage_hash = storage;
+                    cache_account.storage.clear();
                 }
 
-                Action::SetBalance(address, pre_value) => {
-                    state.set_balance(&address, pre_value);
+                Action::ResetBalance(address, pre_value) => {
+                    state.add_balance(&address, pre_value);
                 }
 
                 _ => return Err("不明なAction"),

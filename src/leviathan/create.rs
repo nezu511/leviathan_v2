@@ -6,13 +6,12 @@ use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
     BackupSubstate, BlockHeader, ExecutionEnvironment, SubState, VersionId,
 };
-use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
-use crate::my_trait::leviathan_trait::{
-    ContractCreation, RoleBack, State,
-};
-use alloy_primitives::{U256, hex};
-use rlp::RlpStream;
+use crate::my_trait::leviathan_trait::{ContractCreation, RoleBack, State};
+use alloy_primitives::{Address, B256, U256, hex};
+use alloy_rlp::{Encodable, Header};
+use bytes::BytesMut;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
 
@@ -36,15 +35,30 @@ impl ContractCreation for LEVIATHAN {
         let byte: Vec<u8> = if salt.is_none() {
             //CREATE
             let nonce = state.get_nonce(&sender).unwrap() - 1;
-            let mut stream = RlpStream::new_list(2);
-            stream.append(&sender.0.as_ref());
-            stream.append(&nonce);
-            stream.out().to_vec()
+            // 1. 各要素のRLPペイロード長を事前計算
+            let mut payload_length = 0;
+            payload_length += sender.0.as_slice().length();
+            payload_length += nonce.length();
+
+            // 2. 必要なメモリを一括で確保し、リストのヘッダーを書き込む
+            let mut out = BytesMut::with_capacity(payload_length + 10);
+            Header {
+                list: true,
+                payload_length,
+            }
+            .encode(&mut out);
+
+            // 3. データを順次エンコード
+            sender.0.as_slice().encode(&mut out);
+            nonce.encode(&mut out);
+
+            // 4. ハッシュ化の前準備として Vec<u8> に変換して返す
+            out.to_vec()
         } else {
             //CREATE2
             let mut tmp = [0u8; 85];
             tmp[0] = 0xff; //定数
-            tmp[1..21].copy_from_slice(&sender.0); //送信者のアドレス
+            tmp[1..21].copy_from_slice(sender.0.as_slice()); //送信者のアドレス
             let salt_byte: [u8; 32] = salt.unwrap().to_be_bytes();
             tmp[21..53].copy_from_slice(&salt_byte); //salt
             let mut hasher = Keccak256::new();
@@ -63,9 +77,7 @@ impl ContractCreation for LEVIATHAN {
 
         //事前チェックはcollisonのみ
         let nonce = state.get_nonce(&contract_address).unwrap_or(0);
-        let code = state
-            .get_code(&contract_address)
-            .unwrap_or_default();
+        let code = state.get_code(&contract_address).unwrap_or_default();
         let is_collision =
             nonce != 0 || !code.is_empty() || !state.is_storage_empty(&contract_address); // アドレス衝突
         if is_collision {
@@ -79,30 +91,35 @@ impl ContractCreation for LEVIATHAN {
         }
         self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
 
+        //サブステートのa_touchに追加
+        if !substate.a_touch.contains(&contract_address) {
+            substate.a_touch.push(contract_address.clone())
+        }
         //Nonceを1にする．
-        if state.is_empty(&contract_address)
-            && !state.is_physically_exist(&contract_address) {
-                state.add_account(&contract_address, Account::new()); //アカウントを追加
-                Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
-            }
+        if state.is_dead(self.version, &contract_address)
+            && !state.is_physically_exist(&contract_address)
+        {
+            state.add_account(&contract_address, Account::new()); //アカウントを追加
+            Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
+        }
         if self.version >= VersionId::SpuriousDragon {
             Action::AddNonce(contract_address.clone()).push(self, state); //ロールバック用
             state.inc_nonce(&contract_address);
         }
         //送金する
-        if state.is_empty(&sender) {
+        if state.is_dead(self.version, &sender) {
             return Err((gas, None, None));
         }
-        if state.is_empty(&contract_address)
-            && !state.is_physically_exist(&contract_address) {
-                state.add_account(&contract_address, Account::new()); //アカウントを追加
-                Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
-            }
+        if state.is_dead(self.version, &contract_address)
+            && !state.is_physically_exist(&contract_address)
+        {
+            state.add_account(&contract_address, Account::new()); //アカウントを追加
+            Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
+        }
         Action::SendEth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
         //storageRootを空にする
-        Action::ResetStorage(contract_address.clone(), HashMap::<U256, U256>::new())
-            .push(self, state); //ロールバック用
+        Action::ResetStorage(contract_address.clone(), B256::ZERO).push(self, state); //ロールバック用
         state.reset_storage(&contract_address);
         //codehashに空配列をセット
         Action::StoreCode(contract_address.clone(), Vec::new()).push(self, state); //ロールバック用
@@ -144,25 +161,26 @@ impl ContractCreation for LEVIATHAN {
                     if U256::from(deposit_gas) > rest_gas {
                         tracing::info!("[ContractCreation] 例外停止:コードデプロイ費用不足");
                         self.roleback(state); //Roleback実行
-                        substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
+                        substate.road_backup(self.substate_backup.clone(), self.version); //SubStateの巻き戻し
                         return Err((U256::ZERO, None, None));
                     }
                     //コードのサイズ制限
-                    if self.version >= VersionId::SpuriousDragon
-                        && output.len() > 24576 {
-                            tracing::info!("[ContractCreation] 例外停止:コードサイズ制限");
-                            self.roleback(state); //Roleback実行
-                            substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                            return Err((U256::ZERO, None, None));
-                        }
+                    if self.version >= VersionId::SpuriousDragon && output.len() > 24576 {
+                        tracing::info!("[ContractCreation] 例外停止:コードサイズ制限");
+                        self.roleback(state); //Roleback実行
+                        substate.road_backup(self.substate_backup.clone(), self.version); //SubStateの巻き戻し
+                        return Err((U256::ZERO, None, None));
+                    }
                     //不正なプレフィックス
                     if self.version >= VersionId::London
-                        && !output.is_empty() && output[0] == 0xefu8 {
-                            tracing::info!("[ContractCreation] 例外停止:不正なプレフィックス");
-                            self.roleback(state); //Roleback実行
-                            substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
-                            return Err((U256::ZERO, None, None));
-                        }
+                        && !output.is_empty()
+                        && output[0] == 0xefu8
+                    {
+                        tracing::info!("[ContractCreation] 例外停止:不正なプレフィックス");
+                        self.roleback(state); //Roleback実行
+                        substate.road_backup(self.substate_backup.clone(), self.version); //SubStateの巻き戻し
+                        return Err((U256::ZERO, None, None));
+                    }
                     return_gas -= U256::from(deposit_gas);
                     state.set_code(&contract_address, output);
                 } else if U256::from(deposit_gas) < rest_gas {
@@ -178,7 +196,7 @@ impl ContractCreation for LEVIATHAN {
                 tracing::info!("[ContractCreation] Revert");
                 let revert_gas = evm.return_gas(); //ガス返却
                 self.roleback(state); //Roleback実行
-                substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
+                substate.road_backup(self.substate_backup.clone(), self.version); //SubStateの巻き戻し
                 Err((revert_gas, Some(revert_data), None))
             }
 
@@ -186,7 +204,7 @@ impl ContractCreation for LEVIATHAN {
                 //Z関数による停止
                 tracing::info!("[ContractCreation] 例外停止");
                 self.roleback(state); //Roleback実行
-                substate.road_backup(self.substate_backup.clone()); //SubStateの巻き戻し
+                substate.road_backup(self.substate_backup.clone(), self.version); //SubStateの巻き戻し
                 Err((U256::ZERO, None, None))
             }
         }

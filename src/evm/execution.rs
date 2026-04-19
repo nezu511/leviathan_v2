@@ -4,10 +4,10 @@ use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{ExecutionEnvironment, Log, SubState, VersionId};
-use crate::leviathan::world_state::{Account, Address, WorldState};
+use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::{ContractCreation, MessageCall, State};
-use alloy_primitives::{I256, U256, hex};
+use alloy_primitives::{Address, B256, I256, U256, hex};
 use sha3::{Digest, Keccak256};
 
 impl Ofunction for EVM {
@@ -56,6 +56,7 @@ impl Ofunction for EVM {
         match opcode {
             0x00 => {
                 //STOP
+                self.return_back = Vec::new();
                 return Some(false);
             }
 
@@ -198,6 +199,8 @@ impl Ofunction for EVM {
                     }
                     let slice = &self.memory[offset..required_size];
                     self.return_back = slice.to_vec();
+                } else {
+                    self.return_back.clear();
                 }
                 //アクティブなword数を更新
                 let active_words = self.memory.len() / 32;
@@ -222,6 +225,8 @@ impl Ofunction for EVM {
                     }
                     let slice = &self.memory[offset..required_size];
                     self.return_back = slice.to_vec();
+                } else {
+                    self.return_back.clear();
                 }
                 //アクティブなword数を更新
                 let active_words = self.memory.len() / 32;
@@ -232,37 +237,47 @@ impl Ofunction for EVM {
             0xff => {
                 //SELFDESTRUCT
                 let from_address = &execution_environment.i_address;
-                if self.version < VersionId::London
-                    && !substate.a_des.contains(from_address) {
-                        substate.a_reimburse += 24000;
-                    }
+                if self.version < VersionId::London && !substate.a_des.contains(from_address) {
+                    substate.a_reimburse += 24000;
+                }
                 let val1 = self.pop();
-                let to_address = Address::from_u256(val1);
+                let to_address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
+                //サブステートのa_touchに追加
+                if !substate.a_touch.contains(&to_address) {
+                    substate.a_touch.push(to_address.clone())
+                }
+                let balance = state.get_balance(from_address).unwrap();
                 //デバック用
                 tracing::info!(
                     recipient = format_args!("0x{}", hex::encode(to_address.0)),
+                    from_address_balance = %balance,
                     "SELFDESTRUCT"
                 );
-                let balance = state.get_balance(from_address).unwrap();
                 if from_address.clone() == to_address {
-                    Action::SetBalance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
+                    Action::ResetBalance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
                     state.reset_balance(from_address)
+                } else if self.version <= VersionId::TangerineWhistle && balance == U256::ZERO {
+                    if state.is_dead(self.version, &to_address)
+                        && !state.is_physically_exist(&to_address)
+                    {
+                        state.add_account(&to_address, Account::new()); //アカウントを追加
+                        Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
+                    }
                 } else {
                     if balance != U256::ZERO {
-                        if state.is_empty(from_address) {
-                            return Some(false);
+                        if state.is_dead(self.version, &to_address)
+                            && !state.is_physically_exist(&to_address)
+                        {
+                            state.add_account(&to_address, Account::new()); //アカウントを追加
+                            Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
                         }
-                        if state.is_empty(&to_address)
-                            && !state.is_physically_exist(&to_address) {
-                                state.add_account(&to_address, Account::new()); //アカウントを追加
-                                Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
-                            }
                         Action::SendEth(from_address.clone(), to_address.clone(), balance)
                             .push(leviathan, state); //ロールバック用
                         state.send_eth(from_address, &to_address, balance);
                     }
-                    substate.a_des.push(from_address.clone());
                 }
+                substate.a_des.push(from_address.clone());
+                self.return_back = Vec::new();
                 return Some(false);
             }
 
@@ -283,7 +298,7 @@ impl Ofunction for EVM {
         //CALL
         let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let value = self.pop();
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -305,6 +320,8 @@ impl Ofunction for EVM {
         if max_end > self.memory.len() {
             let words = max_end.saturating_add(31) / 32;
             self.memory.resize(words.saturating_mul(32), 0);
+            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+            self.active_words = active_words;
         }
         if in_size > 0 {
             let required_size = in_offset.saturating_add(in_size);
@@ -384,8 +401,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 tracing::info!(
                 return_gas = %return_gas,
@@ -408,8 +423,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 //Returndata バッファの更新
                 self.return_back = return_data;
@@ -421,6 +434,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
@@ -777,14 +791,14 @@ impl Ofunction for EVM {
             0x30 => {
                 //ADDRESS
                 let address = &execution_environment.i_address;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
             0x31 => {
                 //BALANCE
                 let val1 = self.pop();
-                let address = Address::from_u256(val1);
+                let address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
                 let balance = state.get_balance(&address);
                 match balance {
                     Some(x) => self.push(x),
@@ -799,14 +813,14 @@ impl Ofunction for EVM {
             0x32 => {
                 //ORIGIN
                 let address = &execution_environment.i_origin;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
             0x33 => {
                 //CALLER
                 let address = &execution_environment.i_sender;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
@@ -837,7 +851,7 @@ impl Ofunction for EVM {
             0x3b => {
                 //EXTCODESIZE
                 let val1 = self.pop();
-                let address = Address::from_u256(val1);
+                let address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
                 let result = state.get_code(&address);
                 match result {
                     Some(x) => self.push(U256::from(x.len())),
@@ -858,7 +872,7 @@ impl Ofunction for EVM {
             0x3f => {
                 //EXTCODEHASH
                 let data = self.pop();
-                let address = Address::from_u256(data);
+                let address = Address::from_word(B256::from(data.to_be_bytes::<32>()));
                 //コード取得
                 let result = state.get_code(&address);
                 match result {
@@ -1001,7 +1015,7 @@ impl Ofunction for EVM {
     ) {
         //EXTCODECOPY
         let val1 = self.pop();
-        let address = Address::from_u256(val1);
+        let address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
         let dest_offset = self.pop().try_into().unwrap_or(usize::MAX); //メモリ
         let offset = self.pop().try_into().unwrap_or(usize::MAX);
         let size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1093,7 +1107,7 @@ impl Ofunction for EVM {
                 //COINBASE
                 let header = &execution_environment.i_block_header;
                 let address = &header.h_beneficiary;
-                let val = address.to_u256();
+                let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
 
@@ -1446,6 +1460,8 @@ impl Ofunction for EVM {
             if required_size > self.memory.len() {
                 let words = required_size.saturating_add(31) / 32;
                 self.memory.resize(words.saturating_mul(32), 0);
+                let active_words = self.memory.len() / 32; //アクティブなword数を更新
+                self.active_words = active_words;
             }
             let slice = &self.memory[offset..required_size];
             data = slice.to_vec();
@@ -1518,11 +1534,7 @@ impl Ofunction for EVM {
                 //return_backの更新
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
-                let contract_u256 = contract_address.to_u256();
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&contract_address) {
-                    substate.a_access.push(contract_address.clone())
-                }
+                let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
                 tracing::info!("CREATE:0x{}", hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
@@ -1569,6 +1581,8 @@ impl Ofunction for EVM {
             if required_size > self.memory.len() {
                 let words = required_size.saturating_add(31) / 32;
                 self.memory.resize(words.saturating_mul(32), 0);
+                let active_words = self.memory.len() / 32; //アクティブなword数を更新
+                self.active_words = active_words;
             }
             let slice = &self.memory[offset..required_size];
             data = slice.to_vec();
@@ -1640,11 +1654,7 @@ impl Ofunction for EVM {
                 //return_backの更新
                 self.return_back = Vec::<u8>::new();
                 //新しいコントラクトアドレス
-                let contract_u256 = contract_address.to_u256();
-                //アクセス済みリストの更新
-                if !substate.a_access.contains(&contract_address) {
-                    substate.a_access.push(contract_address.clone())
-                }
+                let contract_u256 = U256::from_be_bytes(contract_address.into_word().0);
                 tracing::info!("CREATE2:0x{}", hex::encode(contract_address.0)); //アドレス
                 //Journalのmerge
                 leviathan.merge(*child_leviathan);
@@ -1682,7 +1692,7 @@ impl Ofunction for EVM {
         //CALLCODE
         let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //コードを借りてくる対象のアカウントアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let value = self.pop();
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1705,6 +1715,8 @@ impl Ofunction for EVM {
         if max_end > self.memory.len() {
             let words = max_end.saturating_add(31) / 32;
             self.memory.resize(words.saturating_mul(32), 0);
+            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+            self.active_words = active_words;
         }
         if in_size > 0 {
             let required_size = in_offset.saturating_add(in_size);
@@ -1782,9 +1794,11 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
+                tracing::info!(
+                return_gas = %return_gas,
+                "[CALLCODE] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -1803,9 +1817,11 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
+                tracing::warn!(
+                return_gas = %return_gas,
+                "[CALLCODE] Revert"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -1815,7 +1831,9 @@ impl Ofunction for EVM {
             }
 
             Err((_return_gas, None, _)) => {
+                tracing::warn!("[CALLCODE] 例外停止");
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
@@ -1833,7 +1851,7 @@ impl Ofunction for EVM {
         //DELEGATECALL
         let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
         let out_offset = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1855,6 +1873,8 @@ impl Ofunction for EVM {
         if max_end > self.memory.len() {
             let words = max_end.saturating_add(31) / 32;
             self.memory.resize(words.saturating_mul(32), 0);
+            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+            self.active_words = active_words;
         }
         if in_size > 0 {
             let required_size = in_offset.saturating_add(in_size);
@@ -1921,9 +1941,11 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
+                tracing::info!(
+                return_gas = %return_gas,
+                "[DELEGATECALL] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -1942,8 +1964,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 //Returndata バッファの更新
                 self.return_back = return_data;
@@ -1955,6 +1975,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }
@@ -1972,7 +1993,7 @@ impl Ofunction for EVM {
         //STATICCALL
         let _gas = self.pop(); //サブコールに割り当てる最大ガス
         let to = self.pop(); //呼び出し先のアドレス
-        let to_address = Address::from_u256(to);
+        let to_address = Address::from_word(B256::from(to.to_be_bytes::<32>()));
         let in_offset = self.pop().try_into().unwrap_or(usize::MAX);
         let in_size = self.pop().try_into().unwrap_or(usize::MAX);
         let out_offset = self.pop().try_into().unwrap_or(usize::MAX);
@@ -1994,6 +2015,8 @@ impl Ofunction for EVM {
         if max_end > self.memory.len() {
             let words = max_end.saturating_add(31) / 32;
             self.memory.resize(words.saturating_mul(32), 0);
+            let active_words = self.memory.len() / 32; //アクティブなword数を更新
+            self.active_words = active_words;
         }
         if in_size > 0 {
             let required_size = in_offset.saturating_add(in_size);
@@ -2061,9 +2084,11 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
+                tracing::info!(
+                return_gas = %return_gas,
+                "[STATICCALL] normal end:"
+                );
                 //Returndata バッファの更新
                 self.return_back = return_data;
                 //ガスの精算
@@ -2082,8 +2107,6 @@ impl Ofunction for EVM {
                     let required_size = out_offset.saturating_add(write_size);
                     self.memory[out_offset..required_size]
                         .copy_from_slice(&return_data[..write_size]);
-                    let active_words = self.memory.len() / 32; //アクティブなword数を更新
-                    self.active_words = active_words;
                 }
                 //Returndata バッファの更新
                 self.return_back = return_data;
@@ -2095,6 +2118,7 @@ impl Ofunction for EVM {
 
             Err((_return_gas, None, _)) => {
                 //結果push
+                self.return_back.clear();
                 self.push(U256::ZERO);
             }
         }

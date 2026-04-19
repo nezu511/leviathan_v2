@@ -5,10 +5,10 @@
 */
 use crate::evm::evm::EVM;
 use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
-use crate::leviathan::world_state::{Address, WorldState};
+use crate::leviathan::world_state::WorldState;
 use crate::my_trait::evm_trait::Gfunction;
 use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::U256;
+use alloy_primitives::{Address, B256, U256};
 
 //GAS table固定費
 static GAS_TABLE: [u8; 256] = {
@@ -166,7 +166,7 @@ impl Gfunction for EVM {
         &mut self,
         opcode: u8,
         substate: &SubState,
-        state: &WorldState,
+        state: &mut WorldState,
         execution_environment: &ExecutionEnvironment,
     ) -> U256 {
         let used_gas = GAS_TABLE[opcode as usize];
@@ -174,7 +174,6 @@ impl Gfunction for EVM {
             return U256::from(used_gas);
         }
 
-        
         match opcode {
             0x0a => {
                 //EXP   OK対応!
@@ -184,12 +183,10 @@ impl Gfunction for EVM {
                 let byte_u256 = U256::from(byte);
 
                 if self.version < VersionId::SpuriousDragon {
-                    
                     byte_u256
                         .saturating_mul(U256::from(10))
                         .saturating_add(U256::from(10))
                 } else {
-                    
                     byte_u256
                         .saturating_mul(U256::from(50))
                         .saturating_add(U256::from(10))
@@ -462,7 +459,7 @@ impl Gfunction for EVM {
                     self.is_account_access(address, substate)
                 };
                 //送金とアカウント作成の追加コスト
-                let address = Address::from_u256(address);
+                let address = Address::from_word(B256::from(address.to_be_bytes::<32>()));
                 let mut create_cost = U256::ZERO;
                 if self.version < VersionId::SpuriousDragon {
                     if !value.is_zero() {
@@ -529,7 +526,7 @@ impl Gfunction for EVM {
                     self.is_account_access(address, substate)
                 };
                 //送金の追加コスト
-                let _address = Address::from_u256(address);
+                let _address = Address::from_word(B256::from(address.to_be_bytes::<32>()));
                 let mut create_cost = U256::from(0);
                 if !value.is_zero() {
                     create_cost = create_cost.saturating_add(U256::from(9000));
@@ -635,16 +632,22 @@ impl Gfunction for EVM {
                     U256::ZERO
                 } else {
                     let data = self.peek(0);
-                    let address = Address::from_u256(data);
+                    let address = Address::from_word(B256::from(data.to_be_bytes::<32>()));
                     //新規アカウント作成のペナルティ
                     let my_address = &execution_environment.i_address;
-                    let create_cost = if state.get_balance(my_address).unwrap_or(U256::from(0))
-                        > U256::from(0)
-                        && state.is_empty(&address)
-                    {
-                        25000
+                    let balance = state.get_balance(my_address).unwrap_or(U256::ZERO);
+                    let create_cost = if self.version >= VersionId::SpuriousDragon {
+                        if balance > U256::ZERO && !state.is_physically_exist(&address) {
+                            25000
+                        } else {
+                            0
+                        }
                     } else {
-                        0
+                        if !state.is_physically_exist(&address) {
+                            25000
+                        } else {
+                            0
+                        }
                     };
                     let access_state_cost = 0usize;
                     if self.version > VersionId::Berlin {

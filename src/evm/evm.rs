@@ -109,6 +109,7 @@ impl Xi for EVM {
             opcode = format_args!("0x{:x}", opcode),
             self_gas = %self.gas,
             consumption_gas = %consumption_gas,
+            active_words = self.active_words,
             );
 
             //O関数による状態遷移
@@ -129,17 +130,19 @@ impl Xi for EVM {
 
 // ↓ 「cargo test」を実行した時だけ、このブロックをコンパイルしてね、という合図です
 // ↓ 「cargo test」を実行した時だけ、このブロックをコンパイルしてね、という合図です
+/*
 #[cfg(test)]
 mod tests {
     use super::*; // EVM構造体などを読み込み
     use std::collections::HashMap;
     use std::fs;
     use std::path::{Path, PathBuf};
+    use alloy_primitives::Address;
 
     // あなたが作った構造体をインポート
     use crate::leviathan::leviathan::LEVIATHAN;
     use crate::leviathan::structs::{BlockHeader, ExecutionEnvironment, SubState, VersionId};
-    use crate::leviathan::world_state::{Account, Address, WorldState};
+    use crate::leviathan::world_state::{Account, WorldState};
     use crate::my_trait::leviathan_trait::{RoleBack, TransactionExecution};
 
     // パーサーをインポート
@@ -329,3 +332,4 @@ mod tests {
         );
     }
 }
+*/

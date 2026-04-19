@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-
 use crate::leviathan::leviathan::LEVIATHAN;
+use crate::leviathan::structs::VersionId;
 use crate::my_trait::evm_trait::Ofunction;
 use crate::my_trait::leviathan_trait::CompiledContract;
 use alloy_primitives::{U256, uint};
@@ -91,7 +91,7 @@ impl CompiledContract for LEVIATHAN {
         let result: [u8; 32] = hasher.finalize().into();
         let mut return_data = vec![0u8; 32];
         return_data[12..].copy_from_slice(&result[12..]);
-        Ok((gas, return_data))
+        Ok((return_gas, return_data))
     }
 
     #[inline(never)]
@@ -176,7 +176,26 @@ impl CompiledContract for LEVIATHAN {
 
     // プリコンパイルコントラクト: Identity (Address 5)
     #[inline(never)]
-    fn expmod(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    fn expmod(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+        if data.is_empty() {
+            let used_gas = if version >= VersionId::Berlin {
+                U256::from(200) // Berlin以降は最低200ガス
+            } else {
+                U256::ZERO // Byzantium等は0ガス
+            };
+
+            // OOGチェック
+            if gas < used_gas {
+                return Err((U256::ZERO, None)); // ガス欠
+            }
+
+            // ステータス「成功(Ok)」で、残ガスと空の配列を返す
+            return Ok((gas - used_gas, Vec::new()));
+        }
         //ヘルパー関数
         let get_padded_data = |start: usize, len: usize| -> Vec<u8> {
             let mut out = vec![0u8; len];
@@ -186,6 +205,7 @@ impl CompiledContract for LEVIATHAN {
             }
             out
         };
+
         //データ抽出
         let b_len_byte = get_padded_data(0, 32);
         let e_len_byte = get_padded_data(32, 32);
@@ -220,7 +240,11 @@ impl CompiledContract for LEVIATHAN {
 
             (rest * U256::from(8)) + U256::from(e_top.bit_len())
         };
-        let g_cost1 = (val1 * val2) / U256::from(3);
+        let g_cost1 = if version >= VersionId::Berlin {
+            (val1 * val2) / U256::from(3)
+        } else {
+            (val1 * val2) / U256::from(20)
+        };
         let used_gas = g_cost1.max(U256::from(200));
         // ガス検証
         if gas < used_gas {
@@ -274,7 +298,11 @@ impl CompiledContract for LEVIATHAN {
         Ok((return_gas, result_val_byte))
     }
 
-    fn bn_add(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    fn bn_add(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         //ヘルパー関数
         let get_padded_data = |start: usize, len: usize| -> Vec<u8> {
             let mut out = vec![0u8; len];
@@ -285,10 +313,18 @@ impl CompiledContract for LEVIATHAN {
             out
         };
         // ガス検証
-        if gas < U256::from(150) {
-            return Err((U256::ZERO, None));
-        }
-        let return_gas = gas - U256::from(150);
+        let return_gas = if version >= VersionId::Istanbul {
+            if gas < U256::from(150) {
+                return Err((U256::ZERO, None));
+            }
+            gas - U256::from(150)
+        } else {
+            if gas < U256::from(500) {
+                return Err((U256::ZERO, None));
+            }
+            gas - U256::from(500)
+        };
+
         //データ抽出
         let x1_byte = get_padded_data(0, 32);
         let y1_byte = get_padded_data(32, 32);
@@ -347,7 +383,11 @@ impl CompiledContract for LEVIATHAN {
         Ok((return_gas, tmp))
     }
 
-    fn bn_mul(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    fn bn_mul(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         //ヘルパー関数
         let get_padded_data = |start: usize, len: usize| -> Vec<u8> {
             let mut out = vec![0u8; len];
@@ -358,10 +398,18 @@ impl CompiledContract for LEVIATHAN {
             out
         };
         // ガス検証
-        if gas < U256::from(6000) {
-            return Err((U256::ZERO, None));
-        }
-        let return_gas = gas - U256::from(6000);
+        let return_gas = if version >= VersionId::Istanbul {
+            if gas < U256::from(6000) {
+                return Err((U256::ZERO, None));
+            }
+            gas - U256::from(6000)
+        } else {
+            if gas < U256::from(40000) {
+                return Err((U256::ZERO, None));
+            }
+            gas - U256::from(40000)
+        };
+
         //データ抽出
         let x_byte = get_padded_data(0, 32);
         let y_byte = get_padded_data(32, 32);
@@ -406,7 +454,11 @@ impl CompiledContract for LEVIATHAN {
         Ok((return_gas, tmp))
     }
 
-    fn bn_pairing(gas: U256, data: &[u8]) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+    fn bn_pairing(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         //要件確認1
         if data.len().rem(192) != 0 {
             return Err((U256::ZERO, None));
@@ -414,9 +466,16 @@ impl CompiledContract for LEVIATHAN {
         let k = data.len() / 192;
 
         // ガス検証
-        let used_gas = U256::from(34000)
-            .saturating_mul(U256::from(k))
-            .saturating_add(U256::from(45000));
+        let used_gas = if version >= VersionId::Istanbul {
+            U256::from(34000)
+                .saturating_mul(U256::from(k))
+                .saturating_add(U256::from(45000))
+        } else {
+            U256::from(80000)
+                .saturating_mul(U256::from(k))
+                .saturating_add(U256::from(100000))
+        };
+
         if gas < used_gas {
             return Err((U256::ZERO, None));
         }
