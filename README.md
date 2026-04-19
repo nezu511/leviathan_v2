@@ -1,4 +1,9 @@
 # Leviathan
+![Rust](https://img.shields.io/badge/language-Rust-orange.svg)
+![Build Status](https://github.com/nezu511/leviathan/workflows/Rust/badge.svg)
+![Test Progress](https://img.shields.io/badge/GeneralStateTests-70%25-green.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
 **An Enterprise-Grade TEE × ZK Hybrid EVM in Rust**
 
 Leviathanは、行政手続きや公共インフラ（選挙、給付金分配など）の完全自動化 **「無人の市役所」** の実現を目指してフルスクラッチ開発された、行政・エンタープライズ特化型のカスタムEVM（Ethereum Virtual Machine）です。
