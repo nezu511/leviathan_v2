@@ -203,12 +203,12 @@ tateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは、
 | **stCallCodes** | ✅ | **Pass** (ファイルが79・328ケース） |
 | **stCallCreateCallCodeTest** | ✅ | **Pass** (39ファイル・168ケース) |
 | **stCallDelegateCodesCallCodeHomestead** | ✅ | **Pass** (58ファイル・244ケース） |
-| **stCallDelegateCodesHomestead** | ✅ | **Pass** |
+| **stCallDelegateCodesHomestead** | ✅ | **Pass** (58ファイル・247ケース）|
 | stChangedEIP150 | ✅ | **Pass** (30ファイル・159ケース) |
 | stCodeCopyTest | 🔄 | 未着手 |
 | stCodeSizeLimit | ✅ | **Pass** (3ファイル・19ケース) |
-| **stCreate2** | ✅ | **Pass** |
-| **stCreateTest** | ✅ | **Pass** |
+| **stCreate2** | ✅ | **Pass** (30ファイル・201ケース) |
+| **stCreateTest** | ✅ | **Pass** (29ファイル・331ケース）|
 | stDelegatecallTestHomestead | ✅ | **Pass** (28ファイル・125ケース) |
 | stEIP150Specific | 🔄 | 未着手 |
 | stEIP150singleCodeGasPrices | 🔄 | 未着手 |
@@ -223,8 +223,8 @@ tateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは、
 | **stInitCodeTest** | ✅ | **Pass** (16ファイル・120ケース) |
 | stLogTests | ✅ | **Pass** (46ファイル・322ケース) |
 | stMemExpandingEIP150Calls | 🔄 | 未着手 |
-| **stMemoryStressTest** | ✅ | **Pass** |
-| **stMemoryTest** | ✅ | **Pass** (`callDataCopyOffsetFiller` 等) |
+| **stMemoryStressTest** | ✅ | **Pass** (38ファイル・287ケース）|
+| **stMemoryTest** | ✅ | **Pass** (58ファイル・406ケース) |
 | stNonZeroCallsTest | 🔄 | 未着手 |
 
 ### P - S
@@ -253,7 +253,7 @@ tateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは、
 | stTimeConsuming | ✅ | **Pass** (1ファイル・6ケース） |
 | stTransactionTest | 🔄 | 一部検証中 (△) |
 | stTransitionTest | ✅ | **Pass** (6ファイル・42ケース） |
-| **stWalletTest** | ✅ | **Pass** |
+| **stWalletTest** | ✅ | **Pass** (42ファイル・169ケース) |
 | stZeroCallsRevert | ✅ | **Pass** (16ファイル・48ケース） |
 | stZeroCallsTest | ✅ | **Pass** (24ファイル・168ケース） |
 | stZeroKnowledge | ❌ | 0x00 ~ 0006 でエラーあり |
