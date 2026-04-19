@@ -191,7 +191,7 @@ tateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは、
 本プロジェクトの実装精度を検証するため、ethereum/legacytests の Constantinople Snapshot を採用しています。
 本エンジンは、Frontier から ConstantinopleFix (Petersburg) までの各フォーク仕様に基づいた GeneralStateTests を実施しています。
 
-特に優先度の高い重要項目（元のリストで大文字だったもの）は、**太字**で強調しています。
+特に優先度の高い重要項目は、**太字**で強調しています。
 
 ### A - G
 | テストスイート | 進捗 | 備考 |
