@@ -91,7 +91,7 @@ impl CompiledContract for LEVIATHAN {
         let result: [u8; 32] = hasher.finalize().into();
         let mut return_data = vec![0u8; 32];
         return_data[12..].copy_from_slice(&result[12..]);
-        Ok((gas, return_data))
+        Ok((return_gas, return_data))
     }
 
     #[inline(never)]
