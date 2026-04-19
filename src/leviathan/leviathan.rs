@@ -377,15 +377,6 @@ impl TransactionExecution for LEVIATHAN {
                         "[a_desによる削除]"
                         );
                 }
-                if self.version >= VersionId::SpuriousDragon {
-                    let ripemd_addr = Address::from([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3]);
-                    if state.is_dead(self.version, &ripemd_addr) {
-                        let address_hash = keccak256(ripemd_addr);
-                        state.eth_trie.remove(address_hash.as_slice());
-                        state.cache.remove(&ripemd_addr);
-                        tracing::info!("[Anomaly] RIPEMD160(0x03)の強制削除");
-                    }
-                }
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
                     let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
@@ -619,7 +610,7 @@ mod state_tests {
             .try_init();
 
         // 対象のディレクトリ
-        let test_dir = "MPTTest/stWalletTest";
+        let test_dir = "MPTTest/stRevertTest";
 
         let paths = std::fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));

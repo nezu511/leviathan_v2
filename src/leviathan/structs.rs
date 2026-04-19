@@ -113,10 +113,26 @@ impl SubState {
         }
     }
 
-    pub fn road_backup(&mut self, backup: BackupSubstate) {
+    pub fn road_backup(&mut self, backup: BackupSubstate, version: VersionId) {
         self.a_des.drain(backup.a_des..);
         self.a_log.drain(backup.a_log..);
+        let ripemd_addr = Address::from([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3]);
+        let mut has_ripemd_anomaly = false;
+
+        if version >= VersionId::SpuriousDragon {
+            // 今回の実行で 0x03 がTouchされていたかをチェック
+            for addr in &self.a_touch[backup.a_touch..] {
+                if addr == &ripemd_addr {
+                    has_ripemd_anomaly = true;
+                    break;
+                }
+            }
+        }
+
         self.a_touch.drain(backup.a_touch..);
+        if has_ripemd_anomaly {
+            self.a_touch.push(ripemd_addr);
+        }
         self.a_reimburse = backup.a_reimburse;
         //self.a_access.drain(backup.a_access..);
         self.a_access_storage = backup.a_access_storage;
