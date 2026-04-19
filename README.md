@@ -1,8 +1,4 @@
 # Leviathan
-![Rust](https://img.shields.io/badge/language-Rust-orange.svg)
-![Build Status](https://github.com/nezu511/leviathan/workflows/Rust/badge.svg)
-![Test Progress](https://img.shields.io/badge/GeneralStateTests-70%25-green.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 **An Enterprise-Grade TEE × ZK Hybrid EVM in Rust**
 
