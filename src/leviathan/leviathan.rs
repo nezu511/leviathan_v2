@@ -8,7 +8,7 @@ use crate::leviathan::world_state::{Account, WorldState, MptAccount};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{U256, hex, keccak256};
+use alloy_primitives::{U256, hex, keccak256, Address};
 use sha3::Digest;
 use alloy_rlp::Encodable;
 use eth_trie::{EthTrie, Trie};
@@ -377,6 +377,15 @@ impl TransactionExecution for LEVIATHAN {
                         "[a_desによる削除]"
                         );
                 }
+                if self.version >= VersionId::SpuriousDragon {
+                    let ripemd_addr = Address::from([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3]);
+                    if state.is_dead(self.version, &ripemd_addr) {
+                        let address_hash = keccak256(ripemd_addr);
+                        state.eth_trie.remove(address_hash.as_slice());
+                        state.cache.remove(&ripemd_addr);
+                        tracing::info!("[Anomaly] RIPEMD160(0x03)の強制削除");
+                    }
+                }
                 //MPT更新
                 for (address, cache_account) in state.cache.iter() {
                     let mut storage_trie = EthTrie::from(state.data.clone(), cache_account.storage_hash).unwrap();
@@ -610,7 +619,7 @@ mod state_tests {
             .try_init();
 
         // 対象のディレクトリ
-        let test_dir = "MPTTest/stRevertTest";
+        let test_dir = "MPTTest/stWalletTest";
 
         let paths = std::fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));
@@ -671,172 +680,169 @@ mod state_tests {
                     let post_states = &test_data.post[network_str];
                     let version = parse_version(network_str);
 
-                    // 現在サポートしていない古いフォークや未来のフォークをスキップしたい場合はここで弾く
-                    // if version < VersionId::Istanbul { continue; }
-
                     for (post_idx, post_state) in post_states.iter().enumerate() {
-                        total_cases_count += 1;
 
-                        let get_usize = |idx: &IndexType| -> usize {
+                        // 🌟 修正ポイント1: 先頭だけではなく、インデックスの配列をすべて取得する
+                        let get_usize_vec = |idx: &IndexType| -> Vec<usize> {
                             match idx {
-                                IndexType::Single(n) => (*n).max(0) as usize,
-                                IndexType::Multi(arr) => arr.first().copied().unwrap_or(0).max(0) as usize, // 🌟 Multiple ではなく Multi が大正解です！
+                                IndexType::Single(n) => vec![(*n).max(0) as usize],
+                                IndexType::Multi(arr) => arr.iter().map(|n| (*n).max(0) as usize).collect(),
                             }
                         };
-                        let data_idx = get_usize(&post_state.indexes.data);
-                        let gas_idx = get_usize(&post_state.indexes.gas);
-                        let value_idx = get_usize(&post_state.indexes.value);
-                        let tx_data_str = &test_data.transaction.data[data_idx];
-                        let gas_limit_str = &test_data.transaction.gas_limit[gas_idx];
-                        let value_str = &test_data.transaction.value[value_idx];
 
-                        // 🌟 表示も分かりやすく修正（フォーク名とインデックスを固定）
-                        println!("  [Network: {:<17}] Matrix {}", network_str, post_idx);
+                        let data_indices = get_usize_vec(&post_state.indexes.data);
+                        let gas_indices = get_usize_vec(&post_state.indexes.gas);
+                        let value_indices = get_usize_vec(&post_state.indexes.value);
 
-                        // 1. WorldStateの初期化 (必ず毎ループ初期化する！)
-                        let mut state = WorldState::new();
+                        // 🌟 修正ポイント2: すべてのインデックスの組み合わせ（直積）でテストを回す
+                        for &data_idx in &data_indices {
+                            for &gas_idx in &gas_indices {
+                                for &value_idx in &value_indices {
+                                    total_cases_count += 1;
 
-                        for (addr_str, acc_data) in &test_data.pre {
-                            let addr = parse_address(addr_str);
+                                    let tx_data_str = &test_data.transaction.data[data_idx];
+                                    let gas_limit_str = &test_data.transaction.gas_limit[gas_idx];
+                                    let value_str = &test_data.transaction.value[value_idx];
 
-                            // 🌟 【追加】アカウントごとに初期の Storage Trie を構築する！
-                            let mut storage_trie = EthTrie::new(state.data.clone());
-                            let mut storage = HashMap::new();
+                                    // 🌟 表示も分かりやすく修正（どのインデックスの組み合わせをテストしているか表示）
+                                    println!(
+                                        "  [Network: {:<17}] Matrix {} (data: {}, gas: {}, value: {})",
+                                        network_str, post_idx, data_idx, gas_idx, value_idx
+                                        );
 
-                            if let Some(st) = &acc_data.storage {
-                                for (k, v) in st {
-                                    let key_u256 = parse_u256(k);
-                                    let val_u256 = parse_u256(v);
-                                    storage.insert(key_u256, val_u256);
-                                    
-                                    if !val_u256.is_zero() {
-                                        let key_byte: [u8; 32] = key_u256.to_be_bytes();
-                                        let key_hash = keccak256(key_byte);
-                                        let val_rlp = alloy_rlp::encode(val_u256);
-                                        storage_trie.insert(key_hash.as_slice(), val_rlp.as_slice()).unwrap();
+                                    // 1. WorldStateの初期化 (必ず毎ループ初期化する！)
+                                    let mut state = WorldState::new();
+
+                                    for (addr_str, acc_data) in &test_data.pre {
+                                        let addr = parse_address(addr_str);
+
+                                        let mut storage_trie = EthTrie::new(state.data.clone());
+                                        let mut storage = HashMap::new();
+
+                                        if let Some(st) = &acc_data.storage {
+                                            for (k, v) in st {
+                                                let key_u256 = parse_u256(k);
+                                                let val_u256 = parse_u256(v);
+                                                storage.insert(key_u256, val_u256);
+
+                                                if !val_u256.is_zero() {
+                                                    let key_byte: [u8; 32] = key_u256.to_be_bytes();
+                                                    let key_hash = keccak256(key_byte);
+                                                    let val_rlp = alloy_rlp::encode(val_u256);
+                                                    storage_trie.insert(key_hash.as_slice(), val_rlp.as_slice()).unwrap();
+                                                }
+                                            }
+                                        }
+                                        // 初期ストレージの正しいルートハッシュを確定させる！
+                                        let initial_storage_root = storage_trie.root_hash().unwrap();
+
+                                        let nonce = acc_data.nonce.as_ref().map(|n| parse_u256(n).try_into().unwrap_or(0)).unwrap_or(0);
+                                        let balance = acc_data.balance.as_ref().map(|b| parse_u256(b)).unwrap_or(U256::ZERO);
+                                        let code = acc_data.code.as_ref().map(|c| parse_code(c)).unwrap_or_default();
+
+                                        let code_hash = keccak256(&code);
+                                        state.code_storage.insert(code_hash, code.clone());
+
+                                        let account = Account {
+                                            nonce,
+                                            balance,
+                                            storage,
+                                            code,
+                                            storage_hash: initial_storage_root, // 🌟 ダミーではなく本物をセット！
+                                            account_hash: keccak256(&[]), // 後で不要になる場合は削除してOK
+                                        };
+
+                                        state.add_account(&addr, account);
+
+                                        let mpt_account = MptAccount::new(nonce, balance, initial_storage_root, code_hash);
+                                        let addr_hash = keccak256(&addr);
+                                        let mut mpt_rlp = Vec::new();
+                                        mpt_account.encode(&mut mpt_rlp);
+                                        state.eth_trie.insert(addr_hash.as_slice(), mpt_rlp.as_slice()).unwrap();
+                                    }
+
+                                    let pre_state_root = state.eth_trie.root_hash().unwrap();
+                                    println!("    [Pre-State] Initial State Root: {}", pre_state_root);
+
+                                    // --- ここから下が Env情報の構築 と トランザクション実行 (leviathan.execution) ---
+
+                                    let block_header = BlockHeader {
+                                        h_beneficiary: parse_address(&test_data.env.current_coinbase),
+                                        h_timestamp: parse_u256(&test_data.env.current_timestamp),
+                                        h_number: parse_u256(&test_data.env.current_number),
+                                        h_prevrandao: parse_u256(&test_data.env.current_difficulty),
+                                        h_gaslimit: parse_u256(&test_data.env.current_gas_limit),
+                                        h_basefee: U256::ZERO,
+                                    };
+
+                                    let tx_data = parse_code(tx_data_str);
+                                    let gas_limit = parse_u256(gas_limit_str);
+                                    let value = parse_u256(value_str);
+                                    let to_address = if test_data.transaction.to.is_empty() {
+                                        None
+                                    } else {
+                                        Some(parse_address(&test_data.transaction.to))
+                                    };
+                                    let nonce = parse_u256(&test_data.transaction.nonce);
+                                    let gas_price = parse_u256(&test_data.transaction.gas_price);
+                                    let secret_key_hex = test_data.transaction.secret_key.trim_start_matches("0x");
+
+                                    let (v, r, s) = sign_transaction(
+                                        nonce, gas_price, gas_limit, to_address.clone(), value, &tx_data, secret_key_hex,
+                                        );
+
+                                    let transaction = Transaction {
+                                        data: tx_data,
+                                        t_to: to_address,
+                                        t_gas_limit: gas_limit,
+                                        t_price: gas_price,
+                                        t_value: value,
+                                        t_nonce: nonce.try_into().unwrap_or(0),
+                                        t_w: v, t_r: r, t_s: s,
+                                    };
+
+                                    // 2. 実行
+                                    let mut leviathan = LEVIATHAN::new(version);
+                                    let _result = leviathan.execution(&mut state, transaction, &block_header);
+
+                                    // 3. 🌟 究極の検証フェーズ：State Root Hashの比較
+                                    let expected_hash: alloy_primitives::B256 = post_state.hash.parse()
+                                        .expect("Failed to parse expected hash");
+
+                                    let actual_hash = state.eth_trie.root_hash().unwrap();
+
+                                    if actual_hash == expected_hash {
+                                        println!("    => Success! State Root Matches: {}", expected_hash);
+                                        pass_cases_count += 1;
+                                    } else {
+                                        println!("    => FAILED!");
+                                        println!("       Expected: {}", expected_hash);
+                                        println!("       Actual  : {}", actual_hash);
+                                        println!("\n=== 🔍 最終ステートのダンプ (Cache内の最新状態) ===");
+                                        for (address, account) in &state.cache {
+                                            println!("Address: 0x{}", alloy_primitives::hex::encode(address.0));
+                                            println!("  Nonce       : {}", account.nonce);
+                                            println!("  Balance     : {}", account.balance);
+                                            println!("  Code (len)  : {} bytes", account.code.len());
+                                            println!("  Storage:");
+                                            if account.storage.is_empty() {
+                                                println!("    (empty)");
+                                            } else {
+                                                let mut keys: Vec<_> = account.storage.keys().collect();
+                                                keys.sort();
+                                                for k in keys {
+                                                    let v = account.storage.get(k).unwrap();
+                                                    println!("    [{}] -> {}", k, v);
+                                                }
+                                            }
+                                            println!("  StorageRoot : {}", account.storage_hash);
+                                            println!("---------------------------------------------------");
+                                        }
+                                        println!("===================================================\n");
+                                        assert_eq!(actual_hash, expected_hash, "State root mismatch in test: {}", test_name);
                                     }
                                 }
                             }
-                            // 初期ストレージの正しいルートハッシュを確定させる！
-                            let initial_storage_root = storage_trie.root_hash().unwrap();
-
-                            let nonce = acc_data.nonce.as_ref().map(|n| parse_u256(n).try_into().unwrap_or(0)).unwrap_or(0);
-                            let balance = acc_data.balance.as_ref().map(|b| parse_u256(b)).unwrap_or(U256::ZERO);
-                            let code = acc_data.code.as_ref().map(|c| parse_code(c)).unwrap_or_default();
-
-                            let code_hash = keccak256(&code);
-                            state.code_storage.insert(code_hash, code.clone());
-
-                            let mpt_account = MptAccount::new(nonce, balance, initial_storage_root, code_hash);
-                            let addr_hash = keccak256(&addr);
-                            let mut mpt_rlp = Vec::new();
-                            mpt_account.encode(&mut mpt_rlp);
-                            let account_hash = keccak256(&mpt_rlp);
-
-                            let account = Account {
-                                nonce,
-                                balance,
-                                storage,
-                                code,
-                                storage_hash: initial_storage_root, // 🌟 ダミーではなく本物をセット！
-                                account_hash,
-                            };
-
-                            state.add_account(&addr, account);
-
-                            // 🌟 【追加】さらに全体デスク (State Trie) にもアカウントを登録しておく！
-                            let mpt_account = MptAccount::new(nonce, balance, initial_storage_root, code_hash);
-                            let addr_hash = keccak256(&addr);
-                            let mut mpt_rlp = Vec::new();
-                            mpt_account.encode(&mut mpt_rlp);
-                            state.eth_trie.insert(addr_hash.as_slice(), mpt_rlp.as_slice()).unwrap();
-                        }
-
-                        // 🌟 【追加】トランザクション実行「前」の State Root を確認してみる！
-                        let pre_state_root = state.eth_trie.root_hash().unwrap();
-                        println!("    [Pre-State] Initial State Root: {}", pre_state_root);
-
-                        // --- ここから下が Env情報の構築 と トランザクション実行 (leviathan.execution) ---
-
-                        // Env情報の構築
-                        let block_header = BlockHeader {
-                            h_beneficiary: parse_address(&test_data.env.current_coinbase),
-                            h_timestamp: parse_u256(&test_data.env.current_timestamp),
-                            h_number: parse_u256(&test_data.env.current_number),
-                            h_prevrandao: parse_u256(&test_data.env.current_difficulty),
-                            h_gaslimit: parse_u256(&test_data.env.current_gas_limit),
-                            h_basefee: U256::ZERO,
-                        };
-
-                        // トランザクション情報の構築
-                        let tx_data = parse_code(tx_data_str);
-                        let gas_limit = parse_u256(gas_limit_str);
-                        let value = parse_u256(value_str);
-                        let to_address = if test_data.transaction.to.is_empty() {
-                            None
-                        } else {
-                            Some(parse_address(&test_data.transaction.to))
-                        };
-                        let nonce = parse_u256(&test_data.transaction.nonce);
-                        let gas_price = parse_u256(&test_data.transaction.gas_price);
-                        let secret_key_hex = test_data.transaction.secret_key.trim_start_matches("0x");
-
-                        let (v, r, s) = sign_transaction(
-                            nonce, gas_price, gas_limit, to_address.clone(), value, &tx_data, secret_key_hex,
-                        );
-
-                        let transaction = Transaction {
-                            data: tx_data,
-                            t_to: to_address,
-                            t_gas_limit: gas_limit,
-                            t_price: gas_price,
-                            t_value: value,
-                            t_nonce: nonce.try_into().unwrap_or(0),
-                            t_w: v, t_r: r, t_s: s,
-                        };
-
-                        // 2. 実行
-                        let mut leviathan = LEVIATHAN::new(version);
-                        let _result = leviathan.execution(&mut state, transaction, &block_header);
-
-                        // 3. 🌟 究極の検証フェーズ：State Root Hashの比較
-                        // post_state.hash の文字列を B256 型にパース
-                        let expected_hash: alloy_primitives::B256 = post_state.hash.parse()
-                            .expect("Failed to parse expected hash");
-
-                        // 実装した EthTrie から最終的なルートハッシュを取得
-                        let actual_hash = state.eth_trie.root_hash().unwrap();
-
-                        if actual_hash == expected_hash {
-                            println!("    => Success! State Root Matches: {}", expected_hash);
-                            pass_cases_count += 1;
-                        } else {
-                            println!("    => FAILED!");
-                            println!("       Expected: {}", expected_hash);
-                            println!("       Actual  : {}", actual_hash);
-                            println!("\n=== 🔍 最終ステートのダンプ (Cache内の最新状態) ===");
-                            for (address, account) in &state.cache {
-                                println!("Address: 0x{}", alloy_primitives::hex::encode(address.0));
-                                println!("  Nonce       : {}", account.nonce);
-                                println!("  Balance     : {}", account.balance);
-                                println!("  Code (len)  : {} bytes", account.code.len());
-                                println!("  Storage:");
-                                if account.storage.is_empty() {
-                                    println!("    (empty)");
-                                } else {
-                                    // 見やすいようにキーでソートして出力
-                                    let mut keys: Vec<_> = account.storage.keys().collect();
-                                    keys.sort();
-                                    for k in keys {
-                                        let v = account.storage.get(k).unwrap();
-                                        println!("    [{}] -> {}", k, v);
-                                    }
-                                }
-                                println!("  StorageRoot : {}", account.storage_hash);
-                                println!("---------------------------------------------------");
-                            }
-                            println!("===================================================\n");
-                            assert_eq!(actual_hash, expected_hash, "State root mismatch in test: {}", test_name);
                         }
                     }
                 }
