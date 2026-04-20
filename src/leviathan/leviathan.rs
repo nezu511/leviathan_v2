@@ -477,6 +477,7 @@ mod state_tests {
     use crate::test::state_parser::{IndexType, StateTestSuite};
     use std::collections::HashMap;
     use std::fs;
+    use std::io::Write;
 
     // alloy_primitives の hex を使用して E0433 を解消
     use alloy_primitives::{Address, U256, hex};
@@ -633,8 +634,15 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
 
+        // leviathan.rs の state_test 関数内
+        if let Ok(mut file) = std::fs::File::create("stRevertTest_benchmarks.csv") {
+            // ヘッダーに Gas を追加
+            let _ = writeln!(file, "Address,InputData,Gas,Status,Time_us");
+            tracing::info!("ベンチマーク用CSVファイルを初期化しました");
+        }
+
         // 対象のディレクトリ
-        let test_dir = "MPTTest/stZeroKnowledge";
+        let test_dir = "MPTTest/stRevertTest";
 
         let paths = std::fs::read_dir(test_dir)
             .unwrap_or_else(|_| panic!("Failed to read test directory: {}", test_dir));
