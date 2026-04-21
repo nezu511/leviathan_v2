@@ -94,6 +94,7 @@ impl TransactionExecution for LEVIATHAN {
         let sender_address =
             self.transaction_checks(state, &transaction, &all_gas, &max_cost, block_header);
         if sender_address.is_err() {
+            tracing::warn!("{}", sender_address.unwrap_err());
             return Err((U256::ZERO, Vec::new()));
         }
         let sender_address = sender_address.unwrap();
