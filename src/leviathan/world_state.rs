@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{Address, B256, U256, b256, keccak256};
+use alloy_primitives::{Address, B256, U256, b256, keccak256, hex};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
 use sha3::Digest;
@@ -39,6 +39,86 @@ impl WorldState {
             code_storage,
         }
     }
+
+    pub fn init_mpt_account(&mut self, address: &Address, cache_account: &Account) {
+        let mpt_nonce = cache_account.nonce;
+        let mpt_balance = cache_account.balance;
+        let mut storage_trie = EthTrie::from(self.data.clone(), cache_account.storage_hash).unwrap();
+        let mut storage_changed = false;
+        //storageの値を書き込む
+        for (key, value) in cache_account.storage.iter() {
+            let key_byte: [u8; 32] = key.to_be_bytes();
+            let key_hash = keccak256(key_byte);
+            let existing_val_opt =
+                storage_trie.get(key_hash.as_slice()).unwrap_or(None);
+
+            if value.is_zero() {
+                if existing_val_opt.is_some() {
+                    storage_trie.remove(key_hash.as_slice());
+                    storage_changed = true;
+                }
+            } else {
+                let val_rlp_bytes = alloy_rlp::encode(value);
+                if existing_val_opt != Some(val_rlp_bytes.clone()) {
+                    storage_trie
+                        .insert(key_hash.as_slice(), val_rlp_bytes.as_slice())
+                        .unwrap();
+                    storage_changed = true;
+                }
+            }
+        }
+        //新しいstorage_rootを取得
+        let storage_root = if storage_changed {
+            storage_trie.root_hash().unwrap()
+        } else {
+            cache_account.storage_hash
+        };
+        //コードハッシュを取得
+        let code_hash = keccak256(cache_account.code.clone());
+        self
+            .code_storage
+            .entry(code_hash)
+            .or_insert(cache_account.code.clone());
+        //mpt_accout作成
+        let mpt_account = MptAccount::new(
+            cache_account.nonce,
+            cache_account.balance,
+            storage_root,
+            code_hash,
+            );
+        //MPTに書き込む
+        let address_hash = keccak256(address);
+        let mut mpt_account_rlp_bytes = Vec::new();
+        mpt_account.encode(&mut mpt_account_rlp_bytes);
+
+        //MPTに現在登録されているRLPを取得
+        let existing_mpt_val =
+            self.eth_trie.get(address_hash.as_slice()).unwrap_or(None);
+
+        // 更新すべきか判定
+        let should_insert = match existing_mpt_val {
+            None => true, // MPTに存在しない（新規アカウント）なら絶対に挿入
+            Some(old_rlp) => {
+                // MPTに存在するなら、RLPの中身が変化している場合のみ挿入
+                old_rlp != mpt_account_rlp_bytes
+            }
+        };
+
+        // 更新
+        if should_insert {
+            tracing::debug!("更新: 0x{}", hex::encode(address));
+            let _ = self.eth_trie.remove(address_hash.as_slice());
+            self
+                .eth_trie
+                .insert(address_hash.as_slice(), mpt_account_rlp_bytes.as_slice())
+                .unwrap();
+        }
+        //eth_trieのルートハッシュを取得
+        let new_state_root = self.eth_trie.root_hash().unwrap();
+        self.update_eth_trie(new_state_root);
+    }
+
+
 
     pub fn add_cache(&mut self, address: &Address, mpt_account: &MptAccount) {
         let nonce = mpt_account.nonce;
