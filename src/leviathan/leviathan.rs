@@ -635,9 +635,9 @@ mod state_tests {
             .try_init();
 
         // leviathan.rs の state_test 関数内
-        if let Ok(mut file) = std::fs::File::create("stRevertTest_benchmarks.csv") {
+        if let Ok(mut file) = std::fs::File::create("gas_analy/stRevertTest_benchmarks.csv") {
             // ヘッダーに Gas を追加
-            let _ = writeln!(file, "Address,InputData,Gas,Status,Time_us");
+            let _ = writeln!(file, "Address,InputLen,Gas,Status,Time_us");
             tracing::info!("ベンチマーク用CSVファイルを初期化しました");
         }
 

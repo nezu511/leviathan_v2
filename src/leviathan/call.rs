@@ -164,6 +164,11 @@ impl MessageCall for LEVIATHAN {
                 }
             }
 
+            val if val == U256::from(10) => {
+                //my_rsa
+                LEVIATHAN::my_rsa(gas, &execution_environment.i_data, self.version)
+            }
+
             _ => {
                 //通常のスマートコントラクト呼び出し
 
@@ -190,13 +195,13 @@ impl MessageCall for LEVIATHAN {
         };
         
         // ★ 2. CSVへの記録処理 (テスト時のみコンパイル)
-        #[cfg(test)]
+#[cfg(test)]
         {
             if let Some(start) = start_time {
                 let elapsed_micros = start.elapsed().as_micros();
-                let input_hex = hex::encode(&execution_environment.i_data);
+                // データの「中身」ではなく「長さ」だけ取得
+                let input_len = execution_environment.i_data.len();
 
-                // 実行結果から「ステータス」と「残りのガス」を取得し、消費ガスを計算
                 let (status, consumed_gas) = match &result {
                     Ok((rest_gas, _)) => {
                         ("Success", gas.saturating_sub(*rest_gas))
@@ -206,22 +211,21 @@ impl MessageCall for LEVIATHAN {
                     }
                 };
 
-                // CSVの1行分をフォーマット（Gasの列を追加）
+                // InputData(Hex) を InputLen に差し替え
                 let csv_line = format!(
-                    "{},0x{},{},{},{}\n",
-                    contract_u256, input_hex, consumed_gas, status, elapsed_micros
-                );
+                    "{},{},{},{},{}\n",
+                    contract_u256, input_len, consumed_gas, status, elapsed_micros
+                    );
 
                 if let Ok(mut file) = OpenOptions::new()
                     .create(true)
-                    .append(true)
-                    .open("stRevertTest_benchmarks.csv")
-                {
-                    let _ = file.write_all(csv_line.as_bytes());
-                }
+                        .append(true)
+                        .open("gas_analy/stRevertTest_benchmarks.csv")
+                        {
+                            let _ = file.write_all(csv_line.as_bytes());
+                        }
             }
         }
-
         match result {
             Ok((return_gas, output)) => {
                 //最終処理
