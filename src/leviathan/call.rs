@@ -86,13 +86,14 @@ impl MessageCall for LEVIATHAN {
         //プリコンパイル判定と実行の要件
         let contract_u256 = U256::from_be_bytes(contract.into_word().0);
 
-        // ★ 1. 計測開始 (テスト時のみコンパイル)
+        /*/ ★ 1. 計測開始 (テスト時のみコンパイル)
         #[cfg(test)]
         let (is_precompile, start_time) = {
             let is_pre = contract_u256 >= U256::from(1) && contract_u256 <= U256::from(9);
             let start = if is_pre { Some(Instant::now()) } else { None };
             (is_pre, start)
         };
+        */
 
         let result = match contract_u256 {
             val if val == U256::from(1) => {
@@ -194,7 +195,7 @@ impl MessageCall for LEVIATHAN {
             }
         };
         
-        // ★ 2. CSVへの記録処理 (テスト時のみコンパイル)
+        /*/ ★ 2. CSVへの記録処理 (テスト時のみコンパイル)
 #[cfg(test)]
         {
             if let Some(start) = start_time {
@@ -226,6 +227,7 @@ impl MessageCall for LEVIATHAN {
                         }
             }
         }
+        */
         match result {
             Ok((return_gas, output)) => {
                 //最終処理

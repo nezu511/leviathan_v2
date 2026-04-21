@@ -25,7 +25,8 @@ impl WorldState {
     pub fn new() -> Self {
         let data = Arc::new(MemoryDB::new(true));
         let cache = HashMap::<Address, Account>::new();
-        let eth_trie = EthTrie::new(data.clone());
+        let mut eth_trie = EthTrie::new(data.clone());
+        let _ = eth_trie.root_hash().unwrap();
         let mut code_storage = HashMap::<B256, Vec<u8>>::new();
         //空のコードのハッシュを登録
         let empty_code = Vec::<u8>::new();

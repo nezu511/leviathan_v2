@@ -635,12 +635,12 @@ mod state_tests {
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .try_init();
 
-        // leviathan.rs の state_test 関数内
+        /*/ leviathan.rs の state_test 関数内
         if let Ok(mut file) = std::fs::File::create("gas_analy/stRevertTest_benchmarks.csv") {
             // ヘッダーに Gas を追加
             let _ = writeln!(file, "Address,InputLen,Gas,Status,Time_us");
             tracing::info!("ベンチマーク用CSVファイルを初期化しました");
-        }
+        }*/
 
         // 対象のディレクトリ
         let test_dirs = vec![

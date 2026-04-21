@@ -82,7 +82,7 @@ fn main() {
 
     let mut sender_acc = Account::new();
     sender_acc.balance = uint!(100_000_000_000_000_000_000_U256); // 100 ETH
-    state.add_account(&sender_addr, sender_acc);
+    state.init_mpt_account(&sender_addr, &sender_acc);
 
     // ---------------------------------------------------------
     // 2. Solidityコントラクトの配置 (0x88)
@@ -92,7 +92,7 @@ fn main() {
     // solc --bin-runtime --evm-version petersburg の結果
     let runtime_code = hex::decode("608060405234801561001057600080fd5b5060043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680631f0e4b4414610046575b600080fd5b6100666004803603608081101561005c57600080fd5b5080359060208101359060408101359060600135610080565b604051808215151515815260200191505060405180910390f3").expect("Invalid Bytecode");
     contract_acc.code = runtime_code;
-    state.add_account(&contract_addr, contract_acc);
+    state.init_mpt_account(&contract_addr, &contract_acc);
 
     // ---------------------------------------------------------
     // 3. RSAデータの準備 (マイナンバーシミュレーション)
