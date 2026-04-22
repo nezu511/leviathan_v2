@@ -12,6 +12,15 @@ use crate::my_trait::leviathan_trait::{CompiledContract, MessageCall, RoleBack, 
 use alloy_primitives::{Address, U256};
 use sha3::Digest;
 
+//cpu実行時間を記録するため
+#[cfg(test)]
+use std::fs::OpenOptions;
+#[cfg(test)]
+use std::io::Write;
+#[cfg(test)]
+use std::time::Instant;
+use alloy_primitives::hex;
+
 impl MessageCall for LEVIATHAN {
     fn message_call(
         &mut self,
@@ -76,6 +85,16 @@ impl MessageCall for LEVIATHAN {
 
         //プリコンパイル判定と実行の要件
         let contract_u256 = U256::from_be_bytes(contract.into_word().0);
+
+        /*/ ★ 1. 計測開始 (テスト時のみコンパイル)
+        #[cfg(test)]
+        let (is_precompile, start_time) = {
+            let is_pre = contract_u256 >= U256::from(1) && contract_u256 <= U256::from(9);
+            let start = if is_pre { Some(Instant::now()) } else { None };
+            (is_pre, start)
+        };
+        */
+
         let result = match contract_u256 {
             val if val == U256::from(1) => {
                 //ECDSA公開鍵復元
@@ -146,6 +165,11 @@ impl MessageCall for LEVIATHAN {
                 }
             }
 
+            val if val == U256::from(10) => {
+                //my_rsa
+                LEVIATHAN::my_rsa(gas, &execution_environment.i_data, self.version)
+            }
+
             _ => {
                 //通常のスマートコントラクト呼び出し
 
@@ -170,6 +194,40 @@ impl MessageCall for LEVIATHAN {
                 }
             }
         };
+        
+        /*/ ★ 2. CSVへの記録処理 (テスト時のみコンパイル)
+#[cfg(test)]
+        {
+            if let Some(start) = start_time {
+                let elapsed_micros = start.elapsed().as_micros();
+                // データの「中身」ではなく「長さ」だけ取得
+                let input_len = execution_environment.i_data.len();
+
+                let (status, consumed_gas) = match &result {
+                    Ok((rest_gas, _)) => {
+                        ("Success", gas.saturating_sub(*rest_gas))
+                    }
+                    Err((rest_gas, _)) => {
+                        ("Revert_or_Error", gas.saturating_sub(*rest_gas))
+                    }
+                };
+
+                // InputData(Hex) を InputLen に差し替え
+                let csv_line = format!(
+                    "{},{},{},{},{}\n",
+                    contract_u256, input_len, consumed_gas, status, elapsed_micros
+                    );
+
+                if let Ok(mut file) = OpenOptions::new()
+                    .create(true)
+                        .append(true)
+                        .open("gas_analy/stRevertTest_benchmarks.csv")
+                        {
+                            let _ = file.write_all(csv_line.as_bytes());
+                        }
+            }
+        }
+        */
         match result {
             Ok((return_gas, output)) => {
                 //最終処理

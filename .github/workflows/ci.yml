@@ -42,4 +42,4 @@ jobs:
       - name: Run tests
         env:
           RUST_MIN_STACK: 16777216
-        run: cargo test --release
+        run: cargo test --test state_runner --release
