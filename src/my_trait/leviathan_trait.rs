@@ -151,9 +151,14 @@ pub trait CompiledContract {
         version: VersionId,
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 
+}
+
+
+pub trait MCC { //MyCompiledContract
     fn my_rsa(
         gas: U256,
         data: &[u8],
         version: VersionId,
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 }
+
