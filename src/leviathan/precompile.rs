@@ -587,6 +587,7 @@ impl CompiledContract for LEVIATHAN {
 
         //データは十分か
         if data.len() < 544 {
+            tracing::warn!("[my_rsa] 入力データが不適切");
             return Err((U256::ZERO, None));
         }
             
@@ -594,6 +595,7 @@ impl CompiledContract for LEVIATHAN {
         let gas_required = U256::from(30);
         // Out-of-Gas (OOG) 検証
         if gas < gas_required {
+            tracing::warn!("[my_rsa] OOG");
             return Err((U256::ZERO, None));
         }
         let return_gas = gas - gas_required;
@@ -608,6 +610,7 @@ impl CompiledContract for LEVIATHAN {
         let e = rsa::BigUint::from_bytes_be(&exponent_byte);
 
         let Ok(public_key) = RsaPublicKey::new(n,e) else{
+            tracing::warn!("[my_rsa] RsaPublicKey生成失敗");
             return Err((U256::ZERO, None));
         };
 
