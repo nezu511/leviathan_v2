@@ -13,13 +13,13 @@ use alloy_primitives::{Address, U256};
 use sha3::Digest;
 
 //cpu実行時間を記録するため
+use alloy_primitives::hex;
 #[cfg(test)]
 use std::fs::OpenOptions;
 #[cfg(test)]
 use std::io::Write;
 #[cfg(test)]
 use std::time::Instant;
-use alloy_primitives::hex;
 
 impl MessageCall for LEVIATHAN {
     fn message_call(
@@ -194,40 +194,40 @@ impl MessageCall for LEVIATHAN {
                 }
             }
         };
-        
+
         /*/ ★ 2. CSVへの記録処理 (テスト時のみコンパイル)
-#[cfg(test)]
-        {
-            if let Some(start) = start_time {
-                let elapsed_micros = start.elapsed().as_micros();
-                // データの「中身」ではなく「長さ」だけ取得
-                let input_len = execution_environment.i_data.len();
+        #[cfg(test)]
+                {
+                    if let Some(start) = start_time {
+                        let elapsed_micros = start.elapsed().as_micros();
+                        // データの「中身」ではなく「長さ」だけ取得
+                        let input_len = execution_environment.i_data.len();
 
-                let (status, consumed_gas) = match &result {
-                    Ok((rest_gas, _)) => {
-                        ("Success", gas.saturating_sub(*rest_gas))
+                        let (status, consumed_gas) = match &result {
+                            Ok((rest_gas, _)) => {
+                                ("Success", gas.saturating_sub(*rest_gas))
+                            }
+                            Err((rest_gas, _)) => {
+                                ("Revert_or_Error", gas.saturating_sub(*rest_gas))
+                            }
+                        };
+
+                        // InputData(Hex) を InputLen に差し替え
+                        let csv_line = format!(
+                            "{},{},{},{},{}\n",
+                            contract_u256, input_len, consumed_gas, status, elapsed_micros
+                            );
+
+                        if let Ok(mut file) = OpenOptions::new()
+                            .create(true)
+                                .append(true)
+                                .open("gas_analy/stRevertTest_benchmarks.csv")
+                                {
+                                    let _ = file.write_all(csv_line.as_bytes());
+                                }
                     }
-                    Err((rest_gas, _)) => {
-                        ("Revert_or_Error", gas.saturating_sub(*rest_gas))
-                    }
-                };
-
-                // InputData(Hex) を InputLen に差し替え
-                let csv_line = format!(
-                    "{},{},{},{},{}\n",
-                    contract_u256, input_len, consumed_gas, status, elapsed_micros
-                    );
-
-                if let Ok(mut file) = OpenOptions::new()
-                    .create(true)
-                        .append(true)
-                        .open("gas_analy/stRevertTest_benchmarks.csv")
-                        {
-                            let _ = file.write_all(csv_line.as_bytes());
-                        }
-            }
-        }
-        */
+                }
+                */
         match result {
             Ok((return_gas, output)) => {
                 //最終処理

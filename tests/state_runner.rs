@@ -3,21 +3,21 @@ use std::fs;
 use std::io::Write;
 
 // alloy_primitives の hex を使用して E0433 を解消
-use alloy_primitives::{Address, U256, hex,keccak256};
+use alloy_primitives::{Address, U256, hex, keccak256};
 
 // 署名生成のためのクレート
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
+use eth_trie::{EthTrie, Trie};
 use secp256k1::{Message, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
-use eth_trie::{EthTrie, Trie};
 
 // 🌟 crate:: ではなく パッケージ名 (ここでは leviathan_v2 と仮定) を使用します
-use leviathan_v2::test::state_parser::{IndexType, StateTestSuite};
-use leviathan_v2::leviathan::structs::{BlockHeader, Transaction, VersionId};
-use leviathan_v2::leviathan::world_state::{Account, WorldState, MptAccount}; // MptAccount を追加
 use leviathan_v2::leviathan::leviathan::LEVIATHAN; // LEVIATHAN を追加
-use leviathan_v2::my_trait::leviathan_trait::{TransactionExecution, State};
+use leviathan_v2::leviathan::structs::{BlockHeader, Transaction, VersionId};
+use leviathan_v2::leviathan::world_state::{Account, MptAccount, WorldState}; // MptAccount を追加
+use leviathan_v2::my_trait::leviathan_trait::{State, TransactionExecution};
+use leviathan_v2::test::state_parser::{IndexType, StateTestSuite};
 
 // --- ヘルパー関数 ---
 
@@ -97,7 +97,7 @@ fn sign_transaction(
     value: U256,
     data: &[u8],
     secret_key_hex: &str,
-    ) -> (U256, U256, U256) {
+) -> (U256, U256, U256) {
     // 1. 各要素のRLPペイロード長を事前計算する
     let mut payload_length = 0;
     payload_length += nonce.length();
@@ -170,7 +170,7 @@ fn state_test() {
 
     // 対象のディレクトリ
     let test_dirs = vec![
-        "TestData/MPTTest/stAttackTest", 
+        "TestData/MPTTest/stAttackTest",
         "TestData/MPTTest/stBadOpcode",
         "TestData/MPTTest/stBugs",
         "TestData/MPTTest/stCallCodes",
@@ -204,8 +204,7 @@ fn state_test() {
         "TestData/MPTTest/stZeroCallsRevert",
         "TestData/MPTTest/stZeroCallsTest",
         "TestData/MPTTest/stZeroKnowledge",
-        ];
-
+    ];
 
     let mut total_files = 0;
     let mut pass_cases_count = 0;
@@ -216,7 +215,10 @@ fn state_test() {
         let paths = match std::fs::read_dir(test_dir) {
             Ok(p) => p,
             Err(e) => {
-                println!("Failed to read directory '{}': {}. Skipping...", test_dir, e);
+                println!(
+                    "Failed to read directory '{}': {}. Skipping...",
+                    test_dir, e
+                );
                 continue;
             }
         };
@@ -302,7 +304,7 @@ fn state_test() {
                                     println!(
                                         "  [Network: {:<17}] Matrix {} (data: {}, gas: {}, value: {})",
                                         network_str, post_idx, data_idx, gas_idx, value_idx
-                                        );
+                                    );
 
                                     // 1. WorldStateの初期化 (必ず毎ループ初期化する！)
                                     let mut state = WorldState::new();
@@ -327,7 +329,7 @@ fn state_test() {
                                                         .insert(
                                                             key_hash.as_slice(),
                                                             val_rlp.as_slice(),
-                                                            )
+                                                        )
                                                         .unwrap();
                                                 }
                                             }
@@ -371,7 +373,7 @@ fn state_test() {
                                             balance,
                                             initial_storage_root,
                                             code_hash,
-                                            );
+                                        );
                                         let addr_hash = keccak256(&addr);
                                         let mut mpt_rlp = Vec::new();
                                         mpt_account.encode(&mut mpt_rlp);
@@ -385,19 +387,19 @@ fn state_test() {
                                     println!(
                                         "    [Pre-State] Initial State Root: {}",
                                         pre_state_root
-                                        );
+                                    );
 
                                     // --- ここから下が Env情報の構築 と トランザクション実行 (leviathan.execution) ---
 
                                     let block_header = BlockHeader {
                                         h_beneficiary: parse_address(
-                                                           &test_data.env.current_coinbase,
-                                                           ),
-                                                           h_timestamp: parse_u256(&test_data.env.current_timestamp),
-                                                           h_number: parse_u256(&test_data.env.current_number),
-                                                           h_prevrandao: parse_u256(&test_data.env.current_difficulty),
-                                                           h_gaslimit: parse_u256(&test_data.env.current_gas_limit),
-                                                           h_basefee: U256::ZERO,
+                                            &test_data.env.current_coinbase,
+                                        ),
+                                        h_timestamp: parse_u256(&test_data.env.current_timestamp),
+                                        h_number: parse_u256(&test_data.env.current_number),
+                                        h_prevrandao: parse_u256(&test_data.env.current_difficulty),
+                                        h_gaslimit: parse_u256(&test_data.env.current_gas_limit),
+                                        h_basefee: U256::ZERO,
                                     };
 
                                     let tx_data = parse_code(tx_data_str);
@@ -421,7 +423,7 @@ fn state_test() {
                                         value,
                                         &tx_data,
                                         secret_key_hex,
-                                        );
+                                    );
 
                                     let transaction = Transaction {
                                         data: tx_data,
@@ -452,7 +454,7 @@ fn state_test() {
                                         println!(
                                             "    => Success! State Root Matches: {}",
                                             expected_hash
-                                            );
+                                        );
                                         pass_cases_count += 1;
                                     } else {
                                         println!("    => FAILED!");
@@ -460,18 +462,18 @@ fn state_test() {
                                         println!("       Actual  : {}", actual_hash);
                                         println!(
                                             "\n=== 🔍 最終ステートのダンプ (Cache内の最新状態) ==="
-                                            );
+                                        );
                                         for (address, account) in &state.cache {
                                             println!(
                                                 "Address: 0x{}",
                                                 alloy_primitives::hex::encode(address.0)
-                                                );
+                                            );
                                             println!("  Nonce       : {}", account.nonce);
                                             println!("  Balance     : {}", account.balance);
                                             println!(
                                                 "  Code (len)  : {} bytes",
                                                 account.code.len()
-                                                );
+                                            );
                                             println!("  Storage:");
                                             if account.storage.is_empty() {
                                                 println!("    (empty)");
@@ -487,16 +489,16 @@ fn state_test() {
                                             println!("  StorageRoot : {}", account.storage_hash);
                                             println!(
                                                 "---------------------------------------------------"
-                                                );
+                                            );
                                         }
                                         println!(
                                             "===================================================\n"
-                                            );
+                                        );
                                         assert_eq!(
                                             actual_hash, expected_hash,
                                             "State root mismatch in test: {}",
                                             test_name
-                                            );
+                                        );
                                     }
                                 }
                             }
@@ -510,6 +512,6 @@ fn state_test() {
     println!(
         "最終結果: {} ファイル中、{} / {} のテストケースをクリアしました！",
         total_files, pass_cases_count, total_cases_count
-        );
+    );
     println!("==================================================\n");
 }
