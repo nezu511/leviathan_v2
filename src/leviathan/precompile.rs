@@ -592,7 +592,7 @@ impl CompiledContract for LEVIATHAN {
         }
             
         //使用ガス量を計算
-        let gas_required = U256::from(30);
+        let gas_required = U256::from(168000);
         // Out-of-Gas (OOG) 検証
         if gas < gas_required {
             tracing::warn!("[my_rsa] OOG");
