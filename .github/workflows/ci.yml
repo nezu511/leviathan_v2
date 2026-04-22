@@ -19,7 +19,7 @@ jobs:
       # 1. あなたのリポジトリのコードをサーバーにダウンロードする
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
+          with:
           submodules: recursive
 
       # 2. 最新のRustコンパイラをセットアップする
