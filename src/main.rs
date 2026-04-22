@@ -4,18 +4,18 @@ pub mod leviathan;
 pub mod my_trait;
 pub mod test;
 
-use alloy_primitives::{Address, U256, hex, keccak256, uint, Bytes};
-use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15::Pkcs1v15Sign, traits::PublicKeyParts};
-use sha2::{Digest as _, Sha256};
-use rand::rngs::OsRng;
-use secp256k1::{Secp256k1, SecretKey, Message};
+use alloy_primitives::{Address, Bytes, U256, hex, keccak256, uint};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
+use rand::rngs::OsRng;
+use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15::Pkcs1v15Sign, traits::PublicKeyParts};
+use secp256k1::{Message, Secp256k1, SecretKey};
+use sha2::{Digest as _, Sha256};
 
+use leviathan::leviathan::LEVIATHAN;
 use leviathan::structs::{BlockHeader, Transaction, VersionId};
 use leviathan::world_state::{Account, WorldState};
-use leviathan::leviathan::LEVIATHAN;
-use my_trait::leviathan_trait::{TransactionExecution, State};
+use my_trait::leviathan_trait::{State, TransactionExecution};
 
 /// イエローペーパー Appendix F に基づくトランザクション署名関数
 fn sign_tx_properly(
@@ -40,7 +40,11 @@ fn sign_tx_properly(
     payload_length += data.length();
 
     let mut out = BytesMut::with_capacity(payload_length + 10);
-    Header { list: true, payload_length }.encode(&mut out);
+    Header {
+        list: true,
+        payload_length,
+    }
+    .encode(&mut out);
 
     nonce.encode(&mut out);
     gas_price.encode(&mut out);
@@ -68,7 +72,7 @@ fn main() {
     // ログレベルを指定して詳細な動きを追えるようにします
     let _ = tracing_subscriber::fmt::init();
     let version = VersionId::Petersburg;
-    
+
     // 前回の完璧なアーキテクチャ修正が活きる WorldState の初期化！
     let mut state = WorldState::new();
     let mut leviathan = LEVIATHAN::new(version);
@@ -77,7 +81,10 @@ fn main() {
     // ---------------------------------------------------------
     // 1. 送信者 (EOA) の準備
     // ---------------------------------------------------------
-    let secret_key = SecretKey::from_slice(&hex!("45cd63531c3c97355b9275e7a9e6323c2a937a07011d8825e36873c907b29a28")).unwrap();
+    let secret_key = SecretKey::from_slice(&hex!(
+        "45cd63531c3c97355b9275e7a9e6323c2a937a07011d8825e36873c907b29a28"
+    ))
+    .unwrap();
     let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
     let serialized_pub = public_key.serialize_uncompressed();
     let pub_hash = keccak256(&serialized_pub[1..65]);
@@ -85,7 +92,7 @@ fn main() {
 
     let mut sender_acc = Account::new();
     sender_acc.balance = uint!(100_000_000_000_000_000_000_U256); // 100 ETH
-    
+
     // 自作した完璧な init_mpt_account メソッドで安全に状態を構築
     state.init_mpt_account(&sender_addr, &sender_acc);
 
@@ -97,18 +104,21 @@ fn main() {
     let priv_key = RsaPrivateKey::new(&mut OsRng, 2048).unwrap();
     let pub_key = RsaPublicKey::from(&priv_key);
     let msg_hash = keccak256("Leviathan Vote");
-    let signature = priv_key.sign(Pkcs1v15Sign::new::<Sha256>(), msg_hash.as_slice()).unwrap();
+    let signature = priv_key
+        .sign(Pkcs1v15Sign::new::<Sha256>(), msg_hash.as_slice())
+        .unwrap();
 
     // ---------------------------------------------------------
     // 3. ペイロードデータの構築（Solidityの忖度なし！生データ直結！）
     // ---------------------------------------------------------
     // 関数セレクタもオフセットパディングも不要。純粋なデータを連結するだけ。
     let payload_data = [
-        signature.as_slice(),         // 256 bytes
-        &pub_key.n().to_bytes_be(),   // 256 bytes
-        msg_hash.as_slice(),          // 32 bytes
-        &pub_key.e().to_bytes_be()    // 可変長
-    ].concat();
+        signature.as_slice(),       // 256 bytes
+        &pub_key.n().to_bytes_be(), // 256 bytes
+        msg_hash.as_slice(),        // 32 bytes
+        &pub_key.e().to_bytes_be(), // 可変長
+    ]
+    .concat();
 
     // ---------------------------------------------------------
     // 4. トランザクションの構築と正当な署名
@@ -127,8 +137,8 @@ fn main() {
         t_gas_limit,
         Some(precompile_addr), // ここで 0x0a を指定！
         t_value,
-        &payload_data,         // 生データをそのまま送信
-        &secret_key
+        &payload_data, // 生データをそのまま送信
+        &secret_key,
     );
 
     let transaction = Transaction {
@@ -157,7 +167,10 @@ fn main() {
 
     println!("🚀 Starting Direct EVM Execution to RSA Precompile (0x0a)...");
     match leviathan.execution(&mut state, transaction, &block) {
-        Ok((gas, _)) => println!("✅ Success! Precompile verified the signature. Remaining Gas: {}", gas),
+        Ok((gas, _)) => println!(
+            "✅ Success! Precompile verified the signature. Remaining Gas: {}",
+            gas
+        ),
         Err((gas, _)) => println!("❌ Failed. Precompile call reverted. Gas consumed: {}", gas),
     }
 }

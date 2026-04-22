@@ -10,12 +10,12 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, One, PrimeField, Zero};
 use num_bigint::BigUint;
 use ripemd::{Digest as _, Ripemd160};
+use rsa::{Pkcs1v15Sign, RsaPublicKey};
 use secp256k1::Secp256k1;
 use sha2::{Digest as _, Sha256};
 use sha3::{Digest as _, Keccak256};
 use std::ops::Mul;
 use std::ops::Rem;
-use rsa::{RsaPublicKey, Pkcs1v15Sign};
 
 pub const SECP256K1N: U256 =
     uint!(0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141_U256);
@@ -569,7 +569,6 @@ impl CompiledContract for LEVIATHAN {
         Ok((return_gas, output))
     }
 
-
     fn my_rsa(
         gas: U256,
         data: &[u8],
@@ -590,7 +589,7 @@ impl CompiledContract for LEVIATHAN {
             tracing::warn!("[my_rsa] 入力データが不適切");
             return Err((U256::ZERO, None));
         }
-            
+
         //使用ガス量を計算
         let gas_required = U256::from(168000);
         // Out-of-Gas (OOG) 検証
@@ -609,14 +608,16 @@ impl CompiledContract for LEVIATHAN {
         let n = rsa::BigUint::from_bytes_be(&modulus_byte);
         let e = rsa::BigUint::from_bytes_be(&exponent_byte);
 
-        let Ok(public_key) = RsaPublicKey::new(n,e) else{
+        let Ok(public_key) = RsaPublicKey::new(n, e) else {
             tracing::warn!("[my_rsa] RsaPublicKey生成失敗");
             return Err((U256::ZERO, None));
         };
 
         // 4. PKCS#1 v1.5 による署名検証
         let scheme = Pkcs1v15Sign::new::<Sha256>();
-        let is_valid = public_key.verify(scheme, &message_byte, &signature_byte).is_ok();
+        let is_valid = public_key
+            .verify(scheme, &message_byte, &signature_byte)
+            .is_ok();
         let mut output = vec![0u8; 32];
         if is_valid {
             output[31] = 1;
@@ -624,5 +625,4 @@ impl CompiledContract for LEVIATHAN {
 
         Ok((return_gas, output))
     }
-
 }
