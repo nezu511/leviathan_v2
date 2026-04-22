@@ -3,7 +3,7 @@ name: Rust EVM CI
 # どのタイミングでCIを動かすか（masterブランチにPushされた時など）
 on:
   push:
-    branches: [ "master", "feat/**" ]
+    branches: [ "master", "feat/**", "fix/**" ] # 今回のために fix/** も追加しておきました
   pull_request:
     branches: [ "master" ]
 
@@ -19,6 +19,8 @@ jobs:
       # 1. あなたのリポジトリのコードをサーバーにダウンロードする
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       # 2. 最新のRustコンパイラをセットアップする
       - name: Setup Rust
@@ -42,4 +44,5 @@ jobs:
       - name: Run tests
         env:
           RUST_MIN_STACK: 16777216
+          RUST_BACKTRACE: 1
         run: cargo test --test state_runner --release
