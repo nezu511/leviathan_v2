@@ -1,15 +1,15 @@
 use alloy_primitives::{U256, hex, keccak256};
-use leviathan_v2::leviathan::structs::VersionId;
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
+use leviathan_v2::leviathan::structs::VersionId;
 use leviathan_v2::my_trait::leviathan_trait::CompiledContract;
-use std::time::Instant;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::time::Instant;
 
 // RSA生成用のクレート（main.rs で使用しているものと同じ）
+use rand::rngs::OsRng;
 use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15::Pkcs1v15Sign, traits::PublicKeyParts};
 use sha2::Sha256;
-use rand::rngs::OsRng;
 
 #[test]
 fn benchmark_rsa_precompile() {
@@ -71,7 +71,9 @@ fn benchmark_rsa_precompile() {
 
     let csv_line = format!(
         "PayloadLen:{},Status:{},Time_us:{}\n",
-        payload.len(), status, elapsed_us
+        payload.len(),
+        status,
+        elapsed_us
     );
     file.write_all(csv_line.as_bytes()).unwrap();
 
@@ -80,4 +82,3 @@ fn benchmark_rsa_precompile() {
     println!("   Execution Time: {} us", elapsed_us);
     println!("   Status       : {}", status);
 }
-

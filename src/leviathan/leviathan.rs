@@ -470,4 +470,3 @@ impl TransactionExecution for LEVIATHAN {
         }
     }
 }
-
