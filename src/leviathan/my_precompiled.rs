@@ -16,6 +16,8 @@ use ark_groth16::VerifyingKey;
 use ark_serialize::CanonicalDeserialize;
 use ark_snark::SNARK;
 
+const WORD_SIZE: usize = 32;
+
 
 impl MCC for LEVIATHAN {
 
@@ -86,32 +88,35 @@ impl MCC for LEVIATHAN {
             out
         };
         //検証キーを取得する
-            //要件確認1
-        if data.is_empty() {
+        if data.is_empty() {    //要件確認1
             tracing::warn!("[my_groth16] 検証キーの取得でエラー（データ長が0)");
             return Err((U256::ZERO, None));
         }
-            //key長を取得する
-        let mut key_len_bytes = get_padded_data(0,32);
+        //key長を取得する
+        let mut key_len_bytes = get_padded_data(0,WORD_SIZE);
         let key_len_u256 = U256::from_be_slice(&key_len_bytes);
-        let Ok(key_len) = usize::try_from(key_len_u256) else {
+        let Ok(key_len) = usize::try_from(key_len_u256) else {//要件確認2
             tracing::warn!("[my_groth16] 検証キーの取得でエラー（U256→ usizeで失敗)");
             return Err((U256::ZERO, None));
         };
-        if key_len > data.len() {
+        if key_len > data.len() {//要件確認3
             tracing::warn!("[my_groth16] 検証キーの取得でエラー（kye_lenがdata長を超えている)");
             return Err((U256::ZERO, None));
         };
-            //key_bytesを取得する
+        //key_bytesを取得する
         let mut key_bytes = get_padded_data(32,key_len);
 
+        //境界を定義
+        let proof_offset = 32 + key_len;
+        let pub_input_offset = proof_offset + 256;
+
         // 公開入力を抽出
-        let mut input_data = get_padded_data(288+key_len, data.len()-(288 + key_len));
+        let mut input_data = get_padded_data(pub_input_offset, data.len() - pub_input_offset);
             //proofの検証を行う
-        if input_data.len().rem(32) != 0 {
+        if input_data.len().rem(WORD_SIZE) != 0 {
             return Err((U256::ZERO, None));
         }
-        let k = input_data.len() / 32;
+        let k = input_data.len() / WORD_SIZE;
 
         //ガスチェック!!(とりあえず）
         let used_gas = U256::from(34000)
@@ -125,9 +130,10 @@ impl MCC for LEVIATHAN {
 
 
         //Proofを取得する．
-        let mut zk_data = get_padded_data(32+key_len, 256);
+        let proof_size = 256;
+        let mut zk_data = get_padded_data(proof_offset, proof_size);
             //proofの検証を行う
-        if zk_data.len().rem(32) != 0  || zk_data.len() != 256{
+        if zk_data.len().rem(WORD_SIZE) != 0  || zk_data.len() != proof_size{
             return Err((U256::ZERO, None));
         }
         //G1 pointを作成
@@ -222,17 +228,16 @@ impl MCC for LEVIATHAN {
         // 公開入力を抽出
         let mut public_inputs = Vec::new();
         let mut i: usize = 0;
-        let base = 288 + key_len;
         while i < k {
-            let offset = i * 32;
-            let input_bytes = get_padded_data(offset + base, 32);
+            let offset = i * WORD_SIZE;
+            let input_bytes = get_padded_data(offset + pub_input_offset, WORD_SIZE);
             let fr = Fr::from_be_bytes_mod_order(&input_bytes);
             public_inputs.push(fr);
             i += 1;
         }
         
-        let is_valid = ark_groth16::Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs).is_ok();
-        let mut output = vec![0u8; 32];
+        let is_valid = ark_groth16::Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs).unwrap_or(false);
+        let mut output = vec![0u8; WORD_SIZE];
         if is_valid {
             output[31] = 1;
         }
