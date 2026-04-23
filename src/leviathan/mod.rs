@@ -2,6 +2,7 @@ pub mod call;
 pub mod create;
 pub mod leviathan;
 pub mod mpt_method;
+pub mod my_precompiled;
 pub mod precompile;
 pub mod roleback;
 pub mod structs;

@@ -1,7 +1,7 @@
 use alloy_primitives::{U256, hex, keccak256};
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::VersionId;
-use leviathan_v2::my_trait::leviathan_trait::CompiledContract;
+use leviathan_v2::my_trait::leviathan_trait::MCC;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::time::Instant;
