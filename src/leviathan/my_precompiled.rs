@@ -31,11 +31,6 @@ impl MCC for LEVIATHAN {
             out
         };
 
-        //データは十分か
-        if data.len() < 544 {
-            tracing::warn!("[my_rsa] 入力データが不適切");
-            return Err((U256::ZERO, None));
-        }
 
         //使用ガス量を計算
         let gas_required = U256::from(168000);
