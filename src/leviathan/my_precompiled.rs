@@ -11,9 +11,9 @@ use ark_ff::{BigInteger, One, PrimeField, Zero};
 use ark_groth16::VerifyingKey;
 use ark_serialize::CanonicalDeserialize;
 use ark_snark::SNARK;
+use light_poseidon::{Poseidon, PoseidonHasher};
 use num_bigint::BigUint;
 use rsa::{Pkcs1v15Sign, RsaPublicKey};
-use light_poseidon::{Poseidon, PoseidonHasher};
 use sha2::{Digest as _, Sha256};
 use std::ops::Rem;
 
@@ -255,7 +255,7 @@ impl MCC for LEVIATHAN {
         data: &[u8],
         version: VersionId,
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
-        let input_datas_len = data.len() -1;
+        let input_datas_len = data.len() - 1;
         //検証キーを取得する
         if data.is_empty() || input_datas_len.rem(WORD_SIZE) != 0 {
             //要件確認1
@@ -268,7 +268,7 @@ impl MCC for LEVIATHAN {
             tracing::warn!("[my_poseidon] 要素数が不適切");
             return Err((U256::ZERO, None));
         }
-        
+
         //ガス（暫定)
         let used_gas = U256::from(30000).saturating_add(U256::from(5000) * U256::from(k));
         if gas < used_gas {
@@ -276,14 +276,14 @@ impl MCC for LEVIATHAN {
         }
         let return_gas = gas - used_gas;
 
-        let mut input_datas = vec![0u8;input_datas_len];
+        let mut input_datas = vec![0u8; input_datas_len];
         input_datas.copy_from_slice(&data[1..]);
         // 公開入力を抽出
         let mut elements = Vec::new();
         let mut i: usize = 0;
         while i < k {
             let offset = i * WORD_SIZE;
-            let mut tmp = vec![0u8;32];
+            let mut tmp = vec![0u8; 32];
             tmp.copy_from_slice(&input_datas[offset..offset + WORD_SIZE]);
             let tmp_u256 = U256::from_be_slice(&tmp);
             if tmp_u256 >= PRIME_P {
@@ -319,6 +319,4 @@ impl MCC for LEVIATHAN {
 
         Ok((return_gas, output))
     }
-
-
 }
