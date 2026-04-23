@@ -100,7 +100,7 @@ impl CompiledContract for LEVIATHAN {
         // 1. 必要ガスの計算: 60 + 12 * ceil(|data| / 32)
         // 整数演算での切り上げ: (len + 31) / 32
         let word_count = data.len().div_ceil(32);
-        let gas_required = U256::from(60) + U256::from(12 * word_count);
+        let gas_required = U256::from(60) + (U256::from(12) * U256::from(word_count));
 
         // 2. Out-of-Gas (OOG) 検証
         if gas < gas_required {
@@ -125,7 +125,7 @@ impl CompiledContract for LEVIATHAN {
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 600 + 120 * ceil(|data| / 32) [cite: 1388]
         let word_count = data.len().div_ceil(32);
-        let gas_required = U256::from(600) + U256::from(120 * word_count);
+        let gas_required = U256::from(600) + (U256::from(120) * U256::from(word_count));
 
         // 2. Out-of-Gas (OOG) 検証
         if gas < gas_required {
@@ -158,7 +158,7 @@ impl CompiledContract for LEVIATHAN {
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 15 + 3 * ceil(|data| / 32) [cite: 1397]
         let word_count = data.len().div_ceil(32);
-        let gas_required = U256::from(15) + U256::from(3 * word_count);
+        let gas_required = U256::from(15) + (U256::from(3) * U256::from(word_count));
 
         // 2. Out-of-Gas (OOG) 検証
         if gas < gas_required {
