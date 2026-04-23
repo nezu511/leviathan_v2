@@ -165,4 +165,10 @@ pub trait MCC {
         data: &[u8],
         version: VersionId,
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
+    fn my_poseidon(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 }

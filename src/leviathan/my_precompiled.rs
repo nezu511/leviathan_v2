@@ -13,6 +13,7 @@ use ark_serialize::CanonicalDeserialize;
 use ark_snark::SNARK;
 use num_bigint::BigUint;
 use rsa::{Pkcs1v15Sign, RsaPublicKey};
+use light_poseidon::{Poseidon, PoseidonHasher};
 use sha2::{Digest as _, Sha256};
 use std::ops::Rem;
 
@@ -248,4 +249,76 @@ impl MCC for LEVIATHAN {
 
         Ok((return_gas, output))
     }
+
+    fn my_poseidon(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
+        let input_datas_len = data.len() -1;
+        //検証キーを取得する
+        if data.is_empty() || input_datas_len.rem(WORD_SIZE) != 0 {
+            //要件確認1
+            tracing::warn!("[my_poseidon] 入力データが不適切");
+            return Err((U256::ZERO, None));
+        }
+        let k = input_datas_len / WORD_SIZE;
+        //light-poseidonがサポートする範囲かどうか
+        if k < 1 || k > 12 {
+            tracing::warn!("[my_poseidon] 要素数が不適切");
+            return Err((U256::ZERO, None));
+        }
+        
+        //ガス（暫定)
+        let used_gas = U256::from(30000).saturating_add(U256::from(5000) * U256::from(k));
+        if gas < used_gas {
+            return Err((U256::ZERO, None));
+        }
+        let return_gas = gas - used_gas;
+
+        let mut input_datas = vec![0u8;input_datas_len];
+        input_datas.copy_from_slice(&data[1..]);
+        // 公開入力を抽出
+        let mut elements = Vec::new();
+        let mut i: usize = 0;
+        while i < k {
+            let offset = i * WORD_SIZE;
+            let mut tmp = vec![0u8;32];
+            tmp.copy_from_slice(&input_datas[offset..offset + WORD_SIZE]);
+            let tmp_u256 = U256::from_be_slice(&tmp);
+            if tmp_u256 >= PRIME_P {
+                tracing::warn!("[my_poseidon] 要素が位数P以上の値");
+                return Err((U256::ZERO, None));
+            }
+            let fr = Fr::from_be_bytes_mod_order(&tmp);
+            elements.push(fr);
+            i += 1;
+        }
+
+        let catalog_id = data[0];
+
+        let mut poseidon = match catalog_id {
+            0x01 => Poseidon::<Fr>::new_circom(k).unwrap(),
+            _ => {
+                tracing::warn!("[my_poseidon] 未知のカタログID");
+                return Err((U256::ZERO, None));
+            }
+        };
+
+        // 5. ハッシュ計算を実行！
+        let Ok(hash_result) = poseidon.hash(&elements) else {
+            tracing::warn!("[my_poseidon] hash計算エラー");
+            return Err((U256::ZERO, None));
+        };
+
+        // 6. 出力フォーマットの調整 (Fr を 32バイトのBig Endianに変換)
+        let mut output = vec![0u8; WORD_SIZE];
+        let result_bytes = hash_result.into_bigint().to_bytes_be();
+        // ゼロパディングして右詰めで配置
+        output[WORD_SIZE - result_bytes.len()..].copy_from_slice(&result_bytes);
+
+        Ok((return_gas, output))
+    }
+
+
 }
