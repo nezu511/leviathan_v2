@@ -8,7 +8,7 @@ use crate::leviathan::structs::{
 };
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
-use crate::my_trait::leviathan_trait::{CompiledContract, MessageCall, RoleBack, State, MCC};
+use crate::my_trait::leviathan_trait::{CompiledContract, MCC, MessageCall, RoleBack, State};
 use alloy_primitives::{Address, U256};
 use sha3::Digest;
 

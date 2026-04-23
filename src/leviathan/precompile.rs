@@ -567,6 +567,4 @@ impl CompiledContract for LEVIATHAN {
 
         Ok((return_gas, output))
     }
-
-
 }

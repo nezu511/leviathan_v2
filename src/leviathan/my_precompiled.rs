@@ -1,26 +1,24 @@
 #![allow(dead_code)]
 use crate::leviathan::leviathan::LEVIATHAN;
+use crate::leviathan::precompile::PRIME_P;
 use crate::leviathan::structs::VersionId;
 use crate::my_trait::leviathan_trait::MCC;
 use alloy_primitives::{U256, uint};
-use rsa::{Pkcs1v15Sign, RsaPublicKey};
 use ark_bn254::{Bn254, Fq, Fq2, Fr, G1Affine, G2Affine};
 use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, One, PrimeField, Zero};
-use num_bigint::BigUint;
-use sha2::{Digest as _, Sha256};
-use std::ops::Rem;
-use crate::leviathan::precompile::PRIME_P;
 use ark_groth16::VerifyingKey;
 use ark_serialize::CanonicalDeserialize;
 use ark_snark::SNARK;
+use num_bigint::BigUint;
+use rsa::{Pkcs1v15Sign, RsaPublicKey};
+use sha2::{Digest as _, Sha256};
+use std::ops::Rem;
 
 const WORD_SIZE: usize = 32;
 
-
 impl MCC for LEVIATHAN {
-
     fn my_rsa(
         gas: U256,
         data: &[u8],
@@ -35,7 +33,6 @@ impl MCC for LEVIATHAN {
             }
             out
         };
-
 
         //使用ガス量を計算
         let gas_required = U256::from(168000);
@@ -89,31 +86,37 @@ impl MCC for LEVIATHAN {
             out
         };
         //検証キーを取得する
-        if data.is_empty() {    //要件確認1
+        if data.is_empty() {
+            //要件確認1
             tracing::warn!("[my_groth16] 検証キーの取得でエラー（データ長が0)");
             return Err((U256::ZERO, None));
         }
         //key長を取得する
-        let mut key_len_bytes = get_padded_data(0,WORD_SIZE);
+        let mut key_len_bytes = get_padded_data(0, WORD_SIZE);
         let key_len_u256 = U256::from_be_slice(&key_len_bytes);
-        let Ok(key_len) = usize::try_from(key_len_u256) else {//要件確認2
+        let Ok(key_len) = usize::try_from(key_len_u256) else {
+            //要件確認2
             tracing::warn!("[my_groth16] 検証キーの取得でエラー（U256→ usizeで失敗)");
             return Err((U256::ZERO, None));
         };
-        if key_len > data.len() {//要件確認3
+        if key_len > data.len() {
+            //要件確認3
             tracing::warn!("[my_groth16] 検証キーの取得でエラー（kye_lenがdata長を超えている)");
             return Err((U256::ZERO, None));
         };
         //key_bytesを取得する
-        let mut key_bytes = get_padded_data(32,key_len);
+        let mut key_bytes = get_padded_data(32, key_len);
 
         //境界を定義
         let proof_offset = 32 + key_len;
         let pub_input_offset = proof_offset + 256;
 
         // 公開入力を抽出
-        let mut input_data = get_padded_data(pub_input_offset, data.len().saturating_sub(pub_input_offset));
-            //proofの検証を行う
+        let mut input_data = get_padded_data(
+            pub_input_offset,
+            data.len().saturating_sub(pub_input_offset),
+        );
+        //proofの検証を行う
         if input_data.len().rem(WORD_SIZE) != 0 {
             return Err((U256::ZERO, None));
         }
@@ -129,12 +132,11 @@ impl MCC for LEVIATHAN {
         }
         let return_gas = gas - used_gas;
 
-
         //Proofを取得する．
         let proof_size = 256;
         let mut zk_data = get_padded_data(proof_offset, proof_size);
-            //proofの検証を行う
-        if zk_data.len().rem(WORD_SIZE) != 0  || zk_data.len() != proof_size{
+        //proofの検証を行う
+        if zk_data.len().rem(WORD_SIZE) != 0 || zk_data.len() != proof_size {
             return Err((U256::ZERO, None));
         }
         //G1 pointを作成
@@ -236,17 +238,14 @@ impl MCC for LEVIATHAN {
             public_inputs.push(fr);
             i += 1;
         }
-        
-        let is_valid = ark_groth16::Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs).unwrap_or(false);
+
+        let is_valid = ark_groth16::Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs)
+            .unwrap_or(false);
         let mut output = vec![0u8; WORD_SIZE];
         if is_valid {
             output[31] = 1;
         }
 
         Ok((return_gas, output))
-
     }
-            
-
-
 }
