@@ -99,7 +99,7 @@ impl CompiledContract for LEVIATHAN {
         // 1. 必要ガスの計算: 60 + 12 * ceil(|data| / 32)
         // 整数演算での切り上げ: (len + 31) / 32
         let word_count = data.len().div_ceil(32);
-        let gas_required = U256::from(60) + U256::from(12 * word_count);
+        let gas_required = U256::from(60) + (U256::from(12) * U256::from(word_count));
 
         // 2. Out-of-Gas (OOG) 検証
         if gas < gas_required {
@@ -124,7 +124,7 @@ impl CompiledContract for LEVIATHAN {
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 600 + 120 * ceil(|data| / 32) [cite: 1388]
         let word_count = data.len().div_ceil(32);
-        let gas_required = U256::from(600) + U256::from(120 * word_count);
+        let gas_required = U256::from(600) + (U256::from(120) * U256::from(word_count));
 
         // 2. Out-of-Gas (OOG) 検証
         if gas < gas_required {
@@ -157,7 +157,7 @@ impl CompiledContract for LEVIATHAN {
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         // 1. 必要ガスの計算: 15 + 3 * ceil(|data| / 32) [cite: 1397]
         let word_count = data.len().div_ceil(32);
-        let gas_required = U256::from(15) + U256::from(3 * word_count);
+        let gas_required = U256::from(15) + (U256::from(3) * U256::from(word_count));
 
         // 2. Out-of-Gas (OOG) 検証
         if gas < gas_required {
@@ -223,8 +223,8 @@ impl CompiledContract for LEVIATHAN {
         //val2
         let val2 = if e_len <= U256::from(32) {
             let e_len_usize = e_len.try_into().unwrap_or(0);
-            let b_len_usize = e_len.try_into().unwrap_or(usize::MAX);
-            let e_bytes = get_padded_data(96 + b_len_usize, e_len_usize);
+            let b_len_usize = b_len.try_into().unwrap_or(usize::MAX);
+            let e_bytes = get_padded_data(b_len_usize.saturating_add(96), e_len_usize);
             let e_val_u256 = U256::from_be_slice(&e_bytes);
             if e_val_u256.is_zero() {
                 U256::from(1)
@@ -233,8 +233,8 @@ impl CompiledContract for LEVIATHAN {
             }
         } else {
             let _e_len_usize = e_len.try_into().unwrap_or(0);
-            let b_len_usize = e_len.try_into().unwrap_or(usize::MAX);
-            let e_top_bytes = get_padded_data(96 + b_len_usize, 32);
+            let b_len_usize = b_len.try_into().unwrap_or(usize::MAX);
+            let e_top_bytes = get_padded_data(b_len_usize.saturating_add(96), 32);
             let e_top = U256::from_be_slice(&e_top_bytes);
             let rest = e_len - U256::from(32);
 
