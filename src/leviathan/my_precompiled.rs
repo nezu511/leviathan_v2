@@ -12,6 +12,9 @@ use num_bigint::BigUint;
 use sha2::{Digest as _, Sha256};
 use std::ops::Rem;
 use crate::leviathan::precompile::PRIME_P;
+use ark_groth16::VerifyingKey;
+use ark_serialize::CanonicalDeserialize;
+use ark_snark::SNARK;
 
 
 impl MCC for LEVIATHAN {
@@ -84,7 +87,7 @@ impl MCC for LEVIATHAN {
         };
         //検証キーを取得する
             //要件確認1
-        if !data.len() > 0 {
+        if data.is_empty() {
             tracing::warn!("[my_groth16] 検証キーの取得でエラー（データ長が0)");
             return Err((U256::ZERO, None));
         }
@@ -99,21 +102,40 @@ impl MCC for LEVIATHAN {
             tracing::warn!("[my_groth16] 検証キーの取得でエラー（kye_lenがdata長を超えている)");
             return Err((U256::ZERO, None));
         };
-            //keyを取得する
+            //key_bytesを取得する
         let mut key_bytes = get_padded_data(32,key_len);
 
-        //Proofを取得する．
-        let mut proof_data = get_padded_data(32+key_len, 256);
+        // 公開入力を抽出
+        let mut input_data = get_padded_data(288+key_len, data.len()-(288 + key_len));
             //proofの検証を行う
-        if proof_data.len().rem(32) != 0  || proof_data.len() < 256{
+        if input_data.len().rem(32) != 0 {
+            return Err((U256::ZERO, None));
+        }
+        let k = input_data.len() / 32;
+
+        //ガスチェック!!(とりあえず）
+        let used_gas = U256::from(34000)
+            .saturating_mul(U256::from(k))
+            .saturating_add(U256::from(45000));
+
+        if gas < used_gas {
+            return Err((U256::ZERO, None)); // Out of Gas
+        }
+        let return_gas = gas - used_gas;
+
+
+        //Proofを取得する．
+        let mut zk_data = get_padded_data(32+key_len, 256);
+            //proofの検証を行う
+        if zk_data.len().rem(32) != 0  || zk_data.len() != 256{
             return Err((U256::ZERO, None));
         }
         //G1 pointを作成
         let get_g1_point = |offset: usize| -> Result<G1Affine, ()> {
-            let g1_x = Fq::from_be_bytes_mod_order(&proof_data[offset..offset + 32]);
-            let g1_y = Fq::from_be_bytes_mod_order(&proof_data[offset + 32..offset + 64]);
-            let x = U256::from_be_slice(&proof_data[offset..offset + 32]);
-            let y = U256::from_be_slice(&proof_data[offset + 32..offset + 64]);
+            let g1_x = Fq::from_be_bytes_mod_order(&zk_data[offset..offset + 32]);
+            let g1_y = Fq::from_be_bytes_mod_order(&zk_data[offset + 32..offset + 64]);
+            let x = U256::from_be_slice(&zk_data[offset..offset + 32]);
+            let y = U256::from_be_slice(&zk_data[offset + 32..offset + 64]);
             //バリデーション(G1)
             // 1. フィールドサイズの検証
             if x >= PRIME_P || y >= PRIME_P {
@@ -135,14 +157,14 @@ impl MCC for LEVIATHAN {
 
         //G2の抽出
         let get_g2_point = || -> Result<G2Affine, ()> {
-            let x_im = Fq::from_be_bytes_mod_order(&proof_data[64..96]);
-            let x_re = Fq::from_be_bytes_mod_order(&proof_data[96..128]);
-            let y_im = Fq::from_be_bytes_mod_order(&proof_data[128..160]);
-            let y_re = Fq::from_be_bytes_mod_order(&proof_data[160..192]);
-            let x_im_u256 = U256::from_be_slice(&proof_data[64..96]);
-            let x_re_u256 = U256::from_be_slice(&proof_data[96..128]);
-            let y_im_u256 = U256::from_be_slice(&proof_data[128..160]);
-            let y_re_u256 = U256::from_be_slice(&proof_data[160..192]);
+            let x_im = Fq::from_be_bytes_mod_order(&zk_data[64..96]);
+            let x_re = Fq::from_be_bytes_mod_order(&zk_data[96..128]);
+            let y_im = Fq::from_be_bytes_mod_order(&zk_data[128..160]);
+            let y_re = Fq::from_be_bytes_mod_order(&zk_data[160..192]);
+            let x_im_u256 = U256::from_be_slice(&zk_data[64..96]);
+            let x_re_u256 = U256::from_be_slice(&zk_data[96..128]);
+            let y_im_u256 = U256::from_be_slice(&zk_data[128..160]);
+            let y_re_u256 = U256::from_be_slice(&zk_data[160..192]);
 
             // Arkworksの Fq2::new は (実部, 虚部) の順に受け取る
             let fq2_x = Fq2::new(x_re, x_im);
@@ -182,7 +204,41 @@ impl MCC for LEVIATHAN {
         let Ok(point_c) = get_g1_point(192) else {
             return Err((U256::ZERO, None));
         };
-        Ok((U256::ZERO, Vec::new()))
+
+        //proofを作成
+        let proof = ark_groth16::Proof {
+            a: point_a,
+            b: point_b,
+            c: point_c,
+        };
+
+        //VerifiyingKey構造体を作成
+        let Ok(vk) = VerifyingKey::<Bn254>::deserialize_uncompressed(&*key_bytes) else {
+            tracing::warn!("[my_groth16] VKのデシリアライズに失敗");
+            return Err((U256::ZERO, None));
+        };
+        let pvk = ark_groth16::prepare_verifying_key(&vk);
+
+        // 公開入力を抽出
+        let mut public_inputs = Vec::new();
+        let mut i: usize = 0;
+        let base = 288 + key_len;
+        while i < k {
+            let offset = i * 32;
+            let input_bytes = get_padded_data(offset + base, 32);
+            let fr = Fr::from_be_bytes_mod_order(&input_bytes);
+            public_inputs.push(fr);
+            i += 1;
+        }
+        
+        let is_valid = ark_groth16::Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs).is_ok();
+        let mut output = vec![0u8; 32];
+        if is_valid {
+            output[31] = 1;
+        }
+
+        Ok((return_gas, output))
+
     }
             
 
