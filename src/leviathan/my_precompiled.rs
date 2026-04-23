@@ -49,7 +49,8 @@ impl MCC for LEVIATHAN {
         let signature_byte = get_padded_data(0, 256);
         let modulus_byte = get_padded_data(256, 256);
         let message_byte = get_padded_data(512, 32);
-        let exponent_byte = get_padded_data(544, data.len() - 544);
+        let exp_len = data.len().saturating_sub(544);
+        let exponent_byte = get_padded_data(544, exp_len);
 
         //BigUintへの変換
         let n = rsa::BigUint::from_bytes_be(&modulus_byte);
@@ -111,7 +112,7 @@ impl MCC for LEVIATHAN {
         let pub_input_offset = proof_offset + 256;
 
         // 公開入力を抽出
-        let mut input_data = get_padded_data(pub_input_offset, data.len() - pub_input_offset);
+        let mut input_data = get_padded_data(pub_input_offset, data.len().saturating_sub(pub_input_offset));
             //proofの検証を行う
         if input_data.len().rem(WORD_SIZE) != 0 {
             return Err((U256::ZERO, None));
