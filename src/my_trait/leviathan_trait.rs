@@ -160,5 +160,11 @@ pub trait MCC { //MyCompiledContract
         data: &[u8],
         version: VersionId,
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
+
+    fn my_groth16(
+        gas: U256,
+        data: &[u8],
+        version: VersionId,
+    ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)>;
 }
 
