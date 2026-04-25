@@ -42,8 +42,6 @@ fn main() {
 
     let mut sender_acc = Account::new();
     sender_acc.balance = uint!(100_000_000_000_000_000_000_U256); // 100 ETH
-
-    // 自作した完璧な init_mpt_account メソッドで安全に状態を構築
     state.init_mpt_account(&sender_addr, &sender_acc);
 
     // ---------------------------------------------------------
