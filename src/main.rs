@@ -10,63 +10,14 @@ use bytes::BytesMut;
 use rand::rngs::OsRng;
 use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15::Pkcs1v15Sign, traits::PublicKeyParts};
 use secp256k1::{Message, Secp256k1, SecretKey};
-use sha2::{Digest as _, Sha256};
+use sha2::Sha256;
 
 use leviathan::leviathan::LEVIATHAN;
 use leviathan::structs::{BlockHeader, Transaction, VersionId};
 use leviathan::world_state::{Account, WorldState};
 use my_trait::leviathan_trait::{State, TransactionExecution};
+use leviathan_v2::solidity_utils::sign_tx_properly;
 
-/// イエローペーパー Appendix F に基づくトランザクション署名関数
-fn sign_tx_properly(
-    nonce: U256,
-    gas_price: U256,
-    gas_limit: U256,
-    to: Option<Address>,
-    value: U256,
-    data: &[u8],
-    secret_key: &SecretKey,
-) -> (U256, U256, U256) {
-    let mut payload_length = 0;
-    payload_length += nonce.length();
-    payload_length += gas_price.length();
-    payload_length += gas_limit.length();
-    let to_slice = match &to {
-        Some(addr) => addr.0.as_slice(),
-        None => &[],
-    };
-    payload_length += to_slice.length();
-    payload_length += value.length();
-    payload_length += data.length();
-
-    let mut out = BytesMut::with_capacity(payload_length + 10);
-    Header {
-        list: true,
-        payload_length,
-    }
-    .encode(&mut out);
-
-    nonce.encode(&mut out);
-    gas_price.encode(&mut out);
-    gas_limit.encode(&mut out);
-    to_slice.encode(&mut out);
-    value.encode(&mut out);
-    data.encode(&mut out);
-
-    let rlp_encoded = out.freeze();
-    let hash = keccak256(&rlp_encoded);
-
-    let secp = Secp256k1::new();
-    let message = Message::from_digest_slice(&hash.0).unwrap();
-    let sig = secp.sign_ecdsa_recoverable(message, secret_key);
-    let (recovery_id, sig_bytes) = sig.serialize_compact();
-
-    let r = U256::from_be_slice(&sig_bytes[0..32]);
-    let s = U256::from_be_slice(&sig_bytes[32..64]);
-    let v = U256::from(i32::from(recovery_id) as u64 + 27);
-
-    (v, r, s)
-}
 
 fn main() {
     // ログレベルを指定して詳細な動きを追えるようにします
@@ -95,8 +46,6 @@ fn main() {
 
     // 自作した完璧な init_mpt_account メソッドで安全に状態を構築
     state.init_mpt_account(&sender_addr, &sender_acc);
-
-    // （※Solidityのデプロイ処理は不要になったので削除しました！）
 
     // ---------------------------------------------------------
     // 2. RSAデータの準備 (マイナンバーシミュレーション)
@@ -165,12 +114,12 @@ fn main() {
         h_basefee: U256::ZERO,
     };
 
-    println!("🚀 Starting Direct EVM Execution to RSA Precompile (0x0a)...");
+    println!(" Starting Direct EVM Execution to RSA Precompile (0x0a)...");
     match leviathan.execution(&mut state, transaction, &block) {
         Ok((gas, _)) => println!(
-            "✅ Success! Precompile verified the signature. Remaining Gas: {}",
+            " Success! Precompile verified the signature. Remaining Gas: {}",
             gas
         ),
-        Err((gas, _)) => println!("❌ Failed. Precompile call reverted. Gas consumed: {}", gas),
+        Err((gas, _)) => println!(" Failed. Precompile call reverted. Gas consumed: {}", gas),
     }
 }
