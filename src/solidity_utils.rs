@@ -1,5 +1,5 @@
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
+use crate::leviathan::structs::{BlockHeader, Log, Transaction, VersionId};
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::leviathan_trait::{State, TransactionExecution};
 
@@ -162,4 +162,69 @@ pub fn deploy_contract(
     let contract_address = Address::new(tmp);
 
     return Ok(contract_address);
+}
+
+// src/solidity_utils.rs
+
+pub fn call_contract(
+    leviathan: &mut LEVIATHAN,
+    state: &mut WorldState,
+    sender_secretkey: &SecretKey,
+    contract_addr: Address,
+    data: Vec<u8>,
+    eth: U256,
+    gas_price: U256,
+    gas_limit: U256,
+) -> Result<Vec<Log>, ()> {
+    // 1. 送信者アドレスとNonce取得
+    let secp = Secp256k1::new();
+    let public_key = secp256k1::PublicKey::from_secret_key(&secp, sender_secretkey);
+    let pub_hash = keccak256(&public_key.serialize_uncompressed()[1..65]);
+    let sender_addr = Address::from_slice(&pub_hash[12..32]);
+    let sender_nonce = state.get_nonce(&sender_addr).unwrap_or(0);
+
+    // 2. 署名とトランザクション構築
+    let (v, r, s) = sign_tx_properly(
+        U256::from(sender_nonce),
+        gas_price,
+        gas_limit,
+        Some(contract_addr),
+        eth,
+        &data,
+        sender_secretkey,
+    );
+
+    let transaction = Transaction {
+        data,
+        t_to: Some(contract_addr),
+        t_gas_limit: gas_limit,
+        t_price: gas_price,
+        t_value: eth,
+        t_nonce: sender_nonce as usize,
+        t_w: v,
+        t_r: r,
+        t_s: s,
+    };
+
+    // 3. ブロックヘッダー
+    let block = BlockHeader {
+        h_beneficiary: Address::repeat_byte(0xfe),
+        h_timestamp: uint!(1600000000_U256),
+        h_number: uint!(1_U256),
+        h_prevrandao: U256::ZERO,
+        h_gaslimit: uint!(30_000_000_U256),
+        h_basefee: U256::ZERO,
+    };
+
+    // 4. 実行
+    match leviathan.execution(state, transaction, &block) {
+        Ok((remaining_gas, output)) => {
+            println!(" Call Success! Remaining Gas: {}", remaining_gas);
+            Ok(output) // コントラクトからの戻り値を返す
+        }
+        Err(_) => {
+            println!(" Call Failed.");
+            Err(())
+        }
+    }
 }
