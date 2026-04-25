@@ -4,9 +4,9 @@ use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::leviathan_trait::{State, TransactionExecution};
 
 use alloy_primitives::{Address, Bytes, U256, hex, keccak256, uint};
-use secp256k1::{Message, Secp256k1, SecretKey};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
+use secp256k1::{Message, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
 use std::fs;
@@ -62,10 +62,17 @@ pub fn sign_tx_properly(
     (v, r, s)
 }
 
-pub fn init_leviathan() {
-}
+pub fn init_leviathan() {}
 
-pub fn deploy_contract(leviathan: &mut LEVIATHAN, state: &mut WorldState, sender_secretkey: &SecretKey, file_path: &str, eth: U256, gas_price: U256, gas_limit: U256) -> Result<Address, ()> {
+pub fn deploy_contract(
+    leviathan: &mut LEVIATHAN,
+    state: &mut WorldState,
+    sender_secretkey: &SecretKey,
+    file_path: &str,
+    eth: U256,
+    gas_price: U256,
+    gas_limit: U256,
+) -> Result<Address, ()> {
     //1. ファイルからバイトコードを取得
     let Ok(hex_data) = fs::read_to_string(file_path) else {
         tracing::warn!("[deploy_contract] ファイル読み込みエラー");
@@ -86,7 +93,7 @@ pub fn deploy_contract(leviathan: &mut LEVIATHAN, state: &mut WorldState, sender
     let sender_addr = Address::from_slice(&pub_hash[12..32]);
 
     //4. transactionを構築
-    let sender_nonce = state.get_nonce(&sender_addr).unwrap_or(0);;
+    let sender_nonce = state.get_nonce(&sender_addr).unwrap_or(0);
 
     let (v, r, s) = sign_tx_properly(
         U256::from(sender_nonce),
@@ -95,7 +102,7 @@ pub fn deploy_contract(leviathan: &mut LEVIATHAN, state: &mut WorldState, sender
         None,
         eth,
         &init_code,
-        &sender_secretkey
+        &sender_secretkey,
     );
 
     let transaction = Transaction {
@@ -109,7 +116,7 @@ pub fn deploy_contract(leviathan: &mut LEVIATHAN, state: &mut WorldState, sender
         t_r: r,
         t_s: s,
     };
-    
+
     //5. ブロックヘッダー構築
     let block = BlockHeader {
         h_beneficiary: Address::repeat_byte(0xfe),
@@ -125,24 +132,27 @@ pub fn deploy_contract(leviathan: &mut LEVIATHAN, state: &mut WorldState, sender
         println!(" Contract Creation Failed. ");
         return Err(());
     };
-    println!(" Success! Precompile verified the signature. Remaining Gas: {}",gas);
+    println!(
+        " Success! Precompile verified the signature. Remaining Gas: {}",
+        gas
+    );
 
     // 構築されたコントラクトのアドレスを計算
-        // 1. 各要素のRLPペイロード長を事前計算
+    // 1. 各要素のRLPペイロード長を事前計算
     let mut payload_length = 0;
     payload_length += sender_addr.0.as_slice().length();
     payload_length += sender_nonce.length();
-        // 2. 必要なメモリを一括で確保し、リストのヘッダーを書き込む
+    // 2. 必要なメモリを一括で確保し、リストのヘッダーを書き込む
     let mut out = BytesMut::with_capacity(payload_length + 10);
     Header {
         list: true,
         payload_length,
     }
     .encode(&mut out);
-        // 3. データを順次エンコード
+    // 3. データを順次エンコード
     sender_addr.0.as_slice().encode(&mut out);
     sender_nonce.encode(&mut out);
-        // 4. ハッシュ化の前準備として Vec<u8> に変換して返す
+    // 4. ハッシュ化の前準備として Vec<u8> に変換して返す
     let rlp_byte = out.to_vec();
     let mut hasher = Keccak256::new();
     hasher.update(&rlp_byte);
@@ -153,6 +163,3 @@ pub fn deploy_contract(leviathan: &mut LEVIATHAN, state: &mut WorldState, sender
 
     return Ok(contract_address);
 }
-
-
-

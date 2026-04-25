@@ -15,9 +15,8 @@ use sha2::Sha256;
 use leviathan::leviathan::LEVIATHAN;
 use leviathan::structs::{BlockHeader, Transaction, VersionId};
 use leviathan::world_state::{Account, WorldState};
-use my_trait::leviathan_trait::{State, TransactionExecution};
 use leviathan_v2::solidity_utils::sign_tx_properly;
-
+use my_trait::leviathan_trait::{State, TransactionExecution};
 
 fn main() {
     // ログレベルを指定して詳細な動きを追えるようにします
