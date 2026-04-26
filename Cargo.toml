@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 alloy-primitives = {version = "1.5.7", features = ["serde", "rlp"]}
+alloy-sol-types = "1.5.7"
 secp256k1 = {version = "0.31.1", features = ["recovery"]}
 sha3 = "0.10.8"
 # 以下の2行のバージョンを下げて、rsaエコシステム(digest 0.10)に合わせます
@@ -24,7 +25,6 @@ ark-ec = "0.5.0"
 eth_trie = "0.6.1"
 rsa = "0.9.10"
 rand = "0.8.5"
-alloy-sol-types = "0.7.0"
 ark-groth16 = "0.5.0"
 ark-snark = "0.5.0"
 ark-serialize = "0.5.0"

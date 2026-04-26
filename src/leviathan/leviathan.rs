@@ -17,6 +17,7 @@ pub struct LEVIATHAN {
     pub journal: Vec<Action>,
     pub substate_backup: BackupSubstate,
     pub version: VersionId,
+    pub return_data: Vec<u8>,
 }
 
 impl LEVIATHAN {
@@ -25,6 +26,7 @@ impl LEVIATHAN {
             journal: Vec::<Action>::new(),
             substate_backup: BackupSubstate::new(),
             version,
+            return_data: Vec::<u8>::new(),
         }
     }
 
@@ -41,6 +43,7 @@ impl TransactionExecution for LEVIATHAN {
         block_header: &BlockHeader,
     ) -> Result<(U256, Vec<Log>), (U256, Vec<Log>)> {
         tracing::info!("version: {:?}", self.version);
+        self.return_data = Vec::<u8>::new();
         //=======ステップ1===========
         //【初期ガスの計算】
         let base_gas = U256::from(21000); //基本料金
@@ -181,7 +184,9 @@ impl TransactionExecution for LEVIATHAN {
 
         //払い戻しガス
         match result {
-            Ok((gas, _, _)) => {
+            Ok((gas, return_data, _)) => {
+                //leviathanのreturn_dataを更新
+                self.return_data = return_data;
                 let used_gas = transaction.t_gas_limit.saturating_sub(gas);
                 let max_refund = if self.version < VersionId::London {
                     //返金の上限がフォークで異なる
@@ -334,7 +339,12 @@ impl TransactionExecution for LEVIATHAN {
 
                 Ok((final_billed_gas, substate.a_log.clone()))
             }
-            Err((gas, _, _)) => {
+            Err((gas, return_data, _)) => {
+                //leviathanのreturn_dataを更新
+                match return_data {
+                    Some(return_data) => self.return_data = return_data,
+                    None => self.return_data = Vec::<u8>::new(),
+                }
                 //送信者への返金
                 let reimburse = gas.saturating_mul(transaction.t_price);
                 if state.is_dead(self.version, &sender_address) {
