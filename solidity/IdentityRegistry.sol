@@ -62,24 +62,20 @@ contract IdentityRegistry {
         nextIndex += 1;
     }
 
-    // 🌟 追加: 現在のRootが有効かどうかを Voting.sol から確認するための関数
     function isValidRoot(bytes32 root) external view returns (bool) {
         return root == currentRoot;
     }
 
     // 2つの bytes32 を受け取り、Poseidonハッシュ化して 1つの bytes32 を返す
     function poseidon(bytes32 left, bytes32 right) internal view returns (bytes32) {
-        // 🌟 修正：Rustの要求通り、先頭にカタログID（1）を付与する！
         bytes memory payload = abi.encodePacked(uint8(1), left, right);
         bytes32 result;
 
         assembly {
-            // 🌟 修正：入力サイズを 65 に戻し、結果は 0x00 に保存する
             let success := staticcall(gas(), 0x0c, add(payload, 32), 65, 0x00, 32)
 
             if iszero(success) { revert(0, 0) }
 
-            // 🌟 これは前々回の修正通り大正解（メモリからの抽出）
             result := mload(0x00)
         }
         return result;

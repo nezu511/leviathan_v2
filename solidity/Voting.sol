@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// 🌟 追加：IdentityRegistryの関数を呼ぶためのインターフェース
 interface IIdentityRegistry {
     function isValidRoot(bytes32 root) external view returns (bool);
 }
 
 contract Voting {
     address public vkContract;
-    IIdentityRegistry public registry; // 🌟 追加：登録所のアドレスを保持
+    IIdentityRegistry public registry; 
     
     mapping(bytes32 => bool) public spentNullifiers;
     mapping(uint256 => uint256) public votes;
 
-    // 🌟 変更：コンストラクタで登録所のアドレスも受け取る
     constructor(address _vkContract, address _registryAddr) {
         vkContract = _vkContract;
         registry = IIdentityRegistry(_registryAddr);
@@ -25,7 +23,6 @@ contract Voting {
         bytes32 root,
         uint256 voteChoice
     ) external {
-        // 🌟 【最重要】公式名簿のRootと一致しなければ弾く！
         require(registry.isValidRoot(root), "Invalid Root: Voter not in the official registry");
 
         // 二重投票のチェック
