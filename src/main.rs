@@ -137,19 +137,26 @@ fn main() {
 
     println!("--- Step 3: Phase 2 - Anonymous ZK Voting ---");
 
-    // 🌟 1. VK (検証鍵) データのデプロイ
+// 🌟 1. VK データを「バイナリ」として読み込み、rawデプロイする
     println!("Deploying VK_Data...");
-    let vk_addr = deploy_contract(
+    
+    // std::fs::read を使って、生のバイト列として読み込む
+    let vk_init_code = std::fs::read("solidity/out/VK_Data.bin")
+        .expect("Failed to read binary VK_Data.bin");
+
+    // deploy_contract ではなく、deploy_contract_raw を使う
+    let vk_addr = leviathan_v2::solidity_utils::deploy_contract_raw(
         &mut leviathan,
         &mut state,
         &secret_key,
-        "solidity/out/VK_Data.bin",
+        vk_init_code, // 読み込んだバイナリをそのまま渡す
         U256::ZERO,
         gas_price,
         gas_limit,
     )
     .expect("VK Deployment failed");
 
+    println!("✅ VK_Data deployed at: {:?}", vk_addr);
     // 🌟 2. Voting コントラクトのデプロイ (引数として vk_addr を渡す)
     println!("Deploying Voting Contract...");
     // ⚠️ deploy_contract_raw や、コンストラクタ引数の結合が必要になります
@@ -194,16 +201,23 @@ fn main() {
     ).expect("ZK Vote Execution Failed");
 
     // 結果確認
-    if leviathan.return_data.len() >= 32 {
-        let success = leviathan.return_data[31] == 1;
-        println!("--- Result ---");
-        println!("ZK Proof Verification: {}", success);
-        if success {
-            println!("ALL SYSTEMS GO! Leviathan ZK-EVM is Alive!");
-        } else {
-            println!("Verification Returned False (Mathematical failure)");
-        }
-    } else {
-        println!("Reverted inside Solidity. EVM bypass failed.");
-    }
+    // main.rs の末尾付近に追加
+
+    println!("--- Final Check: Vote Count ---");
+    // 投票先の選択肢 (例: 1) の storage slot を計算して読み取る
+    // mapping(uint256 => uint256) votes は、Solidity の定義順で 1番目のスロット(index 1)にあるとします
+    let vote_choice = uint!(1_U256);
+
+    // bytes32(1) + bytes32(slot_index) の keccak256 がデータの保存場所
+    let mut storage_key_src = [0u8; 64];
+    storage_key_src[0..32].copy_from_slice(&vote_choice.to_be_bytes::<32>());
+    storage_key_src[32..64].copy_from_slice(&uint!(1_U256).to_be_bytes::<32>()); // votes mapping の slot は 1
+    let storage_key = keccak256(storage_key_src);
+
+    // storage_key を一度 U256 に変換し、参照を渡すようにします
+    let storage_key_u256: U256 = storage_key.into();
+    let vote_count = state.get_storage_value(&v_addr, &storage_key_u256).unwrap_or(U256::ZERO);
+
+    println!("Votes for choice 1: {:?}", vote_count);
+
 }
