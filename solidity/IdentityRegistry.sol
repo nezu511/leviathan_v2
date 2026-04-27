@@ -69,21 +69,19 @@ contract IdentityRegistry {
 
     // 2つの bytes32 を受け取り、Poseidonハッシュ化して 1つの bytes32 を返す
     function poseidon(bytes32 left, bytes32 right) internal view returns (bytes32) {
-        // 🌟 Rustプレコンパイルに合わせて、先頭に 0x01 (1バイト) を追加して合計65バイトにする
+        // 🌟 修正：Rustの要求通り、先頭にカタログID（1）を付与する！
         bytes memory payload = abi.encodePacked(uint8(1), left, right);
         bytes32 result;
 
         assembly {
-            // staticcall(gas, address, argsOffset, argsSize, retOffset, retSize)
-            // payload本体は32バイト目から始まるため、add(payload, 32) を指定。サイズは65バイト。
-            let success := staticcall(gas(), 0x0c, add(payload, 32), 65, result, 32)
+            // 🌟 修正：入力サイズを 65 に戻し、結果は 0x00 に保存する
+            let success := staticcall(gas(), 0x0c, add(payload, 32), 65, 0x00, 32)
 
-            // もしRust側でパニックやエラーが起きたらRevertする
-            if iszero(success) {
-                revert(0, 0)
-            }
+            if iszero(success) { revert(0, 0) }
+
+            // 🌟 これは前々回の修正通り大正解（メモリからの抽出）
+            result := mload(0x00)
         }
-
         return result;
     }
 }

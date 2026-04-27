@@ -37,7 +37,6 @@ sol! {
 // 選挙のメインストーリー（無人市役所の業務フロー）
 // =====================================================================
 #[test]
-#[test]
 fn test_election_e2e() {
     let _ = tracing_subscriber::fmt::init();
 
@@ -190,7 +189,7 @@ fn check_election_results(state: &mut WorldState, voting_addr: Address, payload:
 
     let mut storage_key_src = [0u8; 64];
     storage_key_src[0..32].copy_from_slice(&vote_choice.to_be_bytes::<32>());
-    storage_key_src[32..64].copy_from_slice(&uint!(2_U256).to_be_bytes::<32>());
+    storage_key_src[32..64].copy_from_slice(&uint!(3_U256).to_be_bytes::<32>());
     
     let storage_key_u256: U256 = keccak256(storage_key_src).into();
     let vote_count = state.get_storage_value(&voting_addr, &storage_key_u256).unwrap_or(U256::ZERO);
@@ -198,38 +197,37 @@ fn check_election_results(state: &mut WorldState, voting_addr: Address, payload:
 
     let mut null_key_src = [0u8; 64];
     null_key_src[0..32].copy_from_slice(&payload.nullifier_hash.0);
-    null_key_src[32..64].copy_from_slice(&uint!(1_U256).to_be_bytes::<32>());
+    null_key_src[32..64].copy_from_slice(&uint!(2_U256).to_be_bytes::<32>());
     
     let is_spent = state.get_storage_value(&voting_addr, &keccak256(null_key_src).into()).unwrap_or(U256::ZERO);
     println!("Is nullifier spent? (1 = true): {:?}", is_spent);
 }
+
 fn regenerate_proof_with_official_root(state: &mut WorldState, registry_addr: Address) -> ZkVotePayload {
     use std::process::Command;
-
     println!("--- Phase 1.5: Auto-Generating Fresh ZK Proof ---");
 
-    // 🌟 EVMの適当なSlotを読むのをやめ、JS自身に正確なMerkle Rootを計算させます！
-    println!("Running generate_input.js (Local Merkle Tree computation)...");
+    // 🌟 Slot 22 が正解です (isRegistered:0, filledSubtrees:1-20, nextIndex:21, currentRoot:22)
+    let root_slot = uint!(22_U256);
+    let current_root = state.get_storage_value(&registry_addr, &root_slot).unwrap_or(U256::ZERO);
+
+    let root_hex = format!("{:064x}", current_root);
+    println!("Official Root fetched from EVM Slot 22: 0x{}", root_hex);
+
+    println!("Running generate_input.js (Syncing with EVM Root)...");
     let status = Command::new("node")
-        .current_dir("circom") 
+        .current_dir("circom")
         .arg("generate_input.js")
-        // 👈 .arg(&root_hex) を削除しました！（引数なしで呼ぶ）
+        .arg(&root_hex)
         .status()
         .expect("Failed to execute generate_input.js");
     assert!(status.success(), "generate_input.js failed");
 
-    // 2. snarkjs を呼び出して proof を再生成
+    // snarkjs を呼び出して proof を再生成
     println!("Running snarkjs fullprove...");
     let snark_status = Command::new("snarkjs")
         .current_dir("circom")
-        .args([
-            "groth16", "fullprove", 
-            "input.json", 
-            "voting_js/voting.wasm", 
-            "voting_final.zkey", 
-            "proof.json", 
-            "public.json"
-        ])
+        .args(["groth16", "fullprove", "input.json", "voting_js/voting.wasm", "voting_final.zkey", "proof.json", "public.json"])
         .status()
         .expect("Failed to execute snarkjs");
     assert!(snark_status.success(), "snarkjs fullprove failed");

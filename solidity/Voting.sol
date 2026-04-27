@@ -39,8 +39,8 @@ contract Voting {
             uint256(vk_code.length),
             vk_code,
             proof,
-            nullifierHash,
             root,
+            nullifierHash,
             voteChoice
         );
 

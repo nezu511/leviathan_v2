@@ -1,12 +1,15 @@
-// circom/generate_input.js
 const { buildPoseidon } = require("circomlibjs");
 const fs = require("fs");
 
 async function main() {
+    const args = process.argv.slice(2);
+    // Rust から渡された Root を取得
+    const officialRootHex = args[0] ? "0x" + args[0] : null;
+
     const poseidon = await buildPoseidon();
     const F = poseidon.F;
 
-    // あなたの秘密情報
+    // あなたの秘密情報 (テスト用)
     const secret = "12345";
     const nullifier = "67890";
     const voteChoice = "1";
@@ -18,34 +21,32 @@ async function main() {
     const nullifierHashBuf = poseidon([nullifier, 1]);
 
     const levels = 20;
-    let pathElements = [];
-    let pathIndices = [];
 
-    // 🌟 修正: Solidity側のロジック（常に空ノードは0x0）に完全一致させる
-    for (let i = 0; i < levels; i++) {
-        pathElements.push("0"); // EVMは bytes32(0) を使っているため、ここも 0 に固定
-        pathIndices.push(0);    // 1人目の登録者なので道順は常に左(0)
+    // 🌟 Rootの決定ロジック (スコープを修正)
+    let finalRootStr;
+    if (officialRootHex && officialRootHex !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+        finalRootStr = BigInt(officialRootHex).toString();
+        console.log("Using Official Root from EVM Slot 22:", finalRootStr);
+    } else {
+        // Fallback: 自前で計算して回路を納得させる
+        let currentHash = F.toObject(commitmentBuf);
+        for (let i = 0; i < levels; i++) {
+            const nextHashBuf = poseidon([currentHash, 0n]);
+            currentHash = F.toObject(nextHashBuf);
+        }
+        finalRootStr = currentHash.toString();
+        console.log("Calculated Root in JS (Fallback):", finalRootStr);
     }
 
-    // JS内でRootを計算 (Solidityと全く同じ計算過程をたどる)
-    let currentHash = F.toObject(commitmentBuf);
-    for (let i = 0; i < levels; i++) {
-        // Solidityの `currentNode = poseidon(currentNode, bytes32(0))` を再現
-        const nextHashBuf = poseidon([currentHash, 0n]);
-        currentHash = F.toObject(nextHashBuf);
-    }
-    const finalRootStr = currentHash.toString();
-    console.log("Calculated Root in JS (Matching EVM!):", finalRootStr);
-
-    // 4. input.json を出力
+    // 🌟 inputJson をここで定義 (ReferenceError 対策)
     const inputJson = {
         root: finalRootStr,
         nullifierHash: toStr(nullifierHashBuf),
         voteChoice: voteChoice,
         secret: secret,
         nullifier: nullifier,
-        pathElements: pathElements,
-        pathIndices: pathIndices
+        pathElements: Array(levels).fill("0"),
+        pathIndices: Array(levels).fill(0)
     };
 
     fs.writeFileSync("input.json", JSON.stringify(inputJson, null, 2));
