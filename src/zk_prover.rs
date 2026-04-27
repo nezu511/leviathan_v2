@@ -32,17 +32,17 @@ impl ZkVotePayload {
         };
 
         let mut proof_bytes = Vec::new();
-        
+
         // 1. Point A (X, Y)
         proof_bytes.extend(parse_32(&proof_json["pi_a"][0]));
         proof_bytes.extend(parse_32(&proof_json["pi_a"][1]));
-        
+
         // 2. Point B (Im, Re) - EVMプレコンパイル標準に合わせた順序
         proof_bytes.extend(parse_32(&proof_json["pi_b"][0][1])); // X_im
         proof_bytes.extend(parse_32(&proof_json["pi_b"][0][0])); // X_re
         proof_bytes.extend(parse_32(&proof_json["pi_b"][1][1])); // Y_im
         proof_bytes.extend(parse_32(&proof_json["pi_b"][1][0])); // Y_re
-        
+
         // 3. Point C (X, Y)
         proof_bytes.extend(parse_32(&proof_json["pi_c"][0]));
         proof_bytes.extend(parse_32(&proof_json["pi_c"][1]));

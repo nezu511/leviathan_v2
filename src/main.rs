@@ -13,7 +13,7 @@ use leviathan_v2::leviathan::structs::VersionId;
 use leviathan_v2::leviathan::world_state::{Account, WorldState};
 use leviathan_v2::my_trait::leviathan_trait::State;
 use leviathan_v2::solidity_utils::{call_contract, deploy_contract, deploy_contract_raw};
-use leviathan_v2::zk_prover::{ZkVotePayload};
+use leviathan_v2::zk_prover::ZkVotePayload;
 
 // Solidityのインターフェースを定義
 sol! {
@@ -53,6 +53,10 @@ fn main() {
 
     state.add_account(&sender_addr, Account::new());
     state.add_balance(&sender_addr, U256::MAX);
+
+    //=========================================
+    //              Phase1: RSA
+    //=========================================
 
     // 1. コントラクトのデプロイ
     println!("Deploying IdentityRegistry");
@@ -119,6 +123,7 @@ fn main() {
         commitment: my_commitment,
     }
     .abi_encode();
+    println!("Is commitment registered ? (call isRegistered) ...");
     let result_logs = call_contract(
         &mut leviathan,
         &mut state,
@@ -133,16 +138,20 @@ fn main() {
 
     // 先ほどLEVIATHAN構造体に追加した return_data バッファから結果を読み取る
     let is_reg = leviathan.return_data[31] == 1;
-    println!("Is commitment registered? \n{}", is_reg);
+    println!("{}", is_reg);
 
+    //=========================================
+    //              Phase2: ZK
+    //=========================================
+    //
     println!("--- Step 3: Phase 2 - Anonymous ZK Voting ---");
 
-// 🌟 1. VK データを「バイナリ」として読み込み、rawデプロイする
+    //1. VK データを「バイナリ」として読み込み、rawデプロイする
     println!("Deploying VK_Data...");
-    
+
     // std::fs::read を使って、生のバイト列として読み込む
-    let vk_init_code = std::fs::read("solidity/out/VK_Data.bin")
-        .expect("Failed to read binary VK_Data.bin");
+    let vk_init_code =
+        std::fs::read("solidity/out/VK_Data.bin").expect("Failed to read binary VK_Data.bin");
 
     // deploy_contract ではなく、deploy_contract_raw を使う
     let vk_addr = leviathan_v2::solidity_utils::deploy_contract_raw(
@@ -157,11 +166,17 @@ fn main() {
     .expect("VK Deployment failed");
 
     println!("✅ VK_Data deployed at: {:?}", vk_addr);
-    // 🌟 2. Voting コントラクトのデプロイ (引数として vk_addr を渡す)
+
+    // 2. Voting コントラクトのデプロイ (引数として vk_addr を渡す)
     println!("Deploying Voting Contract...");
-    // ⚠️ deploy_contract_raw や、コンストラクタ引数の結合が必要になります
-    // 一番簡単なのは、`solidity_utils` を拡張するか、直接結合することです。
-    let mut v_init = hex::decode(std::fs::read_to_string("solidity/out/Voting.bin").unwrap().trim().trim_start_matches("0x")).unwrap();
+
+    let mut v_init = hex::decode(
+        std::fs::read_to_string("solidity/out/Voting.bin")
+            .unwrap()
+            .trim()
+            .trim_start_matches("0x"),
+    )
+    .unwrap();
     let mut args = vec![0u8; 12]; // 32バイトに合わせるパディング
     args.extend_from_slice(vk_addr.as_slice());
     v_init.extend(args);
@@ -174,8 +189,8 @@ fn main() {
         U256::ZERO,
         gas_price,
         gas_limit,
-    ).expect("Voting Deploy Failed");
-
+    )
+    .expect("Voting Deploy Failed");
 
     // オフチェーンで生成したJSONファイルからデータを自動パース
     let payload = ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json");
@@ -185,7 +200,8 @@ fn main() {
         nullifierHash: payload.nullifier_hash,
         root: payload.commitment,
         voteChoice: payload.vote_choice,
-    }.abi_encode();
+    }
+    .abi_encode();
 
     println!("Sending ZK Vote transaction to EVM...");
 
@@ -197,27 +213,36 @@ fn main() {
         vote_payload,
         U256::ZERO,
         gas_price,
-        gas_limit
-    ).expect("ZK Vote Execution Failed");
+        gas_limit,
+    )
+    .expect("ZK Vote Execution Failed");
 
     // 結果確認
-    // main.rs の末尾付近に追加
 
     println!("--- Final Check: Vote Count ---");
-    // 投票先の選択肢 (例: 1) の storage slot を計算して読み取る
-    // mapping(uint256 => uint256) votes は、Solidity の定義順で 1番目のスロット(index 1)にあるとします
+    // 投票先の選択肢 1
     let vote_choice = uint!(1_U256);
 
-    // bytes32(1) + bytes32(slot_index) の keccak256 がデータの保存場所
+    // mapping(uint256 => uint256) votes は、スロット 2 にあります
     let mut storage_key_src = [0u8; 64];
     storage_key_src[0..32].copy_from_slice(&vote_choice.to_be_bytes::<32>());
-    storage_key_src[32..64].copy_from_slice(&uint!(1_U256).to_be_bytes::<32>()); // votes mapping の slot は 1
+    storage_key_src[32..64].copy_from_slice(&uint!(2_U256).to_be_bytes::<32>());
     let storage_key = keccak256(storage_key_src);
 
-    // storage_key を一度 U256 に変換し、参照を渡すようにします
     let storage_key_u256: U256 = storage_key.into();
-    let vote_count = state.get_storage_value(&v_addr, &storage_key_u256).unwrap_or(U256::ZERO);
+    let vote_count = state
+        .get_storage_value(&v_addr, &storage_key_u256)
+        .unwrap_or(U256::ZERO);
 
     println!("Votes for choice 1: {:?}", vote_count);
 
+    // Nullifierが「使用済み」になっているかもチェック
+    let mut null_key_src = [0u8; 64];
+    null_key_src[0..32].copy_from_slice(&payload.nullifier_hash.0);
+    null_key_src[32..64].copy_from_slice(&uint!(1_U256).to_be_bytes::<32>()); // spentNullifiersはスロット 1
+    let null_storage_key = keccak256(null_key_src);
+    let is_spent = state
+        .get_storage_value(&v_addr, &null_storage_key.into())
+        .unwrap_or(U256::ZERO);
+    println!("Is nullifier spent? (1 = true): {:?}", is_spent);
 }
