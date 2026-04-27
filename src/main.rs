@@ -13,6 +13,7 @@ use leviathan_v2::leviathan::structs::VersionId;
 use leviathan_v2::leviathan::world_state::{Account, WorldState};
 use leviathan_v2::my_trait::leviathan_trait::State;
 use leviathan_v2::solidity_utils::{call_contract, deploy_contract};
+use leviathan_v2::zk_prover::{ZkVotePayload};
 
 // Solidityのインターフェースを定義
 sol! {
@@ -126,4 +127,43 @@ fn main() {
     // 先ほどLEVIATHAN構造体に追加した return_data バッファから結果を読み取る
     let is_reg = leviathan.return_data[31] == 1;
     println!("Is commitment registered? \n{}", is_reg);
+
+    println!("--- Step 3: Phase 2 - Anonymous ZK Voting ---");
+
+    // オフチェーンで生成したJSONファイルからデータを自動パース
+    // ※ファイルのパス("circom/proof.json" など)は、現在の環境に合わせて修正してください
+    let payload = ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json");
+
+    let vote_payload = castVoteCall {
+        proof: payload.proof_bytes,
+        nullifierHash: payload.nullifier_hash,
+        root: payload.commitment,
+        voteChoice: payload.vote_choice,
+    }.abi_encode();
+
+    println!("Sending ZK Vote transaction to EVM...");
+    let _ = call_contract(
+        &mut leviathan,
+        &mut state,
+        &secret_key,
+        v_addr,
+        vote_payload,
+        U256::ZERO,
+        gas_price,
+        gas_limit
+    ).expect("ZK Vote Execution Failed");
+
+    // 結果確認
+    if leviathan.return_data.len() >= 32 {
+        let success = leviathan.return_data[31] == 1;
+        println!("--- Result ---");
+        println!("ZK Proof Verification: {}", success);
+        if success {
+            println!("ALL SYSTEMS GO! Leviathan ZK-EVM is Alive!");
+        } else {
+            println!("Verification Returned False (Mathematical failure)");
+        }
+    } else {
+        println!("Reverted inside Solidity. EVM bypass failed.");
+    }
 }
