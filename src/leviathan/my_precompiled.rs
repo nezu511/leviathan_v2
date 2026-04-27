@@ -117,8 +117,9 @@ impl MCC for LEVIATHAN {
             pub_input_offset,
             data.len().saturating_sub(pub_input_offset),
         );
-        //proofの検証を行う
+        //inputの検証を行う
         if input_data.len().rem(WORD_SIZE) != 0 {
+            tracing::warn!("[my_groth16] 公開入力の検証でエラー");
             return Err((U256::ZERO, None));
         }
         let k = input_data.len() / WORD_SIZE;
@@ -129,6 +130,7 @@ impl MCC for LEVIATHAN {
             .saturating_add(U256::from(45000));
 
         if gas < used_gas {
+            tracing::warn!("[my_groth16] OOG");
             return Err((U256::ZERO, None)); // Out of Gas
         }
         let return_gas = gas - used_gas;
@@ -138,6 +140,7 @@ impl MCC for LEVIATHAN {
         let mut zk_data = get_padded_data(proof_offset, proof_size);
         //proofの検証を行う
         if zk_data.len().rem(WORD_SIZE) != 0 || zk_data.len() != proof_size {
+            tracing::warn!("[my_groth16] OOG");
             return Err((U256::ZERO, None));
         }
         //G1 pointを作成
@@ -206,12 +209,15 @@ impl MCC for LEVIATHAN {
         };
 
         let Ok(point_a) = get_g1_point(0) else {
+            tracing::warn!("[my_groth16] Point Aの生成失敗");
             return Err((U256::ZERO, None));
         };
         let Ok(point_b) = get_g2_point() else {
+            tracing::warn!("[my_groth16] Point Bの生成失敗");
             return Err((U256::ZERO, None));
         };
         let Ok(point_c) = get_g1_point(192) else {
+            tracing::warn!("[my_groth16] Point Cの生成失敗");
             return Err((U256::ZERO, None));
         };
 
@@ -272,6 +278,7 @@ impl MCC for LEVIATHAN {
         //ガス（暫定)
         let used_gas = U256::from(30000).saturating_add(U256::from(5000) * U256::from(k));
         if gas < used_gas {
+            tracing::warn!("[my_poseidon] OOG");
             return Err((U256::ZERO, None));
         }
         let return_gas = gas - used_gas;

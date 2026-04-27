@@ -228,3 +228,90 @@ pub fn call_contract(
         }
     }
 }
+
+pub fn deploy_contract_raw(
+    leviathan: &mut LEVIATHAN,
+    state: &mut WorldState,
+    sender_secretkey: &SecretKey,
+    init_code: Vec<u8>, // 🌟 ここに「バイトコード + 引数」を渡す
+    eth: U256,
+    gas_price: U256,
+    gas_limit: U256,
+) -> Result<Address, ()> {
+    // 1. 送信者アドレスとノンスの取得
+    let secp = Secp256k1::new();
+    let public_key = secp256k1::PublicKey::from_secret_key(&secp, &sender_secretkey);
+    let pub_hash = keccak256(&public_key.serialize_uncompressed()[1..65]);
+    let sender_addr = Address::from_slice(&pub_hash[12..32]);
+    let sender_nonce = state.get_nonce(&sender_addr).unwrap_or(0);
+
+    // 2. 署名とトランザクション構築
+    let (v, r, s) = sign_tx_properly(
+        U256::from(sender_nonce),
+        gas_price,
+        gas_limit,
+        None, // デプロイなので to は None
+        eth,
+        &init_code,
+        &sender_secretkey,
+    );
+
+    let transaction = Transaction {
+        data: init_code,
+        t_to: None,
+        t_gas_limit: gas_limit,
+        t_price: gas_price,
+        t_value: eth,
+        t_nonce: sender_nonce as usize,
+        t_w: v,
+        t_r: r,
+        t_s: s,
+    };
+
+    // 3. ブロックヘッダーの準備
+    let block = BlockHeader {
+        h_beneficiary: Address::repeat_byte(0xfe),
+        h_timestamp: uint!(1600000000_U256),
+        h_number: uint!(1_U256),
+        h_prevrandao: U256::ZERO,
+        h_gaslimit: uint!(30_000_000_U256),
+        h_basefee: U256::ZERO,
+    };
+
+    // 4. Leviathan で実行
+    //実行
+    let Ok((gas, log_list)) = leviathan.execution(state, transaction, &block) else {
+        println!(" Contract Creation Failed. ");
+        return Err(());
+    };
+    println!(
+        " Success! Precompile verified the signature. Remaining Gas: {}",
+        gas
+    );
+
+    // 構築されたコントラクトのアドレスを計算
+    // 1. 各要素のRLPペイロード長を事前計算
+    let mut payload_length = 0;
+    payload_length += sender_addr.0.as_slice().length();
+    payload_length += sender_nonce.length();
+    // 2. 必要なメモリを一括で確保し、リストのヘッダーを書き込む
+    let mut out = BytesMut::with_capacity(payload_length + 10);
+    Header {
+        list: true,
+        payload_length,
+    }
+    .encode(&mut out);
+    // 3. データを順次エンコード
+    sender_addr.0.as_slice().encode(&mut out);
+    sender_nonce.encode(&mut out);
+    // 4. ハッシュ化の前準備として Vec<u8> に変換して返す
+    let rlp_byte = out.to_vec();
+    let mut hasher = Keccak256::new();
+    hasher.update(&rlp_byte);
+    let result: [u8; 32] = hasher.finalize().into();
+    let mut tmp = [0u8; 20];
+    tmp.copy_from_slice(&result[12..32]);
+    let contract_address = Address::new(tmp);
+
+    return Ok(contract_address);
+}

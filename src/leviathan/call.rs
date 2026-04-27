@@ -170,6 +170,16 @@ impl MessageCall for LEVIATHAN {
                 LEVIATHAN::my_rsa(gas, &execution_environment.i_data, self.version)
             }
 
+            val if val == U256::from(11) => {
+                //my_rsa
+                LEVIATHAN::my_groth16(gas, &execution_environment.i_data, self.version)
+            }
+
+            val if val == U256::from(12) => {
+                //my_rsa
+                LEVIATHAN::my_poseidon(gas, &execution_environment.i_data, self.version)
+            }
+
             _ => {
                 //通常のスマートコントラクト呼び出し
 
