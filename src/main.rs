@@ -175,8 +175,17 @@ fn main() {
             .trim_start_matches("0x"),
     )
     .unwrap();
-    let mut args = vec![0u8; 12]; // 32バイトに合わせるパディング
+
+
+    let mut args = Vec::new();
+    // 引数1: vk_addr を 32バイトにパディングして追加
+    args.extend_from_slice(&[0u8; 12]);
     args.extend_from_slice(vk_addr.as_slice());
+    
+    // 引数2: identity_registry_addr を 32バイトにパディングして追加
+    args.extend_from_slice(&[0u8; 12]);
+    args.extend_from_slice(contract_addr.as_slice());
+    
     v_init.extend(args);
 
     let v_addr = leviathan_v2::solidity_utils::deploy_contract_raw(
