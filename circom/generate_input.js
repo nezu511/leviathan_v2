@@ -1,29 +1,55 @@
+// circom/generate_input.js
 const { buildPoseidon } = require("circomlibjs");
 const fs = require("fs");
 
-async function run() {
+async function main() {
     const poseidon = await buildPoseidon();
     const F = poseidon.F;
 
-    // ユーザーしか知らない秘密の値とヌルファイア（本来は超巨大な乱数）
-    const secret = 12345;
-    const nullifier = 67890;
+    // あなたの秘密情報
+    const secret = "12345";
+    const nullifier = "67890";
+    const voteChoice = "1";
 
-    // ZK回路と全く同じ Poseidon ハッシュを計算
-    const commitment = F.toObject(poseidon([secret]));
-    const nullifierHash = F.toObject(poseidon([secret, nullifier]));
+    const toStr = (buf) => F.toString(buf);
 
-    const input = {
-        secret: secret.toString(),
-        nullifier: nullifier.toString(),
-        commitment: commitment.toString(),
-        nullifierHash: nullifierHash.toString(),
-        voteChoice: "1"
+    // Commitment と NullifierHash
+    const commitmentBuf = poseidon([secret, nullifier]);
+    const nullifierHashBuf = poseidon([nullifier, 1]);
+
+    const levels = 20;
+    let pathElements = [];
+    let pathIndices = [];
+
+    // 🌟 修正: Solidity側のロジック（常に空ノードは0x0）に完全一致させる
+    for (let i = 0; i < levels; i++) {
+        pathElements.push("0"); // EVMは bytes32(0) を使っているため、ここも 0 に固定
+        pathIndices.push(0);    // 1人目の登録者なので道順は常に左(0)
+    }
+
+    // JS内でRootを計算 (Solidityと全く同じ計算過程をたどる)
+    let currentHash = F.toObject(commitmentBuf);
+    for (let i = 0; i < levels; i++) {
+        // Solidityの `currentNode = poseidon(currentNode, bytes32(0))` を再現
+        const nextHashBuf = poseidon([currentHash, 0n]);
+        currentHash = F.toObject(nextHashBuf);
+    }
+    const finalRootStr = currentHash.toString();
+    console.log("Calculated Root in JS (Matching EVM!):", finalRootStr);
+
+    // 4. input.json を出力
+    const inputJson = {
+        root: finalRootStr,
+        nullifierHash: toStr(nullifierHashBuf),
+        voteChoice: voteChoice,
+        secret: secret,
+        nullifier: nullifier,
+        pathElements: pathElements,
+        pathIndices: pathIndices
     };
 
-    fs.writeFileSync("input.json", JSON.stringify(input, null, 2));
-    console.log("✅ input.json を作成しました！");
-    console.log("Commitment:", input.commitment);
-    console.log("NullifierHash:", input.nullifierHash);
+    fs.writeFileSync("input.json", JSON.stringify(inputJson, null, 2));
+    console.log("✅ input.json generated successfully!");
 }
-run();
+
+main().catch(console.error);

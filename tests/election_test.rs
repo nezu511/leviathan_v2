@@ -37,37 +37,45 @@ sol! {
 // 選挙のメインストーリー（無人市役所の業務フロー）
 // =====================================================================
 #[test]
+#[test]
 fn test_election_e2e() {
     let _ = tracing_subscriber::fmt::init();
 
     // 1. ブロックチェーン環境の起動
     let (mut state, mut leviathan, secret_key, gas_price, gas_limit) = setup_evm();
 
-    // 2. スマホで生成された「身分証（コミットメント）」の読み込み
-    let payload = ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json");
+    // =================================================================
+    // 🌟 修正: Phase 0 (スマホでの事前計算) を自動操縦して動的に葉を取得！
+    println!("--- Phase 0: Generate Dynamic Commitment ---");
+    let output = std::process::Command::new("node")
+        .current_dir("circom")
+        .arg("generate_commitment.js")
+        .output()
+        .expect("Failed to execute generate_commitment.js");
+
+    // JSの標準出力からHex文字列を受け取り、B256にパースする（汎用性100%）
+    let leaf_hex = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let my_commitment: alloy_primitives::B256 = leaf_hex.parse().expect("Invalid Hex from JS");
+    println!("✅ Dynamically generated Commitment: {}", my_commitment);
+    // =================================================================
 
     // 3. Phase 1: 市役所（名簿）の設立と、RSA認証による有権者登録
     println!("--- Phase 1: Voter Registration ---");
     let registry_addr = deploy_identity_registry(&mut leviathan, &mut state, &secret_key, gas_price, gas_limit);
-    register_voter(&mut leviathan, &mut state, &secret_key, registry_addr, &payload, gas_price, gas_limit);
+    
+    // 動的に取得した my_commitment を渡す
+    register_voter(&mut leviathan, &mut state, &secret_key, registry_addr, my_commitment, gas_price, gas_limit);
 
-    // =========================================================================
-    // 次のステップ: ここで最新のRootを取得し、Proofを再生成する処理が入ります
-    // println!("--- Phase 1.5: Auto-Generating Fresh ZK Proof ---");
-    // let fresh_payload = regenerate_proof_with_official_root(&state, registry_addr);
-    // =========================================================================
+    // ---------------------------------------------------------
+    println!("--- Phase 1.5: Auto-Generating Fresh ZK Proof ---");
+    let fresh_payload = regenerate_proof_with_official_root(&mut state, registry_addr);
 
-    // 4. Phase 2: 投票所の設立と匿名投票
     println!("--- Phase 2: Anonymous ZK Voting ---");
     let voting_addr = deploy_voting_contract(&mut leviathan, &mut state, &secret_key, registry_addr, gas_price, gas_limit);
     
-    // ※ 現在は古いRootを使っているため、意図的にRevert(防衛成功)します
-    cast_anonymous_vote(&mut leviathan, &mut state, &secret_key, voting_addr, &payload, gas_price, gas_limit);
-
-    // 5. 選挙結果の集計
-    check_election_results(&mut state, voting_addr, &payload);
+    cast_anonymous_vote(&mut leviathan, &mut state, &secret_key, voting_addr, &fresh_payload, gas_price, gas_limit);
+    check_election_results(&mut state, voting_addr, &fresh_payload);
 }
-
 
 // =====================================================================
 // 抽出したヘルパーメソッド群（インフラ処理）
@@ -104,8 +112,8 @@ fn deploy_identity_registry(
 }
 
 fn register_voter(
-    leviathan: &mut LEVIATHAN, state: &mut WorldState, secret_key: &SecretKey, 
-    registry_addr: Address, payload: &ZkVotePayload, gas_price: U256, gas_limit: U256
+    leviathan: &mut LEVIATHAN, state: &mut WorldState, secret_key: &SecretKey,
+    registry_addr: Address, commitment: alloy_primitives::B256, gas_price: U256, gas_limit: U256
 ) {
     println!("Generating RSA Keys and Signature...");
     let mut rng = OsRng;
@@ -122,16 +130,17 @@ fn register_voter(
         exponent: Bytes::from(pub_key_e),
         signature: Bytes::from(signature),
         message: Bytes::from(message.to_vec()),
-        commitment: payload.commitment,
+        commitment, // 🌟 修正: 渡された commitment をそのまま使う
     }.abi_encode();
 
     println!("Sending register transaction to EVM...");
     call_contract(leviathan, state, secret_key, registry_addr, call_data, U256::ZERO, gas_price, gas_limit)
         .expect("Register Call Failed");
 
-    let check_data = isRegisteredCall { commitment: payload.commitment }.abi_encode();
+    // 🌟 修正: ここも payload.commitment から commitment に変更
+    let check_data = isRegisteredCall { commitment }.abi_encode();
     let _ = call_contract(leviathan, state, secret_key, registry_addr, check_data, U256::ZERO, gas_price, gas_limit).unwrap();
-    
+
     let is_reg = leviathan.return_data[31] == 1;
     println!("Is commitment registered? {}", is_reg);
 }
@@ -193,4 +202,38 @@ fn check_election_results(state: &mut WorldState, voting_addr: Address, payload:
     
     let is_spent = state.get_storage_value(&voting_addr, &keccak256(null_key_src).into()).unwrap_or(U256::ZERO);
     println!("Is nullifier spent? (1 = true): {:?}", is_spent);
+}
+fn regenerate_proof_with_official_root(state: &mut WorldState, registry_addr: Address) -> ZkVotePayload {
+    use std::process::Command;
+
+    println!("--- Phase 1.5: Auto-Generating Fresh ZK Proof ---");
+
+    // 🌟 EVMの適当なSlotを読むのをやめ、JS自身に正確なMerkle Rootを計算させます！
+    println!("Running generate_input.js (Local Merkle Tree computation)...");
+    let status = Command::new("node")
+        .current_dir("circom") 
+        .arg("generate_input.js")
+        // 👈 .arg(&root_hex) を削除しました！（引数なしで呼ぶ）
+        .status()
+        .expect("Failed to execute generate_input.js");
+    assert!(status.success(), "generate_input.js failed");
+
+    // 2. snarkjs を呼び出して proof を再生成
+    println!("Running snarkjs fullprove...");
+    let snark_status = Command::new("snarkjs")
+        .current_dir("circom")
+        .args([
+            "groth16", "fullprove", 
+            "input.json", 
+            "voting_js/voting.wasm", 
+            "voting_final.zkey", 
+            "proof.json", 
+            "public.json"
+        ])
+        .status()
+        .expect("Failed to execute snarkjs");
+    assert!(snark_status.success(), "snarkjs fullprove failed");
+
+    println!("✅ Fresh Proof generated successfully!");
+    ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json")
 }
