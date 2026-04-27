@@ -39,11 +39,11 @@ contract Voting {
             let proofOffset := add(payload, add(64, vkSize))
             calldatacopy(proofOffset, proof.offset, 256)
 
-            // 4. Public Inputs のコピー
+	    // 4. Public Inputs のコピー (Circomの定義順: [commitment, nullifierHash, voteChoice])
             let inputsOffset := add(proofOffset, 256)
-            mstore(inputsOffset, nullifierHash)
-            mstore(add(inputsOffset, 32), root)
-            mstore(add(inputsOffset, 64), voteChoice)
+            mstore(inputsOffset, root)                   // 1番目: commitment (root)
+            mstore(add(inputsOffset, 32), nullifierHash) // 2番目: nullifierHash
+            mstore(add(inputsOffset, 64), voteChoice)    // 3番目: voteChoice
         }
 
         // プレコンパイル 0x0b 呼び出し
