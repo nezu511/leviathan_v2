@@ -12,7 +12,7 @@ use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::VersionId;
 use leviathan_v2::leviathan::world_state::{Account, WorldState};
 use leviathan_v2::my_trait::leviathan_trait::State;
-use leviathan_v2::solidity_utils::{call_contract, deploy_contract};
+use leviathan_v2::solidity_utils::{call_contract, deploy_contract, deploy_contract_raw};
 use leviathan_v2::zk_prover::{ZkVotePayload};
 
 // Solidityのインターフェースを定義
@@ -24,6 +24,13 @@ sol! {
         bytes memory message,
         bytes32 commitment
     );
+
+    function castVote(
+        bytes memory proof,
+        bytes32 nullifierHash,
+        bytes32 root,
+        uint256 voteChoice
+    ) external;
 }
 
 fn main() {
@@ -130,8 +137,40 @@ fn main() {
 
     println!("--- Step 3: Phase 2 - Anonymous ZK Voting ---");
 
+    // 🌟 1. VK (検証鍵) データのデプロイ
+    println!("Deploying VK_Data...");
+    let vk_addr = deploy_contract(
+        &mut leviathan,
+        &mut state,
+        &secret_key,
+        "solidity/out/VK_Data.bin",
+        U256::ZERO,
+        gas_price,
+        gas_limit,
+    )
+    .expect("VK Deployment failed");
+
+    // 🌟 2. Voting コントラクトのデプロイ (引数として vk_addr を渡す)
+    println!("Deploying Voting Contract...");
+    // ⚠️ deploy_contract_raw や、コンストラクタ引数の結合が必要になります
+    // 一番簡単なのは、`solidity_utils` を拡張するか、直接結合することです。
+    let mut v_init = hex::decode(std::fs::read_to_string("solidity/out/Voting.bin").unwrap().trim().trim_start_matches("0x")).unwrap();
+    let mut args = vec![0u8; 12]; // 32バイトに合わせるパディング
+    args.extend_from_slice(vk_addr.as_slice());
+    v_init.extend(args);
+
+    let v_addr = leviathan_v2::solidity_utils::deploy_contract_raw(
+        &mut leviathan,
+        &mut state,
+        &secret_key,
+        v_init,
+        U256::ZERO,
+        gas_price,
+        gas_limit,
+    ).expect("Voting Deploy Failed");
+
+
     // オフチェーンで生成したJSONファイルからデータを自動パース
-    // ※ファイルのパス("circom/proof.json" など)は、現在の環境に合わせて修正してください
     let payload = ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json");
 
     let vote_payload = castVoteCall {
@@ -142,6 +181,7 @@ fn main() {
     }.abi_encode();
 
     println!("Sending ZK Vote transaction to EVM...");
+
     let _ = call_contract(
         &mut leviathan,
         &mut state,
