@@ -87,9 +87,7 @@ fn main() {
     let pub_key_n = rsa_public_key.n().to_bytes_be();
     let pub_key_e = rsa_public_key.e().to_bytes_be();
 
-    // ZK回路側で生成した想定の仮想Commitment
-    let my_commitment = B256::repeat_byte(0x77);
-
+    let payload = ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json");
     // 3. alloy を使ったABIエンコード
     println!("Encoding payload");
     let call_data = registerCall {
@@ -97,7 +95,7 @@ fn main() {
         exponent: Bytes::from(pub_key_e),
         signature: Bytes::from(signature),
         message: Bytes::from(message.to_vec()),
-        commitment: my_commitment,
+        commitment: payload.commitment,
     }
     .abi_encode();
 
@@ -120,7 +118,7 @@ fn main() {
     }
 
     let check_data = isRegisteredCall {
-        commitment: my_commitment,
+        commitment: payload.commitment,
     }
     .abi_encode();
     println!("Is commitment registered ? (call isRegistered) ...");
@@ -192,8 +190,6 @@ fn main() {
     )
     .expect("Voting Deploy Failed");
 
-    // オフチェーンで生成したJSONファイルからデータを自動パース
-    let payload = ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json");
 
     let vote_payload = castVoteCall {
         proof: payload.proof_bytes,
