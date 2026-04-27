@@ -38,73 +38,64 @@ sol! {
 // =====================================================================
 #[test]
 fn test_election_e2e() {
-    let _ = tracing_subscriber::fmt::init();
-
-    // 1. ブロックチェーン環境の起動
+    let _ = tracing_subscriber::fmt::try_init();
     let (mut state, mut leviathan, secret_key, gas_price, gas_limit) = setup_evm();
 
-    // =================================================================
-    //Phase 0 (スマホでの事前計算) を自動操縦して動的に葉を取得！
-    println!("--- Phase 0: Generate Dynamic Commitment ---");
-    let output = std::process::Command::new("node")
-        .current_dir("circom")
-        .arg("generate_commitment.js")
-        .output()
-        .expect("Failed to execute generate_commitment.js");
+    // 🌟 3人の有権者データ: (secret, nullifier, 投票したい候補者)
+    let voters = vec![
+        ("11111", "10001", "1"), // Aさん: 候補者 1 に投票
+        ("22222", "20002", "2"), // Bさん: 候補者 2 に投票
+        ("33333", "30003", "1"), // Cさん: 候補者 1 に投票
+    ];
 
-    // JSの標準出力からHex文字列を受け取り、B256にパースする（汎用性100%）
-    let leaf_hex = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let my_commitment: alloy_primitives::B256 = leaf_hex.parse().expect("Invalid Hex from JS");
-    println!("✅ Dynamically generated Commitment: {}", my_commitment);
-    // =================================================================
+    println!("--- Phase 0: Generate Dynamic Commitments ---");
+    let mut commitments = Vec::new();
+    let mut commitments_hex_list = Vec::new();
 
-    // 3. Phase 1: 市役所（名簿）の設立と、RSA認証による有権者登録
+    for (secret, nullifier, _) in &voters {
+        let output = std::process::Command::new("node")
+            .current_dir("circom")
+            .arg("generate_commitment.js")
+            .arg(secret)
+            .arg(nullifier)
+            .output()
+            .unwrap();
+        let leaf_hex = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let comm: alloy_primitives::B256 = leaf_hex.parse().unwrap();
+        commitments.push(comm);
+        commitments_hex_list.push(format!("0x{}", leaf_hex));
+        println!("✅ Generated Commitment for secret {}: {}", secret, comm);
+    }
+    
+    // JSに名簿全体を渡すためのカンマ区切り文字列
+    let all_commitments_str = commitments_hex_list.join(",");
+
+    // Phase 1: 登録
     println!("--- Phase 1: Voter Registration ---");
-    let registry_addr = deploy_identity_registry(
-        &mut leviathan,
-        &mut state,
-        &secret_key,
-        gas_price,
-        gas_limit,
-    );
+    let registry_addr = deploy_identity_registry(&mut leviathan, &mut state, &secret_key, gas_price, gas_limit);
+    
+    // 3人全員を名簿に登録
+    for (i, comm) in commitments.iter().enumerate() {
+        println!("Registering Voter {}...", i);
+        register_voter(&mut leviathan, &mut state, &secret_key, registry_addr, *comm, gas_price, gas_limit);
+    }
 
-    // 動的に取得した my_commitment を渡す
-    register_voter(
-        &mut leviathan,
-        &mut state,
-        &secret_key,
-        registry_addr,
-        my_commitment,
-        gas_price,
-        gas_limit,
-    );
+    // 投票コントラクト展開
+    let voting_addr = deploy_voting_contract(&mut leviathan, &mut state, &secret_key, registry_addr, gas_price, gas_limit);
 
-    // ---------------------------------------------------------
-    println!("--- Phase 1.5: Auto-Generating Fresh ZK Proof ---");
-    let fresh_payload = regenerate_proof_with_official_root(&mut state, registry_addr);
-
+    // Phase 1.5 & Phase 2: 証明生成と投票を3人分繰り返す
     println!("--- Phase 2: Anonymous ZK Voting ---");
-    let voting_addr = deploy_voting_contract(
-        &mut leviathan,
-        &mut state,
-        &secret_key,
-        registry_addr,
-        gas_price,
-        gas_limit,
-    );
+    for (i, (secret, nullifier, choice)) in voters.iter().enumerate() {
+        println!("--- Voting for Voter {} (Choice {}) ---", i, choice);
+        let payload = regenerate_proof_with_official_root(
+            &mut state, registry_addr, i, secret, nullifier, choice, &all_commitments_str
+        );
+        cast_anonymous_vote(&mut leviathan, &mut state, &secret_key, voting_addr, &payload, gas_price, gas_limit);
+    }
 
-    cast_anonymous_vote(
-        &mut leviathan,
-        &mut state,
-        &secret_key,
-        voting_addr,
-        &fresh_payload,
-        gas_price,
-        gas_limit,
-    );
-    check_election_results(&mut state, voting_addr, &fresh_payload);
+    // 結果確認
+    check_election_results(&mut state, voting_addr);
 }
-
 // =====================================================================
 // 抽出したヘルパーメソッド群（インフラ処理）
 // =====================================================================
@@ -295,71 +286,55 @@ fn cast_anonymous_vote(
     );
 }
 
-fn check_election_results(state: &mut WorldState, voting_addr: Address, payload: &ZkVotePayload) {
+fn check_election_results(state: &mut WorldState, voting_addr: Address) {
     println!("--- Final Check: Vote Count ---");
-    let vote_choice = uint!(1_U256);
+    // 候補者1と2の両方の票数をチェック
+    for choice in 1..=2 {
+        let mut storage_key_src = [0u8; 64];
+        storage_key_src[0..32].copy_from_slice(&uint!(U256::from(choice)).to_be_bytes::<32>());
+        storage_key_src[32..64].copy_from_slice(&uint!(3_U256).to_be_bytes::<32>()); // votes mapping
 
-    let mut storage_key_src = [0u8; 64];
-    storage_key_src[0..32].copy_from_slice(&vote_choice.to_be_bytes::<32>());
-    storage_key_src[32..64].copy_from_slice(&uint!(3_U256).to_be_bytes::<32>());
-
-    let storage_key_u256: U256 = keccak256(storage_key_src).into();
-    let vote_count = state
-        .get_storage_value(&voting_addr, &storage_key_u256)
-        .unwrap_or(U256::ZERO);
-    println!("Votes for choice 1: {:?}", vote_count);
-
-    let mut null_key_src = [0u8; 64];
-    null_key_src[0..32].copy_from_slice(&payload.nullifier_hash.0);
-    null_key_src[32..64].copy_from_slice(&uint!(2_U256).to_be_bytes::<32>());
-
-    let is_spent = state
-        .get_storage_value(&voting_addr, &keccak256(null_key_src).into())
-        .unwrap_or(U256::ZERO);
-    println!("Is nullifier spent? (1 = true): {:?}", is_spent);
+        let storage_key_u256: U256 = keccak256(storage_key_src).into();
+        let vote_count = state.get_storage_value(&voting_addr, &storage_key_u256).unwrap_or(U256::ZERO);
+        println!("Votes for choice {}: {:?}", choice, vote_count);
+    }
 }
 
 fn regenerate_proof_with_official_root(
     state: &mut WorldState,
     registry_addr: Address,
+    my_index: usize,
+    secret: &str,
+    nullifier: &str,
+    vote_choice: &str,
+    all_commitments: &str,
 ) -> ZkVotePayload {
     use std::process::Command;
-    println!("--- Phase 1.5: Auto-Generating Fresh ZK Proof ---");
 
     let root_slot = uint!(22_U256);
-    let current_root = state
-        .get_storage_value(&registry_addr, &root_slot)
-        .unwrap_or(U256::ZERO);
-
+    let current_root = state.get_storage_value(&registry_addr, &root_slot).unwrap_or(U256::ZERO);
     let root_hex = format!("{:064x}", current_root);
-    println!("Official Root fetched from EVM Slot 22: 0x{}", root_hex);
-
-    println!("Running generate_input.js (Syncing with EVM Root)...");
+    
+    // JSに必要な情報をすべて引数で渡す！
     let status = Command::new("node")
         .current_dir("circom")
         .arg("generate_input.js")
         .arg(&root_hex)
+        .arg(my_index.to_string())
+        .arg(secret)
+        .arg(nullifier)
+        .arg(vote_choice)
+        .arg(all_commitments)
         .status()
         .expect("Failed to execute generate_input.js");
     assert!(status.success(), "generate_input.js failed");
 
-    // snarkjs を呼び出して proof を再生成
-    println!("Running snarkjs fullprove...");
     let snark_status = Command::new("snarkjs")
         .current_dir("circom")
-        .args([
-            "groth16",
-            "fullprove",
-            "input.json",
-            "voting_js/voting.wasm",
-            "voting_final.zkey",
-            "proof.json",
-            "public.json",
-        ])
+        .args(["groth16", "fullprove", "input.json", "voting_js/voting.wasm", "voting_final.zkey", "proof.json", "public.json"])
         .status()
         .expect("Failed to execute snarkjs");
     assert!(snark_status.success(), "snarkjs fullprove failed");
 
-    println!("✅ Fresh Proof generated successfully!");
     ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json")
 }
