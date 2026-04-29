@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{Address, U256};
+use alloy_primitives::{Address, U256, TxKind};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -25,7 +25,7 @@ pub struct Transaction {
     pub t_nonce: usize,
     pub t_gas_limit: U256,
     pub t_price: U256,
-    pub t_to: Option<Address>,
+    pub t_to: TxKind,
     pub t_value: U256,
     pub data: Vec<u8>,
     pub t_r: U256,
