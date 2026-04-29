@@ -1,3 +1,5 @@
+mod tx_check;
+
 use tendermint_abci::{Application, ServerBuilder};
 use tendermint_proto::abci::{
     ExecTxResult, RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx,
@@ -11,12 +13,14 @@ use std::sync::Mutex;
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::VersionId;
 use leviathan_v2::leviathan::world_state::{Account, WorldState};
+use tx_check::Tx_Checker;
 
 
 #[derive(Clone)]
 struct LeviathanApp {
     state: Arc<Mutex<WorldState>>,
     leviathan: Arc<Mutex<LEVIATHAN>>,
+    version: VersionId,
 }
 
 impl LeviathanApp {
@@ -24,6 +28,7 @@ impl LeviathanApp {
         Self {
             state: Arc::new(Mutex::new(WorldState::new())),
             leviathan: Arc::new(Mutex::new(LEVIATHAN::new(version))),
+            version,
         }
     }
 }
