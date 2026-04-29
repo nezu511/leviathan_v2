@@ -8,7 +8,7 @@ use crate::leviathan::world_state::{Account, MptAccount, WorldState};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{Address, U256, hex, keccak256, TxKind};
+use alloy_primitives::{Address, TxKind, U256, hex, keccak256};
 use alloy_rlp::Encodable;
 use eth_trie::{EthTrie, Trie};
 use sha3::Digest;
@@ -130,13 +130,13 @@ impl TransactionExecution for LEVIATHAN {
             TxKind::Create => {
                 //デバック出力
                 tracing::info!(
-                    sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
-                    data = %hex::encode(&transaction.data),
-                    gas = %gas,
-                    gas_price = %transaction.t_price,
-                    send_eth = %transaction.t_value,
-                    "Transaction [CREATE]"
-                    );
+                sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
+                data = %hex::encode(&transaction.data),
+                gas = %gas,
+                gas_price = %transaction.t_price,
+                send_eth = %transaction.t_value,
+                "Transaction [CREATE]"
+                );
                 self.contract_creation(
                     state,
                     &mut substate,
@@ -150,7 +150,7 @@ impl TransactionExecution for LEVIATHAN {
                     None,
                     true,
                     block_header,
-                    )
+                )
             }
 
             TxKind::Call(to_address) => {
@@ -158,14 +158,14 @@ impl TransactionExecution for LEVIATHAN {
                 substate.a_touch.push(to_address.clone());
                 //デバック出力
                 tracing::info!(
-                    sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
-                    to_address =  format_args!("0x{}", hex::encode(to_address.0)),
-                    data = %hex::encode(&transaction.data),
-                    gas = %gas,
-                    gas_price = %transaction.t_price,
-                    send_eth = %transaction.t_value,
-                    "Transaction [CALL]"
-                    );
+                sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
+                to_address =  format_args!("0x{}", hex::encode(to_address.0)),
+                data = %hex::encode(&transaction.data),
+                gas = %gas,
+                gas_price = %transaction.t_price,
+                send_eth = %transaction.t_value,
+                "Transaction [CALL]"
+                );
                 self.message_call(
                     state,
                     &mut substate,
@@ -181,7 +181,7 @@ impl TransactionExecution for LEVIATHAN {
                     0,
                     true,
                     block_header,
-                    )
+                )
             }
         };
 

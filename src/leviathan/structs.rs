@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{Address, U256, TxKind};
+use alloy_primitives::{Address, TxKind, U256};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
