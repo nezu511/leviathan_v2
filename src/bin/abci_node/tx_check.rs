@@ -13,11 +13,11 @@ use secp256k1::{
 use sha3::{Digest, Keccak256};
 
 pub trait Tx_Checker {
-    fn validate_transaction(&mut self, transaction: &Transaction) -> bool;
+    fn validate_transaction(&self, transaction: &Transaction) -> bool;
 }
 
 impl Tx_Checker for LeviathanApp {
-    fn validate_transaction(&mut self, transaction: &Transaction) -> bool {
+    fn validate_transaction(&self, transaction: &Transaction) -> bool {
         //=======ステップ1===========
         //【初期ガスの計算】
         let base_gas = U256::from(21000); //基本料金

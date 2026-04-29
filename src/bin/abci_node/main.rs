@@ -1,5 +1,6 @@
 mod tx_check;
 
+use alloy_rlp::{Decodable, RlpDecodable, RlpEncodable};
 use std::sync::Arc;
 use std::sync::Mutex;
 use tendermint_abci::{Application, ServerBuilder};
@@ -11,7 +12,7 @@ use tracing::{Level, info};
 
 //自作構造体
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
-use leviathan_v2::leviathan::structs::VersionId;
+use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::{Account, WorldState};
 use tx_check::Tx_Checker;
 
@@ -48,9 +49,42 @@ impl Application for LeviathanApp {
     /// 2. CheckTx: メモリープール投入前の単体検証
     fn check_tx(&self, req: RequestCheckTx) -> ResponseCheckTx {
         info!("[CHECK_TX] トランザクションを受信: {} bytes", req.tx.len());
-        ResponseCheckTx {
-            code: 0, // 0 = OK (受け入れ)
-            ..Default::default()
+
+        let mut raw_tx_slice = req.tx.as_ref();
+
+        match Transaction::decode(&mut raw_tx_slice) {
+            Ok(transaction) => {
+                tracing::info!(
+                    "[CHECK_TX] デコード成功: Nonce={}, GasLimit={}",
+                    transaction.t_nonce,
+                    transaction.t_gas_limit
+                );
+
+                let is_valid = self.validate_transaction(&transaction);
+                if !is_valid {
+                    return ResponseCheckTx {
+                        code: 1, // 不正なトランザクションは弾く
+                        log: "Validation Failed".to_string(),
+                        ..Default::default()
+                    };
+                }
+
+                ResponseCheckTx {
+                    code: 0,
+                    ..Default::default()
+                }
+            }
+            Err(err) => {
+                // デコード失敗（スパムやEthereum互換ではないフォーマット）
+                tracing::warn!("[CHECK_TX] RLPデコード失敗: {:?}", err);
+
+                // codeを非ゼロ（例: 1）にしてCometBFTに弾かせる
+                ResponseCheckTx {
+                    code: 1,
+                    log: format!("RLP Decode Error: {}", err),
+                    ..Default::default()
+                }
+            }
         }
     }
 
