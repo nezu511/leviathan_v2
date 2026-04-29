@@ -1,11 +1,11 @@
 use crate::LeviathanApp;
+use alloy_primitives::{Address, TxKind, U256};
+use alloy_rlp::{Encodable, Header};
+use bytes::BytesMut;
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::WorldState;
 use leviathan_v2::my_trait::leviathan_trait::{State, TransactionChecks};
-use alloy_primitives::{Address, U256};
-use alloy_rlp::{Encodable, Header};
-use bytes::BytesMut;
 use secp256k1::{
     Message, Secp256k1,
     ecdsa::{RecoverableSignature, RecoveryId},
@@ -17,10 +17,7 @@ pub trait Tx_Checker {
 }
 
 impl Tx_Checker for LeviathanApp {
-    fn validate_transaction(
-        &mut self,
-        transaction: &Transaction,
-        ) -> bool {
+    fn validate_transaction(&mut self, transaction: &Transaction) -> bool {
         //=======ステップ1===========
         //【初期ガスの計算】
         let base_gas = U256::from(21000); //基本料金
@@ -50,7 +47,7 @@ impl Tx_Checker for LeviathanApp {
         }
 
         let mut contract_gas = U256::ZERO;
-        if transaction.t_to.is_none() {
+        if transaction.t_to.is_create() {
             //コントラクト作成追加費
             if self.version >= VersionId::Homestead {
                 //Homestead以降
@@ -78,8 +75,8 @@ impl Tx_Checker for LeviathanApp {
         payload_length += transaction.t_gas_limit.length();
 
         let to_slice = match &transaction.t_to {
-            Some(address) => address.0.as_slice(),
-            None => &[], // 空のバイト列
+            TxKind::Call(address) => address.0.as_slice(),
+            TxKind::Create => &[], // 空のバイト列
         };
         payload_length += to_slice.length();
         payload_length += transaction.t_value.length();
@@ -176,7 +173,7 @@ impl Tx_Checker for LeviathanApp {
         //Initコードが49152バイト以下
         if self.version >= VersionId::Shanghai {
             //Shanghai以降
-            if transaction.t_to.is_none() && transaction.data.len() > 49152 {
+            if transaction.t_to.is_create() && transaction.data.len() > 49152 {
                 tracing::warn!("Initコードが49152バイトを超えている");
                 return false;
             }
