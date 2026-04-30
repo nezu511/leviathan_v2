@@ -10,6 +10,7 @@ use tendermint_proto::abci::{
     ResponseCommit, ResponseFinalizeBlock, ResponseInfo,
 };
 use tracing::{Level, info};
+use eth_trie::Trie;
 
 //自作構造体
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
@@ -100,7 +101,10 @@ impl Application for LeviathanApp {
         // ブロック内の各トランザクションに対する実行結果（すべて成功として返す）
         let tx_results = self.tx_execution(&req);
 
-        let new_state_root = self.state.eth_trie.root_hash().unwrap();
+        let new_state_root = {
+            let mut state = self.state.lock().unwrap();
+            state.eth_trie.root_hash().unwrap()
+        };
 
         // 実行完了後のStateRoot（AppHash）は、このメソッドで返す仕様に変更されました
         let dummy_app_hash = new_state_root.0.to_vec();

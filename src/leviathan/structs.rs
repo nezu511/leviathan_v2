@@ -144,9 +144,9 @@ impl SubState {
 
 #[derive(Debug, Clone)]
 pub struct Log {
-    address: Address,
-    topic: Vec<U256>, //0~4個
-    data: Vec<u8>,
+    pub address: Address,
+    pub topic: Vec<U256>, //0~4個
+    pub data: Vec<u8>,
 }
 
 impl Log {

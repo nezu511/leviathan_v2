@@ -3,16 +3,16 @@ use alloy_primitives::{Address, TxKind, U256, hex};
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId, BlockHeader};
 use leviathan_v2::leviathan::world_state::WorldState;
-use leviathan_v2::my_trait::leviathan_trait::{State, TransactionChecks};
+use leviathan_v2::my_trait::leviathan_trait::{State, TransactionExecution};
 use alloy_rlp::{Decodable, RlpDecodable, RlpEncodable};
 use tendermint_proto::abci::{
     ExecTxResult, RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx,
-    ResponseCommit, ResponseFinalizeBlock, ResponseInfo,
+    ResponseCommit, ResponseFinalizeBlock, ResponseInfo, Event, EventAttribute 
 };
 
 
 pub trait PI {
-    fn tx_execution(&self, transaction: &Transaction) -> Vec<ExecTxResult>;
+    fn tx_execution(&self, req: &RequestFinalizeBlock) -> Vec<ExecTxResult>;
 }
 
 
@@ -57,7 +57,7 @@ impl PI for LeviathanApp {
                         );
 
                     //実行
-                    let gas_wanted: i64 = transaction.t_gas_limit.try_into().unwrap_or(i64::MAX);
+                    let gas_wanted = u64::try_from(transaction.t_gas_limit).unwrap_or(u64::MAX) as i64;
                     let result = leviathan.execution(&mut state, transaction, &block_header);
                     match result {
                         Ok((final_bill_gas, logs)) => {
@@ -67,30 +67,30 @@ impl PI for LeviathanApp {
 
                                 // 1. アドレスを属性に追加
                                 attributes.push(EventAttribute {
-                                    key: "address".to_string().into(),
-                                    value: format!("0x{}", hex::encode(eth_log.address.0)).into(),
+                                    key: "address".to_string(),
+                                    value: format!("0x{}", hex::encode(eth_log.address.0)),
                                     index: true,
                                 });
 
                                 // 2. トピックを属性に追加
                                 for (i, topic) in eth_log.topic.iter().enumerate() {
                                     attributes.push(EventAttribute {
-                                        key: format!("topic{}", i).into(),
-                                        value: format!("0x{}", hex::encode(topic.to_be_bytes::<32>())).into(),
+                                        key: format!("topic{}", i),
+                                        value: format!("0x{}", hex::encode(topic.to_be_bytes::<32>())),
                                         index: true, 
                                     });
                                 }
 
                                 // 3. データを属性に追加
                                 attributes.push(EventAttribute {
-                                    key: "data".to_string().into(),
-                                    value: format!("0x{}", hex::encode(&eth_log.data)).into(),
+                                    key: "data".to_string(),
+                                    value: format!("0x{}", hex::encode(&eth_log.data)),
                                     index: false, 
                                 });
 
                                 // 1つの Ethereum Log を 1つの CometBFT Event にまとめる
                                 abci_events.push(Event {
-                                    kind: "evm_log".to_string(), // イベントの種類を識別する名前
+                                    r#type: "evm_log".to_string(), // イベントの種類を識別する名前
                                     attributes,
                                 });
                             }
@@ -100,7 +100,7 @@ impl PI for LeviathanApp {
                                 log: "Success".to_string(),  
                                 events: abci_events,
                                 gas_wanted,
-                                gas_used: final_bill_gas.try_into().unwrap_or(i64::MAX),
+                                gas_used: u64::try_from(final_bill_gas).unwrap_or(u64::MAX) as i64,
                                 ..Default::default()
                             });
                         }
@@ -111,7 +111,7 @@ impl PI for LeviathanApp {
                                 code: 1,
                                 log: "Execution Failed".to_string(),
                                 gas_wanted,
-                                gas_used: final_bill_gas.try_into().unwrap_or(i64::MAX),
+                                gas_used: u64::try_from(final_bill_gas).unwrap_or(u64::MAX) as i64,
                                 ..Default::default()
                             });
                         }
