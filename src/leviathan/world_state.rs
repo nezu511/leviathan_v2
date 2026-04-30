@@ -20,7 +20,6 @@ pub struct WorldState {
     pub cache: HashMap<Address, Account>,
     pub data: Arc<RocksDBWrapper>,
     pub eth_trie: EthTrie<RocksDBWrapper>,
-    pub code_storage: HashMap<B256, Vec<u8>>,
 }
 
 impl WorldState {
@@ -35,12 +34,12 @@ impl WorldState {
         let empty_code = Vec::<u8>::new();
         let hash = keccak256(&empty_code);
         code_storage.insert(hash, empty_code);
+        data.insert_code(hash.as_slice(), &empty_code);
 
         Self {
             cache,
             data,
             eth_trie,
-            code_storage,
         }
     }
 
@@ -79,9 +78,9 @@ impl WorldState {
         };
         //コードハッシュを取得
         let code_hash = keccak256(cache_account.code.clone());
-        self.code_storage
-            .entry(code_hash)
-            .or_insert(cache_account.code.clone());
+        if self.data.get_code(code_hash.as_slice()).is_none() {
+            self.data.insert_code(code_hash.as_slice(), &cache_account.code);
+        }
         //mpt_accout作成
         let mpt_account = MptAccount::new(
             cache_account.nonce,
@@ -123,11 +122,7 @@ impl WorldState {
         let nonce = mpt_account.nonce;
         let balance = mpt_account.balance;
         let shash = mpt_account.storage_root;
-        let code = self
-            .code_storage
-            .get(&mpt_account.code_hash)
-            .cloned()
-            .unwrap();
+        let code = self.data.get_code(mpt_account.code_hash.as_slice()).expect("コードがDBに見つかりません");
         //mpt_accoutのhashを取得
         let mut mpt_account_rlp_bytes = Vec::new();
         mpt_account.encode(&mut mpt_account_rlp_bytes);
