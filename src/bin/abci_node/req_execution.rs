@@ -1,10 +1,14 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, TxKind, U256};
+use alloy_primitives::{Address, TxKind, U256, hex};
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId, BlockHeader};
 use leviathan_v2::leviathan::world_state::WorldState;
 use leviathan_v2::my_trait::leviathan_trait::{State, TransactionChecks};
 use alloy_rlp::{Decodable, RlpDecodable, RlpEncodable};
+use tendermint_proto::abci::{
+    ExecTxResult, RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx,
+    ResponseCommit, ResponseFinalizeBlock, ResponseInfo,
+};
 
 
 pub trait PI {
@@ -12,7 +16,7 @@ pub trait PI {
 }
 
 
-impl Tx_Checker for LeviathanApp {
+impl PI for LeviathanApp {
     fn tx_execution(&self, req: &RequestFinalizeBlock) -> Vec<ExecTxResult> {
 
         //ブロックヘッダーの作成

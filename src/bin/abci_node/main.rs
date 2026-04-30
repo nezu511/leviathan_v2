@@ -1,4 +1,5 @@
 mod tx_check;
+mod req_execution;
 
 use alloy_rlp::{Decodable, RlpDecodable, RlpEncodable};
 use std::sync::Arc;
@@ -15,6 +16,7 @@ use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::{Account, WorldState};
 use tx_check::Tx_Checker;
+use req_execution::PI;
 
 #[derive(Clone)]
 struct LeviathanApp {
@@ -96,20 +98,12 @@ impl Application for LeviathanApp {
         );
 
         // ブロック内の各トランザクションに対する実行結果（すべて成功として返す）
-        let tx_results = req
-            .txs
-            .iter()
-            .map(|tx| {
-                info!("   - TX実行: {} bytes", tx.len());
-                ExecTxResult {
-                    code: 0, // 0 = 実行成功
-                    ..Default::default()
-                }
-            })
-            .collect();
+        let tx_results = self.tx_execution(&req);
+
+        let new_state_root = self.state.eth_trie.root_hash().unwrap();
 
         // 実行完了後のStateRoot（AppHash）は、このメソッドで返す仕様に変更されました
-        let dummy_app_hash = vec![0u8; 32];
+        let dummy_app_hash = new_state_root.0.to_vec();
 
         ResponseFinalizeBlock {
             tx_results,
