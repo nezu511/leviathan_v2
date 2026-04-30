@@ -3,7 +3,7 @@ use std::fs;
 use std::io::Write;
 
 // alloy_primitives の hex を使用して E0433 を解消
-use alloy_primitives::{Address, TxKind, U256, hex, keccak256};
+use alloy_primitives::{Address, U256, hex, keccak256};
 
 // 署名生成のためのクレート
 use alloy_rlp::{Encodable, Header};
@@ -11,7 +11,6 @@ use bytes::BytesMut;
 use eth_trie::{EthTrie, Trie};
 use secp256k1::{Message, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
-use tempfile::tempdir;
 
 // 🌟 crate:: ではなく パッケージ名 (ここでは leviathan_v2 と仮定) を使用します
 use leviathan_v2::leviathan::leviathan::LEVIATHAN; // LEVIATHAN を追加
@@ -94,7 +93,7 @@ fn sign_transaction(
     nonce: U256,
     gas_price: U256,
     gas_limit: U256,
-    to: TxKind,
+    to: Option<Address>,
     value: U256,
     data: &[u8],
     secret_key_hex: &str,
@@ -106,8 +105,8 @@ fn sign_transaction(
     payload_length += gas_limit.length();
 
     let to_slice = match &to {
-        TxKind::Call(addr) => addr.0.as_slice(),
-        TxKind::Create => &[], // 空のバイト列
+        Some(addr) => addr.0.as_slice(),
+        None => &[], // 空のバイト列
     };
     payload_length += to_slice.length();
     payload_length += value.length();
@@ -307,11 +306,8 @@ fn state_test() {
                                         network_str, post_idx, data_idx, gas_idx, value_idx
                                     );
 
-                                    let temp_dir =
-                                        tempdir().expect("一時ディレクトリの作成に失敗しました");
-                                    let db_path = temp_dir.path().to_str().expect("無効なパスです");
                                     // 1. WorldStateの初期化 (必ず毎ループ初期化する！)
-                                    let mut state = WorldState::new(db_path);
+                                    let mut state = WorldState::new();
 
                                     for (addr_str, acc_data) in &test_data.pre {
                                         let addr = parse_address(addr_str);
@@ -359,7 +355,7 @@ fn state_test() {
                                             .unwrap_or_default();
 
                                         let code_hash = keccak256(&code);
-                                        state.data.insert_code(code_hash.as_slice(), &code);
+                                        state.code_storage.insert(code_hash, code.clone());
 
                                         let account = Account {
                                             nonce,
@@ -410,9 +406,9 @@ fn state_test() {
                                     let gas_limit = parse_u256(gas_limit_str);
                                     let value = parse_u256(value_str);
                                     let to_address = if test_data.transaction.to.is_empty() {
-                                        TxKind::Create
+                                        None
                                     } else {
-                                        TxKind::Call(parse_address(&test_data.transaction.to))
+                                        Some(parse_address(&test_data.transaction.to))
                                     };
                                     let nonce = parse_u256(&test_data.transaction.nonce);
                                     let gas_price = parse_u256(&test_data.transaction.gas_price);

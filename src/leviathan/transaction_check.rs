@@ -4,7 +4,7 @@ use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
 use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionChecks};
-use alloy_primitives::{Address, TxKind, U256};
+use alloy_primitives::{Address, U256};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use secp256k1::{
@@ -29,8 +29,8 @@ impl TransactionChecks for LEVIATHAN {
         payload_length += transaction.t_gas_limit.length();
 
         let to_slice = match &transaction.t_to {
-            TxKind::Call(address) => address.0.as_slice(),
-            TxKind::Create => &[], // 空のバイト列
+            Some(address) => address.0.as_slice(),
+            None => &[], // 空のバイト列
         };
         payload_length += to_slice.length();
         payload_length += transaction.t_value.length();
@@ -112,7 +112,7 @@ impl TransactionChecks for LEVIATHAN {
         //Initコードが49152バイト以下
         if self.version >= VersionId::Shanghai {
             //Shanghai以降
-            if transaction.t_to.is_create() && transaction.data.len() > 49152 {
+            if transaction.t_to.is_none() && transaction.data.len() > 49152 {
                 return Err("Initコードが49152バイトを超えている");
             }
         }
