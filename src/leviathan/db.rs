@@ -8,8 +8,7 @@ pub const CF_CODE: &str = "code_data";
 
 struct RocksDBInner {
     batch: WriteBatch,
-    // 🌟 テスト環境では、この overlay が実質的なメインDBとして機能する
-    overlay: HashMap<Vec<u8>, Vec<u8>>,
+    overlay: HashMap<Vec<u8>, Option<Vec<u8>>>,
 }
 
 pub struct RocksDBWrapper {
@@ -34,7 +33,33 @@ impl RocksDBWrapper {
             }),
         }
     }
+
+
+    pub fn insert_code(&self, code_hash: &[u8], code: &[u8]) {
+        let mut inner = self.inner.lock().unwrap();
+        let cf = self.db.cf_handle(CF_CODE).unwrap();
+        
+        inner.batch.put_cf(&cf, code_hash, code);
+        // overlayの型は Option<Vec<u8>> なので、Some で包んで入れる
+        inner.overlay.insert(code_hash.to_vec(), Some(code.to_vec()));
+    }
+
+    pub fn get_code(&self, code_hash: &[u8]) -> Option<Vec<u8>> {
+        let inner = self.inner.lock().unwrap();
+        
+        // 1. Overlayキャッシュを確認
+        if let Some(cache_result) = inner.overlay.get(code_hash) {
+            // cache_result は Option<Vec<u8>> なので、そのまま clone して返す
+            return cache_result.clone();
+        }
+        
+        // 2. キャッシュに無ければSSDを探す
+        let cf = self.db.cf_handle(CF_CODE).unwrap();
+        self.db.get_cf(&cf, code_hash).unwrap_or(None)
+    }
 }
+
+// --- MPT (eth_trie) 用メソッド ---
 
 impl EthTrieDB for RocksDBWrapper {
     type Error = RocksError;
@@ -42,13 +67,14 @@ impl EthTrieDB for RocksDBWrapper {
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, Self::Error> {
         let inner = self.inner.lock().unwrap();
 
-        // 🌟 常に Overlay キャッシュを最優先で確認！
-        // これにより、さっき insert したばかりのノードを確実に見つける
-        if let Some(value) = inner.overlay.get(key) {
-            return Ok(Some(value.clone()));
+        // 1. Overlayキャッシュを確認
+        if let Some(cache_result) = inner.overlay.get(key) {
+            // Some(Some(data)) -> 追加されたデータ
+            // Some(None) -> 削除されたデータ(Tombstone)
+            return Ok(cache_result.clone()); 
         }
 
-        // Overlay になければ、SSD(RocksDB本体)を探す
+        // 2. キャッシュに無ければSSDを探す
         let cf = self.db.cf_handle(CF_MPT).unwrap();
         self.db.get_cf(&cf, key)
     }
@@ -57,9 +83,9 @@ impl EthTrieDB for RocksDBWrapper {
         let mut inner = self.inner.lock().unwrap();
         let cf = self.db.cf_handle(CF_MPT).unwrap();
 
-        // バッチ(SSD書き込み予約)と Overlay(即時読み取り用) の両方に保存
+        // バッチにPutし、キャッシュには Some(value) として記録
         inner.batch.put_cf(&cf, key, &value);
-        inner.overlay.insert(key.to_vec(), value);
+        inner.overlay.insert(key.to_vec(), Some(value));
         Ok(())
     }
 
@@ -67,8 +93,9 @@ impl EthTrieDB for RocksDBWrapper {
         let mut inner = self.inner.lock().unwrap();
         let cf = self.db.cf_handle(CF_MPT).unwrap();
 
+        // 🌟 バッチにDeleteし、キャッシュには None (Tombstone) として記録
         inner.batch.delete_cf(&cf, key);
-        inner.overlay.remove(key);
+        inner.overlay.insert(key.to_vec(), None);
         Ok(())
     }
 
@@ -77,7 +104,7 @@ impl EthTrieDB for RocksDBWrapper {
         let current_batch = std::mem::replace(&mut inner.batch, WriteBatch::default());
         let result = self.db.write(current_batch);
 
-        // 🌟 SSD書き込み成功時に Overlay をクリアする
+        // SSD書き込み成功時に Overlay をクリアする
         if result.is_ok() {
             inner.overlay.clear();
         }
