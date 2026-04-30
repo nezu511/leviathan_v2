@@ -7,7 +7,6 @@ use sha3::Digest;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-
 use crate::leviathan::db::RocksDBWrapper;
 
 // 空のMPTツリーのルートハッシュ (Keccak256(RLP("")))

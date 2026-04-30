@@ -306,8 +306,9 @@ fn state_test() {
                                         "  [Network: {:<17}] Matrix {} (data: {}, gas: {}, value: {})",
                                         network_str, post_idx, data_idx, gas_idx, value_idx
                                     );
-                                    
-                                    let temp_dir = tempdir().expect("一時ディレクトリの作成に失敗しました");
+
+                                    let temp_dir =
+                                        tempdir().expect("一時ディレクトリの作成に失敗しました");
                                     let db_path = temp_dir.path().to_str().expect("無効なパスです");
                                     // 1. WorldStateの初期化 (必ず毎ループ初期化する！)
                                     let mut state = WorldState::new(db_path);
