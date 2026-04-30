@@ -359,7 +359,7 @@ fn state_test() {
                                             .unwrap_or_default();
 
                                         let code_hash = keccak256(&code);
-                                        state.code_storage.insert(code_hash, code.clone());
+                                        state.data.insert_code(code_hash.as_slice(), &code);
 
                                         let account = Account {
                                             nonce,
