@@ -24,9 +24,9 @@ struct LeviathanApp {
 }
 
 impl LeviathanApp {
-    pub fn new(version: VersionId) -> Self {
+    pub fn new(version: VersionId, db_path: &str) -> Self {
         Self {
-            state: Arc::new(Mutex::new(WorldState::new())),
+            state: Arc::new(Mutex::new(WorldState::new(db_path))),
             leviathan: Arc::new(Mutex::new(LEVIATHAN::new(version))),
             version,
         }
@@ -130,7 +130,10 @@ fn main() {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
     info!("Leviathan ABCI Mock Serverを起動中...");
 
-    let app = LeviathanApp::new(VersionId::Constantinople);
+    let db_path = "data/leviathan_db";
+    std::fs::create_dir_all(db_path).expect("DBディレクトリの作成に失敗しました");
+
+    let app = LeviathanApp::new(VersionId::Constantinople, db_path);
 
     let server = ServerBuilder::default()
         .bind("127.0.0.1:26658", app)
