@@ -1,74 +1,87 @@
 use eth_trie::DB as EthTrieDB;
 use rocksdb::{DB as RocksDB, Error as RocksError, Options, WriteBatch};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex}; 
 
-// カラムファミリ名の定義
 pub const CF_MPT: &str = "mpt_data";
 pub const CF_CODE: &str = "code_data";
 
+struct RocksDBInner {
+    batch: WriteBatch,
+    // 🌟 テスト環境では、この overlay が実質的なメインDBとして機能する
+    overlay: HashMap<Vec<u8>, Vec<u8>>,
+}
+
 pub struct RocksDBWrapper {
     db: Arc<RocksDB>,
-    // WriteBatch は Sync ではないため、Mutex を使ってスレッドセーフにします
-    batch: Mutex<WriteBatch>,
+    inner: Mutex<RocksDBInner>,
 }
 
 impl RocksDBWrapper {
-    /// RocksDBインスタンスを初期化し、ラッパーを生成します
     pub fn new(path: &str) -> Self {
         let mut opts = Options::default();
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
 
-        // 使用するカラムファミリを宣言
         let cfs = vec![CF_MPT, CF_CODE];
-        
-        // カラムファミリを有効にしてデータベースを開く
         let db = RocksDB::open_cf(&opts, path, cfs).expect("RocksDBのオープンに失敗しました");
         
         Self { 
             db: Arc::new(db),
-            batch: Mutex::new(WriteBatch::default()), // Mutex::new になっています
+            inner: Mutex::new(RocksDBInner {
+                batch: WriteBatch::default(),
+                overlay: HashMap::new(),
+            }),
         }
     }
 }
 
-// eth_trie::DB トレイトの実装
 impl EthTrieDB for RocksDBWrapper {
-    // 関連型 Error として、RocksDB のエラー型をそのまま使用する
     type Error = RocksError;
 
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, Self::Error> {
+        let inner = self.inner.lock().unwrap();
+        
+        // 🌟 常に Overlay キャッシュを最優先で確認！
+        // これにより、さっき insert したばかりのノードを確実に見つける
+        if let Some(value) = inner.overlay.get(key) {
+            return Ok(Some(value.clone()));
+        }
+        
+        // Overlay になければ、SSD(RocksDB本体)を探す
         let cf = self.db.cf_handle(CF_MPT).unwrap();
-        // RocksDBのget_cfは Result<Option<Vec<u8>>, rocksdb::Error> を返すのでそのまま返却
         self.db.get_cf(&cf, key)
     }
 
     fn insert(&self, key: &[u8], value: Vec<u8>) -> Result<(), Self::Error> {
-        // Mutex のロックを取得
-        let mut batch = self.batch.lock().unwrap();
+        let mut inner = self.inner.lock().unwrap();
         let cf = self.db.cf_handle(CF_MPT).unwrap();
         
-        batch.put_cf(&cf, key, value);
+        // バッチ(SSD書き込み予約)と Overlay(即時読み取り用) の両方に保存
+        inner.batch.put_cf(&cf, key, &value);
+        inner.overlay.insert(key.to_vec(), value);
         Ok(())
     }
 
     fn remove(&self, key: &[u8]) -> Result<(), Self::Error> {
-        // Mutex のロックを取得
-        let mut batch = self.batch.lock().unwrap();
+        let mut inner = self.inner.lock().unwrap();
         let cf = self.db.cf_handle(CF_MPT).unwrap();
         
-        batch.delete_cf(&cf, key);
+        inner.batch.delete_cf(&cf, key);
+        inner.overlay.remove(key);
         Ok(())
     }
 
     fn flush(&self) -> Result<(), Self::Error> {
-        // Mutex のロックを取得
-        let mut batch = self.batch.lock().unwrap();
+        let mut inner = self.inner.lock().unwrap();
+        let current_batch = std::mem::replace(&mut inner.batch, WriteBatch::default());
+        let result = self.db.write(current_batch);
         
-        // 現在のバッチを取り出し、空のバッチと入れ替える
-        let current_batch = std::mem::replace(&mut *batch, WriteBatch::default());
+        // 🌟 SSD書き込み成功時に Overlay をクリアする
+        if result.is_ok() {
+            inner.overlay.clear();
+        }
         
-        // アトミックにSSDへ書き込み、Result をそのまま返す
-        self.db.write(current_batch)
+        result
     }
 }
