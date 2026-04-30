@@ -33,7 +33,6 @@ impl WorldState {
         //空のコードのハッシュを登録
         let empty_code = Vec::<u8>::new();
         let hash = keccak256(&empty_code);
-        code_storage.insert(hash, empty_code);
         data.insert_code(hash.as_slice(), &empty_code);
 
         Self {
