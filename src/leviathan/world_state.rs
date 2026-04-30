@@ -7,6 +7,9 @@ use sha3::Digest;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+
+use crate::leviathan::db::RocksDBWrapper;
+
 // 空のMPTツリーのルートハッシュ (Keccak256(RLP("")))
 pub const EMPTY_STORAGE_ROOT: B256 =
     b256!("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421");
@@ -16,14 +19,15 @@ pub const EMPTY_CODE_HASH: B256 =
 
 pub struct WorldState {
     pub cache: HashMap<Address, Account>,
-    pub data: Arc<MemoryDB>,
-    pub eth_trie: EthTrie<MemoryDB>,
+    pub data: Arc<RocksDBWrapper>,
+    pub eth_trie: EthTrie<RocksDBWrapper>,
     pub code_storage: HashMap<B256, Vec<u8>>,
 }
 
 impl WorldState {
-    pub fn new() -> Self {
-        let data = Arc::new(MemoryDB::new(true));
+    pub fn new(db_path: &str) -> Self {
+        let db_wrapper = RocksDBWrapper::new(db_path);
+        let data = Arc::new(db_wrapper);
         let cache = HashMap::<Address, Account>::new();
         let mut eth_trie = EthTrie::new(data.clone());
         let _ = eth_trie.root_hash().unwrap();
