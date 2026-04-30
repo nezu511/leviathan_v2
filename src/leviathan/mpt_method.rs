@@ -126,10 +126,9 @@ impl State for WorldState {
         };
         self.add_cache(address, &mpt_account);
         let code = self
-            .code_storage
-            .get(&mpt_account.code_hash)
-            .cloned()
-            .unwrap();
+            .data
+            .get_code(mpt_account.code_hash.as_slice())
+            .unwrap_or_default();
         Some(code)
     }
 

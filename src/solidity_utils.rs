@@ -3,7 +3,7 @@ use crate::leviathan::structs::{BlockHeader, Log, Transaction, VersionId};
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::leviathan_trait::{State, TransactionExecution};
 
-use alloy_primitives::{Address, Bytes, U256, hex, keccak256, uint};
+use alloy_primitives::{Address, Bytes, TxKind, U256, hex, keccak256, uint};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use secp256k1::{Message, Secp256k1, SecretKey};
@@ -107,7 +107,7 @@ pub fn deploy_contract(
 
     let transaction = Transaction {
         data: init_code,
-        t_to: None,
+        t_to: TxKind::Create,
         t_gas_limit: gas_limit,
         t_price: gas_price,
         t_value: eth,
@@ -196,7 +196,7 @@ pub fn call_contract(
 
     let transaction = Transaction {
         data,
-        t_to: Some(contract_addr),
+        t_to: TxKind::Call(contract_addr),
         t_gas_limit: gas_limit,
         t_price: gas_price,
         t_value: eth,
@@ -258,7 +258,7 @@ pub fn deploy_contract_raw(
 
     let transaction = Transaction {
         data: init_code,
-        t_to: None,
+        t_to: TxKind::Create,
         t_gas_limit: gas_limit,
         t_price: gas_price,
         t_value: eth,
