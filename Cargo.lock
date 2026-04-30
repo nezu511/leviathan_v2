@@ -2621,6 +2621,7 @@ dependencies = [
  "sha2",
  "sha3",
  "stacker",
+ "tempfile",
  "tendermint-abci",
  "tendermint-proto",
  "tracing",
