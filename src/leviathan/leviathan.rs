@@ -290,10 +290,11 @@ impl TransactionExecution for LEVIATHAN {
                     };
                     //コードハッシュを取得
                     let code_hash = keccak256(cache_account.code.clone());
-                    state
-                        .code_storage
-                        .entry(code_hash)
-                        .or_insert(cache_account.code.clone());
+                    if state.data.get_code(code_hash.as_slice()).is_none() {
+                        state
+                            .data
+                            .insert_code(code_hash.as_slice(), &cache_account.code);
+                    }
                     tracing::info!(
                     address =  format_args!("0x{}", hex::encode(address.0)),
                     nonce = %cache_account.nonce,
@@ -438,10 +439,11 @@ impl TransactionExecution for LEVIATHAN {
                     };
                     //コードハッシュを取得
                     let code_hash = keccak256(cache_account.code.clone());
-                    state
-                        .code_storage
-                        .entry(code_hash)
-                        .or_insert(cache_account.code.clone());
+                    if state.data.get_code(code_hash.as_slice()).is_none() {
+                        state
+                            .data
+                            .insert_code(code_hash.as_slice(), &cache_account.code);
+                    }
                     let mpt_account = MptAccount::new(
                         cache_account.nonce,
                         cache_account.balance,

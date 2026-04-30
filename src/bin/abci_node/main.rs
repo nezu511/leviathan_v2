@@ -1,6 +1,8 @@
+mod req_execution;
 mod tx_check;
 
 use alloy_rlp::{Decodable, RlpDecodable, RlpEncodable};
+use eth_trie::Trie;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tendermint_abci::{Application, ServerBuilder};
@@ -14,6 +16,7 @@ use tracing::{Level, info};
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::{Account, WorldState};
+use req_execution::PI;
 use tx_check::Tx_Checker;
 
 #[derive(Clone)]
@@ -24,9 +27,9 @@ struct LeviathanApp {
 }
 
 impl LeviathanApp {
-    pub fn new(version: VersionId) -> Self {
+    pub fn new(version: VersionId, db_path: &str) -> Self {
         Self {
-            state: Arc::new(Mutex::new(WorldState::new())),
+            state: Arc::new(Mutex::new(WorldState::new(db_path))),
             leviathan: Arc::new(Mutex::new(LEVIATHAN::new(version))),
             version,
         }
@@ -96,20 +99,15 @@ impl Application for LeviathanApp {
         );
 
         // ブロック内の各トランザクションに対する実行結果（すべて成功として返す）
-        let tx_results = req
-            .txs
-            .iter()
-            .map(|tx| {
-                info!("   - TX実行: {} bytes", tx.len());
-                ExecTxResult {
-                    code: 0, // 0 = 実行成功
-                    ..Default::default()
-                }
-            })
-            .collect();
+        let tx_results = self.tx_execution(&req);
+
+        let new_state_root = {
+            let mut state = self.state.lock().unwrap();
+            state.eth_trie.root_hash().unwrap()
+        };
 
         // 実行完了後のStateRoot（AppHash）は、このメソッドで返す仕様に変更されました
-        let dummy_app_hash = vec![0u8; 32];
+        let dummy_app_hash = new_state_root.0.to_vec();
 
         ResponseFinalizeBlock {
             tx_results,
@@ -130,7 +128,10 @@ fn main() {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
     info!("Leviathan ABCI Mock Serverを起動中...");
 
-    let app = LeviathanApp::new(VersionId::Constantinople);
+    let db_path = "data/leviathan_db";
+    std::fs::create_dir_all(db_path).expect("DBディレクトリの作成に失敗しました");
+
+    let app = LeviathanApp::new(VersionId::Constantinople, db_path);
 
     let server = ServerBuilder::default()
         .bind("127.0.0.1:26658", app)

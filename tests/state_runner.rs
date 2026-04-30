@@ -11,6 +11,7 @@ use bytes::BytesMut;
 use eth_trie::{EthTrie, Trie};
 use secp256k1::{Message, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
+use tempfile::tempdir;
 
 // 🌟 crate:: ではなく パッケージ名 (ここでは leviathan_v2 と仮定) を使用します
 use leviathan_v2::leviathan::leviathan::LEVIATHAN; // LEVIATHAN を追加
@@ -306,8 +307,11 @@ fn state_test() {
                                         network_str, post_idx, data_idx, gas_idx, value_idx
                                     );
 
+                                    let temp_dir =
+                                        tempdir().expect("一時ディレクトリの作成に失敗しました");
+                                    let db_path = temp_dir.path().to_str().expect("無効なパスです");
                                     // 1. WorldStateの初期化 (必ず毎ループ初期化する！)
-                                    let mut state = WorldState::new();
+                                    let mut state = WorldState::new(db_path);
 
                                     for (addr_str, acc_data) in &test_data.pre {
                                         let addr = parse_address(addr_str);
@@ -355,7 +359,7 @@ fn state_test() {
                                             .unwrap_or_default();
 
                                         let code_hash = keccak256(&code);
-                                        state.code_storage.insert(code_hash, code.clone());
+                                        state.data.insert_code(code_hash.as_slice(), &code);
 
                                         let account = Account {
                                             nonce,
