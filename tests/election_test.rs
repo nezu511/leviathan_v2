@@ -13,7 +13,6 @@ use leviathan_v2::leviathan::world_state::{Account, WorldState};
 use leviathan_v2::my_trait::leviathan_trait::State;
 use leviathan_v2::solidity_utils::{call_contract, deploy_contract, deploy_contract_raw};
 use leviathan_v2::zk_prover::ZkVotePayload;
-use tempfile::tempdir;
 
 sol! {
     function register(
@@ -137,9 +136,7 @@ fn test_election_e2e() {
 // =====================================================================
 
 fn setup_evm() -> (WorldState, LEVIATHAN, SecretKey, U256, U256) {
-    let temp_dir = tempdir().expect("一時ディレクトリの作成に失敗しました");
-    let db_path = temp_dir.path().to_str().expect("無効なパスです");
-    let mut state = WorldState::new(db_path);
+    let mut state = WorldState::new();
     let leviathan = LEVIATHAN::new(VersionId::Petersburg);
 
     let secret_key = SecretKey::from_byte_array(hex!(
