@@ -8,7 +8,7 @@ use crate::leviathan::world_state::{Account, MptAccount, WorldState};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{Address, U256, hex, keccak256};
+use alloy_primitives::{Address, TxKind, U256, hex, keccak256};
 use alloy_rlp::Encodable;
 use eth_trie::{EthTrie, Trie};
 use sha3::Digest;
@@ -73,7 +73,7 @@ impl TransactionExecution for LEVIATHAN {
         }
 
         let mut contract_gas = U256::ZERO;
-        if transaction.t_to.is_none() {
+        if let TxKind::Create = transaction.t_to {
             //コントラクト作成追加費
             if self.version >= VersionId::Homestead {
                 //Homestead以降
@@ -126,60 +126,63 @@ impl TransactionExecution for LEVIATHAN {
         gas = gas.saturating_sub(all_gas);
 
         //=======ステップ3===========
-        let result = if transaction.t_to.is_none() {
-            //デバック出力
-            tracing::info!(
-            sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
-            data = %hex::encode(&transaction.data),
-            gas = %gas,
-            gas_price = %transaction.t_price,
-            send_eth = %transaction.t_value,
-            "Transaction [CREATE]"
-            );
-            self.contract_creation(
-                state,
-                &mut substate,
-                sender_address.clone(),
-                sender_address.clone(),
-                gas,
-                transaction.t_price,
-                transaction.t_value,
-                transaction.data,
-                0,
-                None,
-                true,
-                block_header,
-            )
-        } else {
-            let to_address = transaction.t_to.unwrap();
-            //a_touchにトランザクションの基本要素（宛先）を追加
-            substate.a_touch.push(to_address.clone());
-            //デバック出力
-            tracing::info!(
-            sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
-            to_address =  format_args!("0x{}", hex::encode(to_address.0)),
-            data = %hex::encode(&transaction.data),
-            gas = %gas,
-            gas_price = %transaction.t_price,
-            send_eth = %transaction.t_value,
-            "Transaction [CALL]"
-            );
-            self.message_call(
-                state,
-                &mut substate,
-                sender_address.clone(),
-                sender_address.clone(),
-                to_address.clone(),
-                to_address.clone(),
-                gas,
-                transaction.t_price,
-                transaction.t_value,
-                transaction.t_value,
-                transaction.data,
-                0,
-                true,
-                block_header,
-            )
+        let result = match transaction.t_to {
+            TxKind::Create => {
+                //デバック出力
+                tracing::info!(
+                sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
+                data = %hex::encode(&transaction.data),
+                gas = %gas,
+                gas_price = %transaction.t_price,
+                send_eth = %transaction.t_value,
+                "Transaction [CREATE]"
+                );
+                self.contract_creation(
+                    state,
+                    &mut substate,
+                    sender_address.clone(),
+                    sender_address.clone(),
+                    gas,
+                    transaction.t_price,
+                    transaction.t_value,
+                    transaction.data,
+                    0,
+                    None,
+                    true,
+                    block_header,
+                )
+            }
+
+            TxKind::Call(to_address) => {
+                //a_touchにトランザクションの基本要素（宛先）を追加
+                substate.a_touch.push(to_address.clone());
+                //デバック出力
+                tracing::info!(
+                sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
+                to_address =  format_args!("0x{}", hex::encode(to_address.0)),
+                data = %hex::encode(&transaction.data),
+                gas = %gas,
+                gas_price = %transaction.t_price,
+                send_eth = %transaction.t_value,
+                "Transaction [CALL]"
+                );
+                self.message_call(
+                    state,
+                    &mut substate,
+                    sender_address.clone(),
+                    sender_address.clone(),
+                    to_address.clone(),
+                    to_address.clone(),
+                    gas,
+                    transaction.t_price,
+                    transaction.t_value,
+                    transaction.t_value,
+                    transaction.data,
+                    0,
+                    true,
+                    block_header,
+                )
+            }
         };
 
         //払い戻しガス
@@ -287,10 +290,11 @@ impl TransactionExecution for LEVIATHAN {
                     };
                     //コードハッシュを取得
                     let code_hash = keccak256(cache_account.code.clone());
-                    state
-                        .code_storage
-                        .entry(code_hash)
-                        .or_insert(cache_account.code.clone());
+                    if state.data.get_code(code_hash.as_slice()).is_none() {
+                        state
+                            .data
+                            .insert_code(code_hash.as_slice(), &cache_account.code);
+                    }
                     tracing::info!(
                     address =  format_args!("0x{}", hex::encode(address.0)),
                     nonce = %cache_account.nonce,
@@ -435,10 +439,11 @@ impl TransactionExecution for LEVIATHAN {
                     };
                     //コードハッシュを取得
                     let code_hash = keccak256(cache_account.code.clone());
-                    state
-                        .code_storage
-                        .entry(code_hash)
-                        .or_insert(cache_account.code.clone());
+                    if state.data.get_code(code_hash.as_slice()).is_none() {
+                        state
+                            .data
+                            .insert_code(code_hash.as_slice(), &cache_account.code);
+                    }
                     let mpt_account = MptAccount::new(
                         cache_account.nonce,
                         cache_account.balance,
