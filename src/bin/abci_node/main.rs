@@ -4,7 +4,7 @@ mod tx_check;
 use alloy_rlp::Decodable;
 use eth_trie::{DB, Trie};
 use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{RwLock, Mutex};
 use tendermint_abci::{Application, ServerBuilder};
 use tendermint_proto::abci::{
     RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx,
@@ -21,7 +21,7 @@ use tx_check::Tx_Checker;
 
 #[derive(Clone)]
 struct LeviathanApp {
-    state: Arc<Mutex<WorldState>>,
+    state: Arc<RwLock<WorldState>>,
     leviathan: Arc<Mutex<LEVIATHAN>>,
     version: VersionId,
 }
@@ -29,7 +29,7 @@ struct LeviathanApp {
 impl LeviathanApp {
     pub fn new(version: VersionId, db_path: &str) -> Self {
         Self {
-            state: Arc::new(Mutex::new(WorldState::new(db_path))),
+            state: Arc::new(RwLock::new(WorldState::new(db_path))),
             leviathan: Arc::new(Mutex::new(LEVIATHAN::new(version))),
             version,
         }
@@ -102,7 +102,7 @@ impl Application for LeviathanApp {
         let tx_results = self.tx_execution(&req);
 
         let new_state_root = {
-            let mut state = self.state.lock().unwrap();
+            let mut state = self.state.write().unwrap();
             state.eth_trie.root_hash().unwrap()
         };
 
@@ -119,7 +119,7 @@ impl Application for LeviathanApp {
     /// 4. Commit: 状態の永続化シグナル
     fn commit(&self) -> ResponseCommit {
         tracing::info!("[COMMIT] ステートを確定します．");
-        let state = self.state.lock().unwrap();
+        let state = self.state.read().unwrap();
         let Err(e) = state.data.flush() else {
             tracing::info!("[COMMIT] 無事書き込み成功");
             return ResponseCommit { retain_height: 0 };
@@ -137,9 +137,15 @@ fn main() {
     info!("Leviathan ABCI Mock Serverを起動中...");
 
     let db_path = "data/leviathan_db";
+    let state = Arc::new(RwLock::new(WorldState::new(db_path)));
+    let leviathan = Arc::new(Mutex::new(LEVIATHAN::new(VersionId::Constantinople)));
     std::fs::create_dir_all(db_path).expect("DBディレクトリの作成に失敗しました");
 
-    let app = LeviathanApp::new(VersionId::Constantinople, db_path);
+    let app = LeviathanApp {
+        state: Arc::clone(&state),
+        leviathan:  Arc::clone(&leviathan),
+        version: VersionId::Constantinople,
+    };
 
     let server = ServerBuilder::default()
         .bind("127.0.0.1:26658", app)

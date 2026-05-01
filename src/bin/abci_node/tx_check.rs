@@ -135,7 +135,7 @@ impl Tx_Checker for LeviathanApp {
         let sender_address = Address::new(sender_address);
 
         //self.stateをロックして，中身のstateを取り出す
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.write().unwrap();
 
         //Nonceの整合性
         let Some(sender_nonce) = state.get_nonce(&sender_address) else {

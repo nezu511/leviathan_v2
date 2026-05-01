@@ -36,7 +36,7 @@ impl PI for LeviathanApp {
         );
 
         //トランザクションを実行
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.write().unwrap();
         let mut leviathan = self.leviathan.lock().unwrap();
         let mut tx_results = Vec::new();
 
