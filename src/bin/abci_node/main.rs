@@ -2,7 +2,7 @@ mod req_execution;
 mod tx_check;
 
 use alloy_rlp::{Decodable, RlpDecodable, RlpEncodable};
-use eth_trie::Trie;
+use eth_trie::{Trie, DB};
 use std::sync::Arc;
 use std::sync::Mutex;
 use tendermint_abci::{Application, ServerBuilder};
@@ -118,7 +118,15 @@ impl Application for LeviathanApp {
 
     /// 4. Commit: 状態の永続化シグナル
     fn commit(&self) -> ResponseCommit {
-        info!("[COMMIT] ブロックのステートを確定しました");
+        tracing::info!("[COMMIT] ステートを確定します．");
+        let state = self.state.lock().unwrap();
+        let Err(e) = state.data.flush() else {
+            tracing::info!("[COMMIT] 無事書き込み成功");
+            return ResponseCommit { retain_height: 0 };
+        };
+
+        tracing::error!("RocksDBへのFlushに失敗: {:?}", e);
+        panic!("Critical Database Error: {}", e);
         ResponseCommit { retain_height: 0 }
     }
 }
