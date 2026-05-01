@@ -13,7 +13,6 @@ use alloy_primitives::{Address, B256, U256, hex};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use sha3::{Digest, Keccak256};
-use std::collections::HashMap;
 
 impl ContractCreation for LEVIATHAN {
     fn contract_creation(
@@ -87,23 +86,23 @@ impl ContractCreation for LEVIATHAN {
 
         //サブステートのアクセス済みアカウントに追加
         if !substate.a_access.contains(&contract_address) {
-            substate.a_access.push(contract_address.clone())
+            substate.a_access.push(contract_address)
         }
         self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
 
         //サブステートのa_touchに追加
         if !substate.a_touch.contains(&contract_address) {
-            substate.a_touch.push(contract_address.clone())
+            substate.a_touch.push(contract_address)
         }
         //Nonceを1にする．
         if state.is_dead(self.version, &contract_address)
             && !state.is_physically_exist(&contract_address)
         {
             state.add_account(&contract_address, Account::new()); //アカウントを追加
-            Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
+            Action::AccountCreation(contract_address).push(self, state); //アカウントが存在しない場合
         }
         if self.version >= VersionId::SpuriousDragon {
-            Action::AddNonce(contract_address.clone()).push(self, state); //ロールバック用
+            Action::AddNonce(contract_address).push(self, state); //ロールバック用
             state.inc_nonce(&contract_address);
         }
         //送金する
@@ -114,24 +113,24 @@ impl ContractCreation for LEVIATHAN {
             && !state.is_physically_exist(&contract_address)
         {
             state.add_account(&contract_address, Account::new()); //アカウントを追加
-            Action::AccountCreation(contract_address.clone()).push(self, state); //アカウントが存在しない場合
+            Action::AccountCreation(contract_address).push(self, state); //アカウントが存在しない場合
         }
-        Action::SendEth(sender.clone(), contract_address.clone(), eth).push(self, state); //ロールバック用
+        Action::SendEth(sender, contract_address, eth).push(self, state); //ロールバック用
         state.send_eth(&sender, &contract_address, eth);
         //storageRootを空にする
-        Action::ResetStorage(contract_address.clone(), B256::ZERO).push(self, state); //ロールバック用
+        Action::ResetStorage(contract_address, B256::ZERO).push(self, state); //ロールバック用
         state.reset_storage(&contract_address);
         //codehashに空配列をセット
-        Action::StoreCode(contract_address.clone(), Vec::new()).push(self, state); //ロールバック用
+        Action::StoreCode(contract_address, Vec::new()).push(self, state); //ロールバック用
         state.set_code(&contract_address, Vec::<u8>::new());
 
         //Execution Environmentの構築
         let mut execution_environment = Box::new(ExecutionEnvironment::new(
-            contract_address.clone(),
-            origin.clone(),
+            contract_address,
+            origin,
             price,
             Vec::new(),
-            sender.clone(),
+            sender,
             eth,
             init_code,
             block_header,
@@ -188,7 +187,7 @@ impl ContractCreation for LEVIATHAN {
                     state.set_code(&contract_address, output);
                 }
 
-                Ok((return_gas, Vec::<u8>::new(), Some(contract_address.clone())))
+                Ok((return_gas, Vec::<u8>::new(), Some(contract_address)))
             }
 
             Err(Some(revert_data)) => {

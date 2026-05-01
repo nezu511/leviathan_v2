@@ -244,7 +244,7 @@ impl Ofunction for EVM {
                 let to_address = Address::from_word(B256::from(val1.to_be_bytes::<32>()));
                 //サブステートのa_touchに追加
                 if !substate.a_touch.contains(&to_address) {
-                    substate.a_touch.push(to_address.clone())
+                    substate.a_touch.push(to_address)
                 }
                 let balance = state.get_balance(from_address).unwrap();
                 //デバック用
@@ -253,30 +253,28 @@ impl Ofunction for EVM {
                     from_address_balance = %balance,
                     "SELFDESTRUCT"
                 );
-                if from_address.clone() == to_address {
-                    Action::ResetBalance(from_address.clone(), U256::ZERO).push(leviathan, state); //ロールバック用
+                if *from_address == to_address {
+                    Action::ResetBalance(*from_address, U256::ZERO).push(leviathan, state); //ロールバック用
                     state.reset_balance(from_address)
                 } else if self.version <= VersionId::TangerineWhistle && balance == U256::ZERO {
                     if state.is_dead(self.version, &to_address)
                         && !state.is_physically_exist(&to_address)
                     {
                         state.add_account(&to_address, Account::new()); //アカウントを追加
-                        Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
+                        Action::AccountCreation(to_address).push(leviathan, state); //アカウントが存在しない場合
                     }
-                } else {
-                    if balance != U256::ZERO {
-                        if state.is_dead(self.version, &to_address)
-                            && !state.is_physically_exist(&to_address)
-                        {
-                            state.add_account(&to_address, Account::new()); //アカウントを追加
-                            Action::AccountCreation(to_address.clone()).push(leviathan, state); //アカウントが存在しない場合
-                        }
-                        Action::SendEth(from_address.clone(), to_address.clone(), balance)
-                            .push(leviathan, state); //ロールバック用
-                        state.send_eth(from_address, &to_address, balance);
+                } else if balance != U256::ZERO {
+                    if state.is_dead(self.version, &to_address)
+                        && !state.is_physically_exist(&to_address)
+                    {
+                        state.add_account(&to_address, Account::new()); //アカウントを追加
+                        Action::AccountCreation(to_address).push(leviathan, state); //アカウントが存在しない場合
                     }
+                    Action::SendEth(*from_address, to_address, balance)
+                        .push(leviathan, state); //ロールバック用
+                    state.send_eth(from_address, &to_address, balance);
                 }
-                substate.a_des.push(from_address.clone());
+                substate.a_des.push(*from_address);
                 self.return_back = Vec::new();
                 return Some(false);
             }
@@ -332,7 +330,7 @@ impl Ofunction for EVM {
         }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
-            substate.a_access.push(to_address.clone())
+            substate.a_access.push(to_address)
         }
         //子に渡すガスの計算
         let Some(mut child_gas) = self.child_gas_mem else {
@@ -377,10 +375,10 @@ impl Ofunction for EVM {
         let result = child_leviathan.message_call(
             state,
             substate,
-            execution_environment.i_address.clone(),
-            execution_environment.i_origin.clone(),
-            to_address.clone(),
-            to_address.clone(),
+            execution_environment.i_address,
+            execution_environment.i_origin,
+            to_address,
+            to_address,
             child_gas,
             execution_environment.i_gas_price,
             value,
@@ -806,7 +804,7 @@ impl Ofunction for EVM {
                 }
                 //SubStateの更新
                 if !substate.a_access.contains(&address) {
-                    substate.a_access.push(address.clone())
+                    substate.a_access.push(address)
                 }
             }
 
@@ -859,7 +857,7 @@ impl Ofunction for EVM {
                 }
                 //SubStateの更新
                 if !substate.a_access.contains(&address) {
-                    substate.a_access.push(address.clone())
+                    substate.a_access.push(address)
                 }
             }
 
@@ -887,7 +885,7 @@ impl Ofunction for EVM {
                 }
                 //SubStateの更新
                 if !substate.a_access.contains(&address) {
-                    substate.a_access.push(address.clone())
+                    substate.a_access.push(address)
                 }
             }
             _ => todo!(),
@@ -1044,7 +1042,7 @@ impl Ofunction for EVM {
         }
         //SubStateの更新
         if !substate.a_access.contains(&address) {
-            substate.a_access.push(address.clone())
+            substate.a_access.push(address)
         }
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
@@ -1259,7 +1257,7 @@ impl Ofunction for EVM {
         //アクセス済みストレージキーリストの追加
         substate
             .a_access_storage
-            .entry(address.clone())
+            .entry(*address)
             .or_default()
             .entry(key)
             .or_insert(value.unwrap_or(U256::ZERO));
@@ -1286,7 +1284,7 @@ impl Ofunction for EVM {
         let pre_value = state.get_storage_value(address, &key).unwrap_or(U256::ZERO);
         substate
             .a_access_storage
-            .entry(address.clone())
+            .entry(*address)
             .or_default()
             .entry(key)
             .or_insert(pre_value);
@@ -1359,7 +1357,7 @@ impl Ofunction for EVM {
             }
         }
         //ステートを書き換える (0なら削除、それ以外なら保存)
-        Action::Sstorage(address.clone(), key, U256::ZERO).push(leviathan, state);
+        Action::Sstorage(*address, key, U256::ZERO).push(leviathan, state);
         if value == U256::ZERO {
             state.remove_storage(address, key);
         } else {
@@ -1433,7 +1431,7 @@ impl Ofunction for EVM {
         }
         //アドレス
         let address = &execution_environment.i_address;
-        let log = Log::new(address.clone(), topic, data);
+        let log = Log::new(*address, topic, data);
         substate.a_log.push(log);
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
@@ -1486,7 +1484,7 @@ impl Ofunction for EVM {
             return;
         }
         //コントラクト自身のNonceのインクリメント
-        Action::AddNonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
+        Action::AddNonce(execution_environment.i_address).push(leviathan, state); //ロールバック用
         state.inc_nonce(&execution_environment.i_address);
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
@@ -1515,8 +1513,8 @@ impl Ofunction for EVM {
         let result = child_leviathan.contract_creation(
             state,
             substate,
-            execution_environment.i_address.clone(),
-            execution_environment.i_origin.clone(),
+            execution_environment.i_address,
+            execution_environment.i_origin,
             child_gas,
             execution_environment.i_gas_price,
             value,
@@ -1607,7 +1605,7 @@ impl Ofunction for EVM {
             return;
         }
         //コントラクト自身のNonceのインクリメント
-        Action::AddNonce(execution_environment.i_address.clone()).push(leviathan, state); //ロールバック用
+        Action::AddNonce(execution_environment.i_address).push(leviathan, state); //ロールバック用
         state.inc_nonce(&execution_environment.i_address);
         //depthのインクリメント
         let depth = execution_environment.i_depth + 1;
@@ -1635,8 +1633,8 @@ impl Ofunction for EVM {
         let result = child_leviathan.contract_creation(
             state,
             substate,
-            execution_environment.i_address.clone(),
-            execution_environment.i_origin.clone(),
+            execution_environment.i_address,
+            execution_environment.i_origin,
             child_gas,
             execution_environment.i_gas_price,
             value,
@@ -1727,7 +1725,7 @@ impl Ofunction for EVM {
         }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
-            substate.a_access.push(to_address.clone())
+            substate.a_access.push(to_address)
         }
         //子に渡すガスの計算
         let Some(mut child_gas) = self.child_gas_mem else {
@@ -1771,10 +1769,10 @@ impl Ofunction for EVM {
         let result = child_leviathan.message_call(
             state,
             substate,
-            execution_environment.i_address.clone(),
-            execution_environment.i_origin.clone(),
-            execution_environment.i_address.clone(),
-            to_address.clone(),
+            execution_environment.i_address,
+            execution_environment.i_origin,
+            execution_environment.i_address,
+            to_address,
             child_gas,
             execution_environment.i_gas_price,
             value,
@@ -1890,7 +1888,7 @@ impl Ofunction for EVM {
         };
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
-            substate.a_access.push(to_address.clone())
+            substate.a_access.push(to_address)
         }
         //デバック用
         tracing::info!(
@@ -1918,10 +1916,10 @@ impl Ofunction for EVM {
         let result = child_leviathan.message_call(
             state,
             substate,
-            execution_environment.i_sender.clone(),
-            execution_environment.i_origin.clone(),
-            execution_environment.i_address.clone(),
-            to_address.clone(),
+            execution_environment.i_sender,
+            execution_environment.i_origin,
+            execution_environment.i_address,
+            to_address,
             child_gas,
             execution_environment.i_gas_price,
             U256::ZERO,
@@ -2027,7 +2025,7 @@ impl Ofunction for EVM {
         }
         //アクセス済みリストの更新
         if !substate.a_access.contains(&to_address) {
-            substate.a_access.push(to_address.clone())
+            substate.a_access.push(to_address)
         }
         //子に渡すガスの計算
         let Some(child_gas) = self.child_gas_mem else {
@@ -2061,10 +2059,10 @@ impl Ofunction for EVM {
         let result = child_leviathan.message_call(
             state,
             substate,
-            execution_environment.i_address.clone(),
-            execution_environment.i_origin.clone(),
-            to_address.clone(),
-            to_address.clone(),
+            execution_environment.i_address,
+            execution_environment.i_origin,
+            to_address,
+            to_address,
             child_gas,
             execution_environment.i_gas_price,
             U256::ZERO,

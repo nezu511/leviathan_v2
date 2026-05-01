@@ -1,13 +1,13 @@
 mod req_execution;
 mod tx_check;
 
-use alloy_rlp::{Decodable, RlpDecodable, RlpEncodable};
-use eth_trie::{Trie, DB};
+use alloy_rlp::Decodable;
+use eth_trie::{DB, Trie};
 use std::sync::Arc;
 use std::sync::Mutex;
 use tendermint_abci::{Application, ServerBuilder};
 use tendermint_proto::abci::{
-    ExecTxResult, RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx,
+    RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx,
     ResponseCommit, ResponseFinalizeBlock, ResponseInfo,
 };
 use tracing::{Level, info};
@@ -15,7 +15,7 @@ use tracing::{Level, info};
 //自作構造体
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
-use leviathan_v2::leviathan::world_state::{Account, WorldState};
+use leviathan_v2::leviathan::world_state::WorldState;
 use req_execution::PI;
 use tx_check::Tx_Checker;
 

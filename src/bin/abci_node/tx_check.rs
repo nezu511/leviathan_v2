@@ -2,10 +2,8 @@ use crate::LeviathanApp;
 use alloy_primitives::{Address, TxKind, U256};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
-use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
-use leviathan_v2::leviathan::world_state::WorldState;
-use leviathan_v2::my_trait::leviathan_trait::{State, TransactionChecks};
+use leviathan_v2::my_trait::leviathan_trait::State;
 use secp256k1::{
     Message, Secp256k1,
     ecdsa::{RecoverableSignature, RecoveryId},
@@ -179,6 +177,6 @@ impl Tx_Checker for LeviathanApp {
             }
         }
 
-        return true;
+        true
     }
 }

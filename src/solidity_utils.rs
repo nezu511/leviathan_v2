@@ -1,14 +1,13 @@
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{BlockHeader, Log, Transaction, VersionId};
-use crate::leviathan::world_state::{Account, WorldState};
+use crate::leviathan::structs::{BlockHeader, Log, Transaction};
+use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionExecution};
 
-use alloy_primitives::{Address, Bytes, TxKind, U256, hex, keccak256, uint};
+use alloy_primitives::{Address, TxKind, U256, hex, keccak256, uint};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use secp256k1::{Message, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
-use std::collections::HashMap;
 use std::fs;
 
 /// イエローペーパー Appendix F に基づくトランザクション署名関数
@@ -87,7 +86,7 @@ pub fn deploy_contract(
 
     //3. secretkeyからアドレスを作成
     let secp = Secp256k1::new();
-    let public_key = secp256k1::PublicKey::from_secret_key(&secp, &sender_secretkey);
+    let public_key = secp256k1::PublicKey::from_secret_key(&secp, sender_secretkey);
     let serialized_pub = public_key.serialize_uncompressed();
     let pub_hash = keccak256(&serialized_pub[1..65]);
     let sender_addr = Address::from_slice(&pub_hash[12..32]);
@@ -102,7 +101,7 @@ pub fn deploy_contract(
         None,
         eth,
         &init_code,
-        &sender_secretkey,
+        sender_secretkey,
     );
 
     let transaction = Transaction {
@@ -128,7 +127,7 @@ pub fn deploy_contract(
     };
 
     //実行
-    let Ok((gas, log_list)) = leviathan.execution(state, transaction, &block) else {
+    let Ok((gas, _log_list)) = leviathan.execution(state, transaction, &block) else {
         println!(" Contract Creation Failed. ");
         return Err(());
     };
@@ -161,7 +160,7 @@ pub fn deploy_contract(
     tmp.copy_from_slice(&result[12..32]);
     let contract_address = Address::new(tmp);
 
-    return Ok(contract_address);
+    Ok(contract_address)
 }
 
 // src/solidity_utils.rs
@@ -240,7 +239,7 @@ pub fn deploy_contract_raw(
 ) -> Result<Address, ()> {
     // 1. 送信者アドレスとノンスの取得
     let secp = Secp256k1::new();
-    let public_key = secp256k1::PublicKey::from_secret_key(&secp, &sender_secretkey);
+    let public_key = secp256k1::PublicKey::from_secret_key(&secp, sender_secretkey);
     let pub_hash = keccak256(&public_key.serialize_uncompressed()[1..65]);
     let sender_addr = Address::from_slice(&pub_hash[12..32]);
     let sender_nonce = state.get_nonce(&sender_addr).unwrap_or(0);
@@ -253,7 +252,7 @@ pub fn deploy_contract_raw(
         None, // デプロイなので to は None
         eth,
         &init_code,
-        &sender_secretkey,
+        sender_secretkey,
     );
 
     let transaction = Transaction {
@@ -280,7 +279,7 @@ pub fn deploy_contract_raw(
 
     // 4. Leviathan で実行
     //実行
-    let Ok((gas, log_list)) = leviathan.execution(state, transaction, &block) else {
+    let Ok((gas, _log_list)) = leviathan.execution(state, transaction, &block) else {
         println!(" Contract Creation Failed. ");
         return Err(());
     };
@@ -313,5 +312,5 @@ pub fn deploy_contract_raw(
     tmp.copy_from_slice(&result[12..32]);
     let contract_address = Address::new(tmp);
 
-    return Ok(contract_address);
+    Ok(contract_address)
 }
