@@ -2,7 +2,7 @@ mod req_execution;
 mod tx_check;
 
 use alloy_rlp::{Decodable, RlpDecodable, RlpEncodable};
-use eth_trie::{Trie, DB};
+use eth_trie::{DB, Trie};
 use std::sync::Arc;
 use std::sync::Mutex;
 use tendermint_abci::{Application, ServerBuilder};
