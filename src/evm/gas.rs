@@ -201,10 +201,10 @@ impl Gfunction for EVM {
                 //計算の動的コスト
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
                 let dynamic_cost = words.saturating_mul(U256::from(6));
-                let total = ext_cost
+                
+                ext_cost
                     .saturating_add(dynamic_cost)
-                    .saturating_add(U256::from(30));
-                return total;
+                    .saturating_add(U256::from(30))
             }
 
             0x31 => {
@@ -259,10 +259,10 @@ impl Gfunction for EVM {
                 //計算の動的コスト
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
                 let dynamic_cost = words.saturating_mul(U256::from(3));
-                let total = ext_cost
+                
+                ext_cost
                     .saturating_add(dynamic_cost)
-                    .saturating_add(U256::from(3));
-                total
+                    .saturating_add(U256::from(3))
             }
 
             0x3c => {
@@ -276,26 +276,26 @@ impl Gfunction for EVM {
                 let ext_cost = self.extension_cost(offset, size);
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
                 let dynamic_cost = words.saturating_mul(U256::from(3));
-                let total = acc_cost
+                
+                acc_cost
                     .saturating_add(ext_cost)
-                    .saturating_add(dynamic_cost);
-                total
+                    .saturating_add(dynamic_cost)
             }
 
             0x51 | 0x52 => {
                 //MLOAD, MSTORE
                 let offset = self.peek(0);
                 let ext_cost = self.extension_cost(offset, U256::from(32));
-                let total = ext_cost.saturating_add(U256::from(3));
-                total
+                
+                ext_cost.saturating_add(U256::from(3))
             }
 
             0x53 => {
                 //MSTORE8
                 let offset = self.peek(0);
                 let ext_cost = self.extension_cost(offset, U256::from(1));
-                let total = ext_cost.saturating_add(U256::from(3));
-                total
+                
+                ext_cost.saturating_add(U256::from(3))
             }
 
             0x54 => {
@@ -401,11 +401,11 @@ impl Gfunction for EVM {
                 let topic_cost = U256::from(topic).saturating_mul(U256::from(375));
                 //dynamic_cost
                 let dynamic_cost = size.saturating_mul(U256::from(8));
-                let total = ext_cost
+                
+                ext_cost
                     .saturating_add(topic_cost)
                     .saturating_add(dynamic_cost)
-                    .saturating_add(U256::from(375));
-                total
+                    .saturating_add(U256::from(375))
             }
 
             0xf0 => {
@@ -417,13 +417,13 @@ impl Gfunction for EVM {
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
                 let dynamic_cost = words.saturating_mul(U256::from(2));
                 if self.version < VersionId::Shanghai {
-                    let total = ext_cost.saturating_add(U256::from(32000));
-                    total
+                    
+                    ext_cost.saturating_add(U256::from(32000))
                 } else {
-                    let total = dynamic_cost
+                    
+                    dynamic_cost
                         .saturating_add(ext_cost)
-                        .saturating_add(U256::from(32000));
-                    total
+                        .saturating_add(U256::from(32000))
                 }
             }
 
@@ -555,8 +555,8 @@ impl Gfunction for EVM {
                 //RETURN
                 let offset = self.peek(0);
                 let size = self.peek(1);
-                let ext_cost = self.extension_cost(offset, size);
-                ext_cost
+                
+                self.extension_cost(offset, size)
             }
 
             0xf4 | 0xfa => {
@@ -621,10 +621,10 @@ impl Gfunction for EVM {
                 } else {
                     dynamic_cost = words.saturating_mul(U256::from(8));
                 }
-                let total = dynamic_cost
+                
+                dynamic_cost
                     .saturating_add(ext_cost)
-                    .saturating_add(U256::from(32000));
-                total
+                    .saturating_add(U256::from(32000))
             }
 
             0xff => {
@@ -642,12 +642,10 @@ impl Gfunction for EVM {
                         } else {
                             0
                         }
+                    } else if !state.is_physically_exist(&address) {
+                        25000
                     } else {
-                        if !state.is_physically_exist(&address) {
-                            25000
-                        } else {
-                            0
-                        }
+                        0
                     };
                     let access_state_cost = 0usize;
                     if self.version > VersionId::Berlin {

@@ -1,13 +1,10 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, TxKind, U256, hex};
-use alloy_rlp::{Decodable, RlpDecodable, RlpEncodable};
-use leviathan_v2::leviathan::leviathan::LEVIATHAN;
-use leviathan_v2::leviathan::structs::{BlockHeader, Transaction, VersionId};
-use leviathan_v2::leviathan::world_state::WorldState;
-use leviathan_v2::my_trait::leviathan_trait::{State, TransactionExecution};
+use alloy_primitives::{Address, U256, hex};
+use alloy_rlp::Decodable;
+use leviathan_v2::leviathan::structs::{BlockHeader, Transaction};
+use leviathan_v2::my_trait::leviathan_trait::TransactionExecution;
 use tendermint_proto::abci::{
-    Event, EventAttribute, ExecTxResult, RequestCheckTx, RequestFinalizeBlock, RequestInfo,
-    ResponseCheckTx, ResponseCommit, ResponseFinalizeBlock, ResponseInfo,
+    Event, EventAttribute, ExecTxResult, RequestFinalizeBlock,
 };
 
 pub trait PI {
@@ -107,7 +104,7 @@ impl PI for LeviathanApp {
                             });
                         }
 
-                        Err((final_bill_gas, logs)) => {
+                        Err((final_bill_gas, _logs)) => {
                             tx_results.push(ExecTxResult {
                                 code: 1,
                                 log: "Execution Failed".to_string(),

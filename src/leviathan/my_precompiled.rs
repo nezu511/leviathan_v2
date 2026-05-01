@@ -3,16 +3,14 @@ use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::precompile::PRIME_P;
 use crate::leviathan::structs::VersionId;
 use crate::my_trait::leviathan_trait::MCC;
-use alloy_primitives::{U256, uint};
+use alloy_primitives::U256;
 use ark_bn254::{Bn254, Fq, Fq2, Fr, G1Affine, G2Affine};
-use ark_ec::pairing::Pairing;
-use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{BigInteger, One, PrimeField, Zero};
+use ark_ec::AffineRepr;
+use ark_ff::{BigInteger, PrimeField, Zero};
 use ark_groth16::VerifyingKey;
 use ark_serialize::CanonicalDeserialize;
 use ark_snark::SNARK;
 use light_poseidon::{Poseidon, PoseidonHasher};
-use num_bigint::BigUint;
 use rsa::{Pkcs1v15Sign, RsaPublicKey};
 use sha2::{Digest as _, Sha256};
 use std::ops::Rem;
@@ -23,7 +21,7 @@ impl MCC for LEVIATHAN {
     fn my_rsa(
         gas: U256,
         data: &[u8],
-        version: VersionId,
+        _version: VersionId,
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         //ヘルパー関数
         let get_padded_data = |start: usize, len: usize| -> Vec<u8> {
@@ -75,7 +73,7 @@ impl MCC for LEVIATHAN {
     fn my_groth16(
         gas: U256,
         data: &[u8],
-        version: VersionId,
+        _version: VersionId,
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         //ヘルパー関数
         let get_padded_data = |start: usize, len: usize| -> Vec<u8> {
@@ -93,7 +91,7 @@ impl MCC for LEVIATHAN {
             return Err((U256::ZERO, None));
         }
         //key長を取得する
-        let mut key_len_bytes = get_padded_data(0, WORD_SIZE);
+        let key_len_bytes = get_padded_data(0, WORD_SIZE);
         let key_len_u256 = U256::from_be_slice(&key_len_bytes);
         let Ok(key_len) = usize::try_from(key_len_u256) else {
             //要件確認2
@@ -106,14 +104,14 @@ impl MCC for LEVIATHAN {
             return Err((U256::ZERO, None));
         };
         //key_bytesを取得する
-        let mut key_bytes = get_padded_data(32, key_len);
+        let key_bytes = get_padded_data(32, key_len);
 
         //境界を定義
         let proof_offset = 32 + key_len;
         let pub_input_offset = proof_offset + 256;
 
         // 公開入力を抽出
-        let mut input_data = get_padded_data(
+        let input_data = get_padded_data(
             pub_input_offset,
             data.len().saturating_sub(pub_input_offset),
         );
@@ -137,7 +135,7 @@ impl MCC for LEVIATHAN {
 
         //Proofを取得する．
         let proof_size = 256;
-        let mut zk_data = get_padded_data(proof_offset, proof_size);
+        let zk_data = get_padded_data(proof_offset, proof_size);
         //proofの検証を行う
         if zk_data.len().rem(WORD_SIZE) != 0 || zk_data.len() != proof_size {
             tracing::warn!("[my_groth16] OOG");
@@ -165,7 +163,7 @@ impl MCC for LEVIATHAN {
                 }
                 point
             };
-            return Ok(proof_g1);
+            Ok(proof_g1)
         };
 
         //G2の抽出
@@ -205,7 +203,7 @@ impl MCC for LEVIATHAN {
                 }
                 point
             };
-            return Ok(proof_g2);
+            Ok(proof_g2)
         };
 
         let Ok(point_a) = get_g1_point(0) else {
@@ -259,7 +257,7 @@ impl MCC for LEVIATHAN {
     fn my_poseidon(
         gas: U256,
         data: &[u8],
-        version: VersionId,
+        _version: VersionId,
     ) -> Result<(U256, Vec<u8>), (U256, Option<Vec<u8>>)> {
         let input_datas_len = data.len() - 1;
         //検証キーを取得する
@@ -270,7 +268,7 @@ impl MCC for LEVIATHAN {
         }
         let k = input_datas_len / WORD_SIZE;
         //light-poseidonがサポートする範囲かどうか
-        if k < 1 || k > 12 {
+        if !(1..=12).contains(&k) {
             tracing::warn!("[my_poseidon] 要素数が不適切");
             return Err((U256::ZERO, None));
         }

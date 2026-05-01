@@ -8,7 +8,7 @@ use crate::leviathan::world_state::{Account, MptAccount, WorldState};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{Address, TxKind, U256, hex, keccak256};
+use alloy_primitives::{TxKind, U256, hex, keccak256};
 use alloy_rlp::Encodable;
 use eth_trie::{EthTrie, Trie};
 use sha3::Digest;
@@ -118,8 +118,8 @@ impl TransactionExecution for LEVIATHAN {
         let mut substate = SubState::new();
 
         //a_touchにトランザクションの基本要素（送信者，ブロックの受取人）を追加
-        substate.a_touch.push(sender_address.clone());
-        substate.a_touch.push(block_header.h_beneficiary.clone());
+        substate.a_touch.push(sender_address);
+        substate.a_touch.push(block_header.h_beneficiary);
 
         //gasから初期ガスを引く
         let mut gas = gas.unwrap();
@@ -140,8 +140,8 @@ impl TransactionExecution for LEVIATHAN {
                 self.contract_creation(
                     state,
                     &mut substate,
-                    sender_address.clone(),
-                    sender_address.clone(),
+                    sender_address,
+                    sender_address,
                     gas,
                     transaction.t_price,
                     transaction.t_value,
@@ -155,7 +155,7 @@ impl TransactionExecution for LEVIATHAN {
 
             TxKind::Call(to_address) => {
                 //a_touchにトランザクションの基本要素（宛先）を追加
-                substate.a_touch.push(to_address.clone());
+                substate.a_touch.push(to_address);
                 //デバック出力
                 tracing::info!(
                 sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
@@ -169,10 +169,10 @@ impl TransactionExecution for LEVIATHAN {
                 self.message_call(
                     state,
                     &mut substate,
-                    sender_address.clone(),
-                    sender_address.clone(),
-                    to_address.clone(),
-                    to_address.clone(),
+                    sender_address,
+                    sender_address,
+                    to_address,
+                    to_address,
                     gas,
                     transaction.t_price,
                     transaction.t_value,

@@ -102,7 +102,7 @@ impl EthTrieDB for RocksDBWrapper {
 
     fn flush(&self) -> Result<(), Self::Error> {
         let mut inner = self.inner.lock().unwrap();
-        let current_batch = std::mem::replace(&mut inner.batch, WriteBatch::default());
+        let current_batch = std::mem::take(&mut inner.batch);
         let result = self.db.write(current_batch);
 
         // SSD書き込み成功時に Overlay をクリアする

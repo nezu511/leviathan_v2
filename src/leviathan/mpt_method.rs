@@ -5,7 +5,7 @@ use crate::leviathan::world_state::{
     Account, EMPTY_CODE_HASH, EMPTY_STORAGE_ROOT, MptAccount, WorldState,
 };
 use crate::my_trait::leviathan_trait::State;
-use alloy_primitives::{Address, B256, U256, b256, hex, keccak256};
+use alloy_primitives::{Address, U256, hex, keccak256};
 use alloy_rlp::Decodable;
 use eth_trie::{EthTrie, Trie};
 
@@ -15,7 +15,7 @@ impl State for WorldState {
             address = format_args!("0x{}", hex::encode(address.0)),
             "[add_acout]"
         );
-        self.cache.insert(address.clone(), account);
+        self.cache.insert(*address, account);
     }
 
     fn is_empty(&mut self, address: &Address) -> bool {
@@ -25,7 +25,7 @@ impl State for WorldState {
             if account.nonce != 0 || !account.balance.is_zero() || account.code.len() != 0 {
                 return false;
             }
-            return true;
+            true
         } else {
             //次にMPTに存在するか確認
             let address_hash = keccak256(address);
@@ -46,10 +46,10 @@ impl State for WorldState {
                     {
                         return false;
                     }
-                    return true;
+                    true
                 }
 
-                None => return true,
+                None => true,
             }
         }
     }
@@ -59,17 +59,17 @@ impl State for WorldState {
         if version < VersionId::SpuriousDragon {
             if self.cache.contains_key(address) {
                 //chaceを調査
-                return false;
+                false
             } else {
                 //MPTを調査
                 let Some(account) = self.contain_mpt(address) else {
                     return true;
                 };
                 self.add_cache(address, &account);
-                return false;
+                false
             }
         } else {
-            return self.is_empty(address);
+            self.is_empty(address)
         }
     }
 
@@ -77,14 +77,14 @@ impl State for WorldState {
         //存在してたらtrue
         if self.cache.contains_key(address) {
             //chaceを調査
-            return true;
+            true
         } else {
             //MPTを調査
             let Some(account) = self.contain_mpt(address) else {
                 return false;
             };
             self.add_cache(address, &account);
-            return true;
+            true
         }
     }
 
@@ -167,7 +167,7 @@ impl State for WorldState {
             cache_account.storage.insert(*key, val);
             return Some(val);
         }
-        return None;
+        None
     }
 
     fn get_nonce(&mut self, address: &Address) -> Option<u64> {

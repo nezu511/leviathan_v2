@@ -2,7 +2,7 @@
 
 use alloy_primitives::{Address, B256, U256, b256, hex, keccak256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
-use eth_trie::{EthTrie, MemoryDB, Trie};
+use eth_trie::{EthTrie, Trie};
 use sha3::Digest;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -29,7 +29,7 @@ impl WorldState {
         let cache = HashMap::<Address, Account>::new();
         let mut eth_trie = EthTrie::new(data.clone());
         let _ = eth_trie.root_hash().unwrap();
-        let mut code_storage = HashMap::<B256, Vec<u8>>::new();
+        let _code_storage = HashMap::<B256, Vec<u8>>::new();
         //空のコードのハッシュを登録
         let empty_code = Vec::<u8>::new();
         let hash = keccak256(&empty_code);
@@ -43,8 +43,8 @@ impl WorldState {
     }
 
     pub fn init_mpt_account(&mut self, address: &Address, cache_account: &Account) {
-        let mpt_nonce = cache_account.nonce;
-        let mpt_balance = cache_account.balance;
+        let _mpt_nonce = cache_account.nonce;
+        let _mpt_balance = cache_account.balance;
         let mut storage_trie =
             EthTrie::from(self.data.clone(), cache_account.storage_hash).unwrap();
         let mut storage_changed = false;
@@ -131,7 +131,7 @@ impl WorldState {
         mpt_account.encode(&mut mpt_account_rlp_bytes);
         let mpt_account_hash = keccak256(mpt_account_rlp_bytes);
         let account = Account::make(nonce, balance, code, shash, mpt_account_hash);
-        self.cache.insert(address.clone(), account);
+        self.cache.insert(*address, account);
     }
 
     pub fn contain_mpt(&mut self, address: &Address) -> Option<MptAccount> {
@@ -145,10 +145,10 @@ impl WorldState {
                     tracing::warn!("[contain_mpt] MptAccount::decodeでエラー");
                     return None;
                 };
-                return Some(account);
+                Some(account)
             }
 
-            None => return None,
+            None => None,
         }
     }
 

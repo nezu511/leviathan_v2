@@ -13,7 +13,6 @@ use alloy_primitives::{Address, U256};
 use sha3::Digest;
 
 //cpu実行時間を記録するため
-use alloy_primitives::hex;
 #[cfg(test)]
 use std::fs::OpenOptions;
 #[cfg(test)]
@@ -40,12 +39,12 @@ impl MessageCall for LEVIATHAN {
         block_header: &BlockHeader,
     ) -> Result<(U256, Vec<u8>, Option<Address>), (U256, Option<Vec<u8>>, Option<Address>)> {
         if !substate.a_access.contains(&recipient) {
-            substate.a_access.push(recipient.clone())
+            substate.a_access.push(recipient)
         }
         self.substate_backup = BackupSubstate::backup(substate); //サブステートのバックアップ
         //サブステートのa_touchに追加
         if !substate.a_touch.contains(&recipient) {
-            substate.a_touch.push(recipient.clone())
+            substate.a_touch.push(recipient)
         }
 
         //残高の移動
@@ -55,27 +54,27 @@ impl MessageCall for LEVIATHAN {
             }
             if state.is_dead(self.version, &recipient) && !state.is_physically_exist(&recipient) {
                 state.add_account(&recipient, Account::new()); //アカウントを追加
-                Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+                Action::AccountCreation(recipient).push(self, state); //アカウントが存在しない場合
             }
             if sender != recipient {
-                Action::SendEth(sender.clone(), recipient.clone(), eth).push(self, state); //ロールバック用
+                Action::SendEth(sender, recipient, eth).push(self, state); //ロールバック用
                 state.send_eth(&sender, &recipient, eth); //残高の移動
             }
         } else if self.version < VersionId::SpuriousDragon {
             //Ethereumの初期はvalue=0であっても無条件でアカウントを作成
             if state.is_dead(self.version, &recipient) && !state.is_physically_exist(&recipient) {
                 state.add_account(&recipient, Account::new()); //アカウントを追加
-                Action::AccountCreation(recipient.clone()).push(self, state); //アカウントが存在しない場合
+                Action::AccountCreation(recipient).push(self, state); //アカウントが存在しない場合
             }
         }
 
         //Execution Environmentの構築
         let mut execution_environment = Box::new(ExecutionEnvironment::new(
-            recipient.clone(),
-            origin.clone(),
+            recipient,
+            origin,
             price,
             data,
-            sender.clone(),
+            sender,
             apparent_value,
             Vec::new(),
             block_header,
