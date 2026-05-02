@@ -1,5 +1,6 @@
 mod req_execution;
 mod tx_check;
+mod my_rpc;
 
 use alloy_rlp::Decodable;
 use eth_trie::{DB, Trie};
@@ -18,6 +19,7 @@ use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::WorldState;
 use req_execution::PI;
 use tx_check::Tx_Checker;
+use my_rpc::run_rpc_server;
 
 #[derive(Clone)]
 struct LeviathanApp {
@@ -131,7 +133,8 @@ impl Application for LeviathanApp {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // ログの初期化
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
     info!("Leviathan ABCI Mock Serverを起動中...");
@@ -140,6 +143,11 @@ fn main() {
     let state = Arc::new(RwLock::new(WorldState::new(db_path)));
     let leviathan = Arc::new(Mutex::new(LEVIATHAN::new(VersionId::Constantinople)));
     std::fs::create_dir_all(db_path).expect("DBディレクトリの作成に失敗しました");
+
+    //LeviathanRPCを作成
+    run_rpc_server(Arc::clone(&state));
+
+
 
     let app = LeviathanApp {
         state: Arc::clone(&state),
