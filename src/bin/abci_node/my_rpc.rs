@@ -9,10 +9,10 @@ use leviathan_v2::leviathan::world_state::WorldState;
 pub trait EthApi {
 
     #[method(name = "eth_chainId")]
-    async fn chain_id(&self) -> Result<String, jsonrpsee::core::Error>;
+    async fn chain_id(&self) -> jsonrpsee::core::RpcResult<String>;
 
     #[method(name = "eth_blockNumber")]
-    async fn block_number(&self) -> Result<String, jsonrpsee::core::Error>;
+    async fn block_number(&self) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -27,11 +27,11 @@ impl LeviathanRPC {
 
 #[async_trait::async_trait]
 impl EthApiServer for LeviathanRPC {
-    async fn chain_id(&self) -> Result<String, jsonrpsee::core::Error> {
+    async fn chain_id(&self) -> jsonrpsee::core::RpcResult<String> {
         Ok("0xC5691481E".to_string())
     }
 
-    async fn block_number(&self) -> Result<String, jsonrpsee::core::Error> {
+    async fn block_number(&self) -> jsonrpsee::core::RpcResult<String> {
         Ok("0x0".to_string())
     }
 }

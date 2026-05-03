@@ -137,7 +137,6 @@ impl Application for LeviathanApp {
 async fn main() {
     // ログの初期化
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
-    info!("Leviathan ABCI Mock Serverを起動中...");
 
     let db_path = "data/leviathan_db";
     let state = Arc::new(RwLock::new(WorldState::new(db_path)));
@@ -145,10 +144,13 @@ async fn main() {
     std::fs::create_dir_all(db_path).expect("DBディレクトリの作成に失敗しました");
 
     //LeviathanRPCを作成
+    info!("Leviathan RPC Serverを起動中...");
     run_rpc_server(Arc::clone(&state));
+    info!("Leviathan RPC Serverを起動");
 
 
 
+    info!("Leviathan ABCI Serverを起動中...");
     let app = LeviathanApp {
         state: Arc::clone(&state),
         leviathan:  Arc::clone(&leviathan),

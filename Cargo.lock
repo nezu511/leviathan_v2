@@ -2744,6 +2744,7 @@ dependencies = [
  "tempfile",
  "tendermint-abci",
  "tendermint-proto",
+ "tokio",
  "tracing",
  "tracing-subscriber 0.3.23",
 ]
@@ -5064,6 +5065,7 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
+ "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2 0.6.3",
