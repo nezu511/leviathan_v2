@@ -144,15 +144,19 @@ async fn main() {
     std::fs::create_dir_all(db_path).expect("DBディレクトリの作成に失敗しました");
 
     //LeviathanRPCを作成
+    let state_rpc = state.clone();
     info!("Leviathan RPC Serverを起動中...");
-    run_rpc_server(Arc::clone(&state));
+    tokio::spawn(async move {
+        run_rpc_server(Arc::clone(&state_rpc)).await;
+    });
     info!("Leviathan RPC Serverを起動");
 
 
 
+    let state_abci = state.clone();
     info!("Leviathan ABCI Serverを起動中...");
     let app = LeviathanApp {
-        state: Arc::clone(&state),
+        state: Arc::clone(&state_abci),
         leviathan:  Arc::clone(&leviathan),
         version: VersionId::Constantinople,
     };
