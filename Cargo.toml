@@ -38,3 +38,4 @@ tempfile = "3.27.0"
 jsonrpsee = { version = "0.26.0", features = ["server", "macros"] }
 async-trait = "0.1.89"
 tokio = { version = "1.52.1", features = ["full"] }
+tendermint-rpc = { version = "0.40.4", features = ["http-client"] }
