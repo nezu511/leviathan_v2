@@ -20,12 +20,10 @@ pub struct WorldState {
     pub cache: HashMap<Address, Account>,
     pub data: Arc<RocksDBWrapper>,
     pub eth_trie: EthTrie<RocksDBWrapper>,
-    pub block_number: i64,
 }
 
 impl WorldState {
     pub fn new(db_path: &str) -> Self {
-        let block_number:i64 = 0;
         let db_wrapper = RocksDBWrapper::new(db_path);
         let data = Arc::new(db_wrapper);
         let cache = HashMap::<Address, Account>::new();
@@ -41,7 +39,6 @@ impl WorldState {
             cache,
             data,
             eth_trie,
-            block_number,
         }
     }
 
@@ -160,9 +157,14 @@ impl WorldState {
         self.eth_trie = new_eth_trie;
     }
 
-    pub fn update_block_number(&mut self, new_number: i64) {
-        self.block_number = new_number;
+    pub fn update_block_number(&self, new_number: i64) {
+        self.data.update_block_number(new_number);
     }
+
+    pub fn current_block_number(&self) -> i64 {
+        self.data.get_block_number().unwrap_or(0)
+    }
+
 }
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
