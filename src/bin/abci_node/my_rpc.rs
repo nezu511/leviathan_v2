@@ -34,7 +34,7 @@ impl LeviathanRPC {
 #[async_trait::async_trait]
 impl EthApiServer for LeviathanRPC {
     async fn chain_id(&self) -> jsonrpsee::core::RpcResult<String> {
-        Ok("0xC5691481E".to_string())
+        Ok("0x539".to_string()) //1337
     }
 
     async fn block_number(&self) -> jsonrpsee::core::RpcResult<String> {
