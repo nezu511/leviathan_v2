@@ -2,6 +2,9 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::ServerBuilder;
 use std::sync::RwLock;
 use std::sync::Arc;
+use tendermint_rpc::{Client, HttpClient};
+use alloy_primitives::hex;
+use jsonrpsee::types::ErrorObjectOwned; 
 
 use leviathan_v2::leviathan::world_state::WorldState;
 
@@ -13,6 +16,9 @@ pub trait EthApi {
 
     #[method(name = "eth_blockNumber")]
     async fn block_number(&self) -> jsonrpsee::core::RpcResult<String>;
+
+    #[method(name = "eth_sendRawTransaction")]
+    async fn send_raw_transaction(&self, tx_bytes: String) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -28,12 +34,37 @@ impl LeviathanRPC {
 #[async_trait::async_trait]
 impl EthApiServer for LeviathanRPC {
     async fn chain_id(&self) -> jsonrpsee::core::RpcResult<String> {
-        Ok("0xC5691481E".to_string())
+        Ok("0x539".to_string()) //1337
     }
 
     async fn block_number(&self) -> jsonrpsee::core::RpcResult<String> {
-        Ok("0x0".to_string())
+        let state = self.state.read().unwrap();
+        let block_number = state.current_block_number();
+
+        Ok(format!("0x{}",block_number).to_string())
     }
+
+    async fn send_raw_transaction(&self, tx_bytes: String) -> jsonrpsee::core::RpcResult<String> {
+        let tx_hex = tx_bytes.trim_start_matches("0x");
+
+        // 1. デコードエラー（-32602: Invalid params）
+        let tx_data = hex::decode(tx_hex).map_err(|e| {
+            ErrorObjectOwned::owned(-32602, format!("Hex decode error: {}", e), None::<()>)
+        })?;
+
+        // 2. CometBFTクライアント作成エラー（-32603: Internal error）
+        let client = HttpClient::new("http://127.0.0.1:26657").map_err(|e| {
+            ErrorObjectOwned::owned(-32603, format!("CometBFT Client error: {}", e), None::<()>)
+        })?;
+
+        // 3. CometBFTへの送信エラー（-32603: Internal error）
+        let response = client.broadcast_tx_sync(tx_data).await.map_err(|e| {
+            ErrorObjectOwned::owned(-32603, format!("Broadcast error: {}", e), None::<()>)
+        })?;
+
+        Ok(format!("0x{}", hex::encode(response.hash)))
+    }
+
 }
 
 
