@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{Address, TxKind, U256};
+use alloy_primitives::{Address, TxKind, U256, Bytes};
 use alloy_rlp::{RlpDecodable, RlpEncodable};
 use std::collections::HashMap;
 
@@ -22,17 +22,18 @@ pub enum VersionId {
     Latest,
 }
 
+
 #[derive(Debug, Clone, RlpDecodable, RlpEncodable)]
 pub struct Transaction {
     pub t_nonce: usize,
+    pub t_price: U256,      
     pub t_gas_limit: U256,
-    pub t_price: U256,
     pub t_to: TxKind,
     pub t_value: U256,
-    pub data: Vec<u8>,
-    pub t_r: U256,
+    pub data: Bytes,
+    pub t_w: U256,  
+    pub t_r: U256,  
     pub t_s: U256,
-    pub t_w: U256,
 }
 
 #[derive(Debug, Clone)]
