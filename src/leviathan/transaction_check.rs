@@ -34,7 +34,7 @@ impl TransactionChecks for LEVIATHAN {
         };
         payload_length += to_slice.length();
         payload_length += transaction.t_value.length();
-        payload_length += transaction.data.as_slice().length();
+        payload_length += transaction.data.length();
 
         // 2. バッファを確保し、リストのヘッダーを書き込む
         let mut out = BytesMut::with_capacity(payload_length + 10); // ヘッダー分少し余分に確保
@@ -50,7 +50,7 @@ impl TransactionChecks for LEVIATHAN {
         transaction.t_gas_limit.encode(&mut out);
         to_slice.encode(&mut out);
         transaction.t_value.encode(&mut out);
-        transaction.data.as_slice().encode(&mut out);
+        transaction.data.encode(&mut out);
         let rlp_encoded = out.freeze();
         //4. Keccak256でハッシュ化して32バイトのh(T)を得る
         let mut hasher = Keccak256::new();

@@ -105,7 +105,7 @@ pub fn deploy_contract(
     );
 
     let transaction = Transaction {
-        data: init_code,
+        data: init_code.into(),
         t_to: TxKind::Create,
         t_gas_limit: gas_limit,
         t_price: gas_price,
@@ -194,7 +194,7 @@ pub fn call_contract(
     );
 
     let transaction = Transaction {
-        data,
+        data: data.into(),
         t_to: TxKind::Call(contract_addr),
         t_gas_limit: gas_limit,
         t_price: gas_price,
@@ -256,7 +256,7 @@ pub fn deploy_contract_raw(
     );
 
     let transaction = Transaction {
-        data: init_code,
+        data: init_code.into(),
         t_to: TxKind::Create,
         t_gas_limit: gas_limit,
         t_price: gas_price,
