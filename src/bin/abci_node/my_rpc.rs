@@ -32,7 +32,10 @@ impl EthApiServer for LeviathanRPC {
     }
 
     async fn block_number(&self) -> jsonrpsee::core::RpcResult<String> {
-        Ok("0x0".to_string())
+        let state = self.state.read().unwrap();
+        let block_number = state.current_block_number();
+
+        Ok(format!("0x{}",block_number).to_string())
     }
 }
 

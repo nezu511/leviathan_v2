@@ -37,6 +37,10 @@ impl PI for LeviathanApp {
 
         //トランザクションを実行
         let mut state = self.state.write().unwrap();
+
+        //ブロックナンバーをWorldStateに書き込む
+        state.update_block_number(req.height);
+
         let mut leviathan = self.leviathan.lock().unwrap();
         let mut tx_results = Vec::new();
 
