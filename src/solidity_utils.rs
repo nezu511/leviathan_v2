@@ -1,9 +1,9 @@
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{BlockHeader, Log, Transaction};
+use crate::leviathan::structs::{BlockHeader, Transaction};
 use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionExecution};
 
-use alloy_primitives::{Address, TxKind, U256, hex, keccak256, uint};
+use alloy_primitives::{Address, TxKind, U256, hex, keccak256, uint, Log};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use secp256k1::{Message, Secp256k1, SecretKey};
