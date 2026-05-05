@@ -3,16 +3,18 @@ use eth_trie::{DB, Trie};
 use std::sync::Arc;
 use std::sync::{RwLock, Mutex};
 use tendermint_abci::{Application, ServerBuilder};
+use alloy_primitives::{U256, Address, hex};
 use tendermint_proto::abci::{
     RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx,
-    ResponseCommit, ResponseFinalizeBlock, ResponseInfo,
+    ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain,
+    RequestInitChain,
 };
 use tracing::{Level, info};
 
 //自作構造体
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
-use leviathan_v2::leviathan::world_state::WorldState;
+use leviathan_v2::leviathan::world_state::{WorldState, Account};
 use crate::my_rpc::run_rpc_server;
 use crate::req_execution::PI;
 use crate::tx_check::Tx_Checker;
@@ -127,5 +129,35 @@ impl Application for LeviathanApp {
         tracing::error!("RocksDBへのFlushに失敗: {:?}", e);
         panic!("Critical Database Error: {}", e);
         ResponseCommit { retain_height: 0 }
+    }
+
+    fn init_chain(&self, _req: RequestInitChain) -> ResponseInitChain {
+        tracing::info!("[INIT_CHAIN] ブロックチェーンの創世を開始します...");
+
+        // 1. ジェネシスアドレスを決める
+        let genesis_address_bytes = hex::decode("c755095A6D433b4E744f706881D5d7E0D84237B5").unwrap();
+        let genesis_address = Address::from_slice(&genesis_address_bytes);
+
+        // 2. 1万ETH（10000 * 10^18 wei）を付与
+        let one_eth = U256::from(10_u64).pow(U256::from(18));
+        let genesis_balance = one_eth * U256::from(10000);
+
+        // 3. アカウントを作成してWorldStateに書き込む
+        let mut genesis_account = Account::new();
+        genesis_account.balance = genesis_balance;
+
+        let mut state = self.state.write().unwrap();
+        // ★ WorldState側に init_mpt_account 等を使ってアカウントを登録する処理を呼び出す
+        state.init_mpt_account(&genesis_address, &genesis_account);
+
+        // 4. 初期のState Root（AppHash）を取得してCometBFTに教える
+        let app_hash = state.eth_trie.root_hash().unwrap().0.to_vec();
+
+        tracing::info!("[INIT_CHAIN] ジェネシス完了。AppHash: 0x{}", hex::encode(&app_hash));
+
+        ResponseInitChain {
+            app_hash: app_hash.into(),
+            ..Default::default()
+        }
     }
 }
