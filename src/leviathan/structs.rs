@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{Address, TxKind, U256, Bytes};
-use alloy_rlp::{RlpDecodable, RlpEncodable};
+use alloy_primitives::{Address, TxKind, U256, Bytes, B256, Bloom, Log};
+use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use std::collections::HashMap;
+use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VersionId {
@@ -143,22 +144,6 @@ impl SubState {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Log {
-    pub address: Address,
-    pub topic: Vec<U256>, //0~4個
-    pub data: Vec<u8>,
-}
-
-impl Log {
-    pub fn new(address: Address, topic: Vec<U256>, data: Vec<u8>) -> Self {
-        Self {
-            address,
-            topic,
-            data,
-        }
-    }
-}
 
 pub struct ExecutionEnvironment<'a> {
     pub i_address: Address, //現在実行中のコードを所有しているアカウント
@@ -211,7 +196,7 @@ pub struct BlockHeader {
 }
 
 
-#[derive(Serialize)]
+//#[derive(Serialize)]
 pub struct TransactionReceipt {
     pub r_thash: B256,      //トランザクションハッシュ
     pub r_index: usize,
@@ -228,7 +213,7 @@ pub struct TransactionReceipt {
     pub r_type: u8,
 }
 
-#[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
+//#[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
 pub struct Receipt {
     pub status: bool,
     pub cumulative_gas_used: u64,
