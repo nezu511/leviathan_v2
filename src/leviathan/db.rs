@@ -5,6 +5,8 @@ use std::sync::{Arc, Mutex};
 
 pub const CF_MPT: &str = "mpt_data";
 pub const CF_CODE: &str = "code_data";
+pub const CF_BLOCK_NUMBER: &str = "block_number";
+pub const BLOCK_NUMBER_KEY: &[u8] = &[1];
 
 struct RocksDBInner {
     batch: WriteBatch,
@@ -22,7 +24,7 @@ impl RocksDBWrapper {
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
 
-        let cfs = vec![CF_MPT, CF_CODE];
+        let cfs = vec![CF_MPT, CF_CODE, CF_BLOCK_NUMBER];
         let db = RocksDB::open_cf(&opts, path, cfs).expect("RocksDBのオープンに失敗しました");
 
         Self {
@@ -47,17 +49,40 @@ impl RocksDBWrapper {
 
     pub fn get_code(&self, code_hash: &[u8]) -> Option<Vec<u8>> {
         let inner = self.inner.lock().unwrap();
-
         // 1. Overlayキャッシュを確認
         if let Some(cache_result) = inner.overlay.get(code_hash) {
             // cache_result は Option<Vec<u8>> なので、そのまま clone して返す
             return cache_result.clone();
         }
-
         // 2. キャッシュに無ければSSDを探す
         let cf = self.db.cf_handle(CF_CODE).unwrap();
         self.db.get_cf(&cf, code_hash).unwrap_or(None)
     }
+
+    pub fn update_block_number(&self, new_number:i64) {
+        let data = new_number.to_be_bytes();
+        let mut inner = self.inner.lock().unwrap();
+        let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
+        inner.batch.put_cf(&cf, BLOCK_NUMBER_KEY, data);
+        inner.overlay.insert(BLOCK_NUMBER_KEY.to_vec(), Some(data.to_vec()));
+    }
+
+    pub fn get_block_number(&self) -> Option<i64> {
+        let inner = self.inner.lock().unwrap();
+        let bytes_opt = if let Some(block_number_bytes) = inner.overlay.get(&BLOCK_NUMBER_KEY.to_vec()) {
+            block_number_bytes.clone()
+        } else {
+            let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
+            self.db.get_cf(&cf, BLOCK_NUMBER_KEY).unwrap_or(None)
+        };
+        // バイト列が見つかったら、i64に復元する
+        bytes_opt.map(|bytes| {
+            let array: [u8; 8] = bytes.try_into().unwrap_or([0; 8]);
+            i64::from_be_bytes(array)
+        })
+    }
+
+
 }
 
 // --- MPT (eth_trie) 用メソッド ---
