@@ -430,7 +430,7 @@ fn state_test() {
                                     );
 
                                     let transaction = Transaction {
-                                        data: tx_data,
+                                        data: tx_data.into(),
                                         t_to: to_address,
                                         t_gas_limit: gas_limit,
                                         t_price: gas_price,
