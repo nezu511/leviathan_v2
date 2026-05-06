@@ -67,6 +67,7 @@ impl PI for LeviathanApp {
                     i.encode(&mut mpt_key);
                     //トランザクションををMPTに入れる
                     transaction_trie.insert(&mpt_key, &transaction_rlp).unwrap();
+                    let tx_hash = keccak256(&transaction_rlp);
 
 
                     tracing::info!(
@@ -101,7 +102,7 @@ impl PI for LeviathanApp {
                             receipt_with_bloom.encode(&mut rlp_receipt);
 
                             let receipt_hash = keccak256(&rlp_receipt);
-                            let receipt_key: Vec<u8> = [b"receipt:".as_slice(), receipt_hash.as_slice()].concat();
+                            let receipt_key: Vec<u8> = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
                             //RocksDBWrapperに保存
                             state.insert_receipt(&receipt_key, &rlp_receipt);
 
@@ -163,7 +164,7 @@ impl PI for LeviathanApp {
                             cumulative_gas += final_bill_gas_u64;
                             //レシートを作成
                             let receipt = Receipt {
-                                status: alloy_consensus::Eip658Value::Eip658(true),
+                                status: alloy_consensus::Eip658Value::Eip658(false),
                                 cumulative_gas_used: cumulative_gas,
                                 logs: _logs,
                             };
@@ -176,7 +177,7 @@ impl PI for LeviathanApp {
                             receipt_with_bloom.encode(&mut rlp_receipt);
 
                             let receipt_hash = keccak256(&rlp_receipt);
-                            let receipt_key: Vec<u8> = [b"receipt:".as_slice(), receipt_hash.as_slice()].concat();
+                            let receipt_key: Vec<u8> = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
                             //RocksDBWrapperに保存
                             state.insert_receipt(&receipt_key, &rlp_receipt);
 
