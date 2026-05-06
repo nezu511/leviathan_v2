@@ -119,12 +119,11 @@ pub fn deploy_contract(
 
     //5. ブロックヘッダー構築
     let block = BlockHeader {
-        h_beneficiary: Address::repeat_byte(0xfe),
-        h_timestamp: uint!(1600000000_U256),
-        h_number: uint!(1_U256),
-        h_prevrandao: U256::ZERO,
-        h_gaslimit: uint!(30_000_000_U256),
-        h_basefee: U256::ZERO,
+        beneficiary: Address::repeat_byte(0xfe),
+        number: 1,
+        gas_limit: 30_000_000,
+        base_fee_per_gas: Some(0),
+        ..Default::default()
     };
 
     //実行
@@ -208,12 +207,11 @@ pub fn call_contract(
 
     // 3. ブロックヘッダー
     let block = BlockHeader {
-        h_beneficiary: Address::repeat_byte(0xfe),
-        h_timestamp: uint!(1600000000_U256),
-        h_number: uint!(1_U256),
-        h_prevrandao: U256::ZERO,
-        h_gaslimit: uint!(30_000_000_U256),
-        h_basefee: U256::ZERO,
+        beneficiary: Address::repeat_byte(0xfe),
+        number: 1,
+        gas_limit: 30_000_000,
+        base_fee_per_gas: Some(0),
+        ..Default::default()
     };
 
     // 4. 実行
@@ -268,14 +266,13 @@ pub fn deploy_contract_raw(
         t_s: s,
     };
 
-    // 3. ブロックヘッダーの準備
+    // 3. ブロックヘッダー
     let block = BlockHeader {
-        h_beneficiary: Address::repeat_byte(0xfe),
-        h_timestamp: uint!(1600000000_U256),
-        h_number: uint!(1_U256),
-        h_prevrandao: U256::ZERO,
-        h_gaslimit: uint!(30_000_000_U256),
-        h_basefee: U256::ZERO,
+        beneficiary: Address::repeat_byte(0xfe),
+        number: 1,
+        gas_limit: 30_000_000,
+        base_fee_per_gas: Some(0),
+        ..Default::default()
     };
 
     // 4. Leviathan で実行
