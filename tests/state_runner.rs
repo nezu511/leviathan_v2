@@ -3,10 +3,11 @@ use std::fs;
 use std::io::Write;
 
 // alloy_primitives の hex を使用して E0433 を解消
-use alloy_primitives::{Address, TxKind, U256, hex, keccak256};
+use alloy_primitives::{Address, TxKind, U256, hex, keccak256, B256};
 
 // 署名生成のためのクレート
 use alloy_rlp::{Encodable, Header};
+use alloy_consensus::{Header as BlockHeader};
 use bytes::BytesMut;
 use eth_trie::{EthTrie, Trie};
 use secp256k1::{Message, Secp256k1, SecretKey};
@@ -15,7 +16,7 @@ use tempfile::tempdir;
 
 // 🌟 crate:: ではなく パッケージ名 (ここでは leviathan_v2 と仮定) を使用します
 use leviathan_v2::leviathan::leviathan::LEVIATHAN; // LEVIATHAN を追加
-use leviathan_v2::leviathan::structs::{BlockHeader, Transaction, VersionId};
+use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::{Account, MptAccount, WorldState}; // MptAccount を追加
 use leviathan_v2::my_trait::leviathan_trait::{State, TransactionExecution};
 use leviathan_v2::test::state_parser::{IndexType, StateTestSuite};
@@ -394,16 +395,26 @@ fn state_test() {
                                     );
 
                                     // --- ここから下が Env情報の構築 と トランザクション実行 (leviathan.execution) ---
-
+                                    /*
                                     let block_header = BlockHeader {
-                                        h_beneficiary: parse_address(
+                                        beneficiary: parse_address(
                                             &test_data.env.current_coinbase,
                                         ),
-                                        h_timestamp: parse_u256(&test_data.env.current_timestamp),
-                                        h_number: parse_u256(&test_data.env.current_number),
-                                        h_prevrandao: parse_u256(&test_data.env.current_difficulty),
-                                        h_gaslimit: parse_u256(&test_data.env.current_gas_limit),
-                                        h_basefee: U256::ZERO,
+                                        timestamp: test_data.env.current_timestamp.parse().unwrap(),
+                                        number: test_data.env.current_number.parse().unwrap(),
+                                        mix_hash: test_data.env.current_difficulty.parse().unwrap(),
+                                        gas_limit: test_data.env.current_gas_limit.parse().unwrap(),
+                                        ..Default::default()
+                                    };
+                                    */
+
+                                    let block_header = BlockHeader {
+                                        beneficiary: parse_address(&test_data.env.current_coinbase),
+                                        timestamp: parse_u256(&test_data.env.current_timestamp).try_into().unwrap_or(0),
+                                        number: parse_u256(&test_data.env.current_number).try_into().unwrap_or(0),
+                                        mix_hash: B256::from(parse_u256(&test_data.env.current_difficulty).to_be_bytes()),
+                                        gas_limit: parse_u256(&test_data.env.current_gas_limit).try_into().unwrap_or(0),
+                                        ..Default::default()
                                     };
 
                                     let tx_data = parse_code(tx_data_str);

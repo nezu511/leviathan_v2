@@ -1,7 +1,8 @@
 use crate::LeviathanApp;
 use alloy_primitives::{Address, U256, hex};
+use alloy_consensus::{Header as BlockHeader};
 use alloy_rlp::Decodable;
-use leviathan_v2::leviathan::structs::{BlockHeader, Transaction};
+use leviathan_v2::leviathan::structs::{Transaction};
 use leviathan_v2::my_trait::leviathan_trait::TransactionExecution;
 use tendermint_proto::abci::{
     Event, EventAttribute, ExecTxResult, RequestFinalizeBlock,
@@ -14,24 +15,21 @@ pub trait PI {
 impl PI for LeviathanApp {
     fn tx_execution(&self, req: &RequestFinalizeBlock) -> Vec<ExecTxResult> {
         //ブロックヘッダーの作成
-        let h_number = U256::from(req.height);
         let timestamp_seconds = req.time.unwrap_or_default().seconds;
-        let h_timestamp = U256::from(timestamp_seconds);
         let h_beneficiary = Address::from_slice(&req.proposer_address);
 
         let block_header = BlockHeader {
-            h_beneficiary,
-            h_timestamp,
-            h_number,
-            h_prevrandao: U256::ZERO,           // ダミー（PoS等の乱数用）
-            h_gaslimit: U256::from(30_000_000), // ブロックのガスリミット
-            h_basefee: U256::ZERO,              // EIP-1559のベースフィー
+            beneficiary: h_beneficiary,
+            timestamp: timestamp_seconds as u64,
+            number: req.height as u64,
+            gas_limit: 30_000_000, // ブロックのガスリミット
+            ..Default::default()
         };
 
         tracing::info!(
             "[FINALIZE_BLOCK] Height: {}, Time: {}, Txs: {}",
-            h_number,
-            h_timestamp,
+            req.height as u64,
+            timestamp_seconds as u64,
             req.txs.len()
         );
 
