@@ -178,6 +178,18 @@ impl WorldState {
         }
     }
 
+
+    pub fn insert_block(&self, block_hash: &[u8], block_rlp: &[u8]) {
+        self.data.insert_block(block_hash, block_rlp);
+    }
+
+    pub fn get_block(&self, block_hash: &[u8]) -> Vec<u8> {
+        match self.data.get_block(block_hash) {
+            Some(data) => return data,
+            None => return Vec::new(),
+        }
+    }
+
 }
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
