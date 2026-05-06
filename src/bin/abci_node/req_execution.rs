@@ -47,6 +47,7 @@ impl PI for LeviathanApp {
         let mut cumulative_gas:u64 = 0;
         let mut block_bloom = Bloom::default();
         let mut decoded_txs: Vec<Transaction> = Vec::new();
+        let mut txs= Vec::new();
 
         //トランザクション・レシートのルートハッシュ算出用のMPTを準備
         let memdb = Arc::new(MemoryDB::new(true));
@@ -63,12 +64,14 @@ impl PI for LeviathanApp {
 
             match Transaction::decode(&mut raw_tx_slice) {
                 Ok(transaction) => {
+                    decoded_txs.push(transaction.clone());
 
                     let mut mpt_key = Vec::new();
                     i.encode(&mut mpt_key);
                     //トランザクションををMPTに入れる
                     transaction_trie.insert(&mpt_key, &transaction_rlp).unwrap();
                     let tx_hash = keccak256(&transaction_rlp);
+                    txs.push(tx_hash.clone());
 
 
                     tracing::info!(
@@ -235,24 +238,31 @@ impl PI for LeviathanApp {
             withdrawals: None,
         };
 
-        // 次にヘッダーとボディをガッチャンコして「完全なブロック」にする！
         let full_block = Block {
             header: block_header,
             body: block_body,
         };
-
-        
+        /*
         //ブロックをrlp化
         let mut rlp_block = Vec::new();
         full_block.encode(&mut rlp_block);
         let block_hash = keccak256(&rlp_block);
+        */
+
+        for (i, tx_hash) in txs.iter().enumerate() {
+            let tx_lookup_key: Vec<u8> = [b"tx_lookup:".as_slice(), tx_hash.as_slice()].concat();
+            let i_bytes = (i as u64).to_be_bytes();
+            let tx_lookup_val: Vec<u8> = [current_block_hash.as_slice(), &i_bytes].concat();
+            state.insert_tx_lookup(&tx_lookup_key, &tx_lookup_val);
+        }
+
 
         //ブロックヘッダーを保存
-        let block_header_key: Vec<u8> = [b"header:".as_slice(), block_hash.as_slice()].concat();
+        let block_header_key: Vec<u8> = [b"header:".as_slice(), current_block_hash.as_slice()].concat();
         state.insert_block(&block_header_key, &rlp_header);
 
         //ブロックヘッダーを保存
-        let block_body_key: Vec<u8> = [b"body:".as_slice(), block_hash.as_slice()].concat();
+        let block_body_key: Vec<u8> = [b"body:".as_slice(), current_block_hash.as_slice()].concat();
         let mut rlp_body = Vec::new();
         full_block.body.encode(&mut rlp_body);
         state.insert_block(&block_body_key, &rlp_body);
