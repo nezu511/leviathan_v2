@@ -41,7 +41,7 @@ impl EthApiServer for LeviathanRPC {
         let state = self.state.read().unwrap();
         let block_number = state.current_block_number();
 
-        Ok(format!("0x{}",block_number).to_string())
+        Ok(format!("0x{:x}",block_number).to_string())
     }
 
     async fn send_raw_transaction(&self, tx_bytes: String) -> jsonrpsee::core::RpcResult<String> {
