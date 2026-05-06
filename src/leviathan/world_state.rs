@@ -20,6 +20,7 @@ pub struct WorldState {
     pub cache: HashMap<Address, Account>,
     pub data: Arc<RocksDBWrapper>,
     pub eth_trie: EthTrie<RocksDBWrapper>,
+    pub parent_block: B256,
 }
 
 impl WorldState {
@@ -39,6 +40,7 @@ impl WorldState {
             cache,
             data,
             eth_trie,
+            parent_block: B256::ZERO
         }
     }
 
