@@ -6,6 +6,8 @@ use std::sync::{Arc, Mutex};
 pub const CF_MPT: &str = "mpt_data";
 pub const CF_CODE: &str = "code_data";
 pub const CF_BLOCK_NUMBER: &str = "block_number";
+pub const CF_BLOCK: &str = "block_data";
+pub const CF_RECEIPT: &str = "receipt_data";
 pub const BLOCK_NUMBER_KEY: &[u8] = &[1];
 
 struct RocksDBInner {
@@ -24,7 +26,7 @@ impl RocksDBWrapper {
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
 
-        let cfs = vec![CF_MPT, CF_CODE, CF_BLOCK_NUMBER];
+        let cfs = vec![CF_MPT, CF_CODE, CF_BLOCK_NUMBER, CF_BLOCK, CF_RECEIPT];
         let db = RocksDB::open_cf(&opts, path, cfs).expect("RocksDBのオープンに失敗しました");
 
         Self {
@@ -82,7 +84,21 @@ impl RocksDBWrapper {
         })
     }
 
+    pub fn insert_receipt(&self, receipt_hash: &[u8], receipt_rlp: &[u8]) {
+        let mut inner = self.inner.lock().unwrap();
+        let cf = self.db.cf_handle(CF_RECEIPT).unwrap();
+        inner.batch.put_cf(&cf, receipt_hash, receipt_rlp);
+        inner.overlay.insert(receipt_hash.to_vec(), Some(receipt_rlp.to_vec()));
+    }
 
+    pub fn get_receipt(&self, receipt_hash: &[u8]) -> Option<Vec<u8>> {
+        let inner = self.inner.lock().unwrap();
+        if let Some(cache_result) = inner.overlay.get(receipt_hash) {
+            return cache_result.clone();
+        }
+        let cf = self.db.cf_handle(CF_RECEIPT).unwrap();
+        self.db.get_cf(&cf, receipt_hash).unwrap_or(None)
+    }
 }
 
 // --- MPT (eth_trie) 用メソッド ---
