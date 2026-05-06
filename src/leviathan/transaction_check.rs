@@ -1,11 +1,12 @@
 #![allow(dead_code)]
 
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
+use crate::leviathan::structs::{Transaction, VersionId};
 use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionChecks};
 use alloy_primitives::{Address, TxKind, U256};
 use alloy_rlp::{Encodable, Header};
+use alloy_consensus::{Header as BlockHeader};
 use bytes::BytesMut;
 use secp256k1::{
     Message, Secp256k1,

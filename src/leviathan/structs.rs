@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use alloy_primitives::{Address, TxKind, U256, Bytes, B256, Bloom, Log};
-use alloy_consensus::Header;
+use alloy_consensus::{Header as BlockHeader};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use std::collections::HashMap;
 use serde::Serialize;

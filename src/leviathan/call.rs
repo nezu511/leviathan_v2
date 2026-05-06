@@ -4,13 +4,14 @@ use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{
-    BackupSubstate, BlockHeader, ExecutionEnvironment, SubState, VersionId,
+    BackupSubstate, ExecutionEnvironment, SubState, VersionId,
 };
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
 use crate::my_trait::leviathan_trait::{CompiledContract, MCC, MessageCall, RoleBack, State};
 use alloy_primitives::{Address, U256};
 use sha3::Digest;
+use alloy_consensus::{Header as BlockHeader};
 
 //cpu実行時間を記録するため
 #[cfg(test)]
