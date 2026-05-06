@@ -245,6 +245,19 @@ impl PI for LeviathanApp {
         //ブロックをrlp化
         let mut rlp_block = Vec::new();
         full_block.encode(&mut rlp_block);
+        let block_hash = keccak256(&rlp_block);
+
+        //ブロックヘッダーを保存
+        let block_header_key: Vec<u8> = [b"header:".as_slice(), block_hash.as_slice()].concat();
+        state.insert_block(&block_header_key, &rlp_header);
+
+        //ブロックヘッダーを保存
+        let block_body_key: Vec<u8> = [b"body:".as_slice(), block_hash.as_slice()].concat();
+        let mut rlp_body = Vec::new();
+        full_block.body.encode(&mut rlp_body);
+        state.insert_block(&block_body_key, &rlp_body);
+        
+
 
 
         tx_results
