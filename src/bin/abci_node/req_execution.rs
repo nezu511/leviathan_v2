@@ -1,5 +1,5 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, U256, hex, keccak256};
+use alloy_primitives::{Address, U256, hex, keccak256, Bloom};
 use alloy_consensus::{Header as BlockHeader, Block, Receipt, ReceiptWithBloom};
 use alloy_rlp::{Decodable, Encodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
@@ -21,7 +21,7 @@ impl PI for LeviathanApp {
         let timestamp_seconds = req.time.unwrap_or_default().seconds;
         let h_beneficiary = Address::from_slice(&req.proposer_address);
 
-        let block_header = BlockHeader {
+        let mut block_header = BlockHeader {
             beneficiary: h_beneficiary,
             timestamp: timestamp_seconds as u64,
             number: req.height as u64,
@@ -45,6 +45,7 @@ impl PI for LeviathanApp {
         let mut leviathan = self.leviathan.lock().unwrap();
         let mut tx_results = Vec::new();
         let mut cumulative_gas:u64 = 0;
+        let mut block_bloom = Bloom::default();
 
         //トランザクション・レシートのルートハッシュ算出用のMPTを準備
         let memdb = Arc::new(MemoryDB::new(true));
@@ -92,6 +93,9 @@ impl PI for LeviathanApp {
                                 logs: logs.clone(),
                             };
                             let receipt_with_bloom = ReceiptWithBloom::from(receipt);
+                            //ブロック用のbloomを算出
+                            block_bloom |= receipt_with_bloom.logs_bloom;
+
                             //レシートをRLP化
                             let mut rlp_receipt = Vec::new();
                             receipt_with_bloom.encode(&mut rlp_receipt);
@@ -164,6 +168,9 @@ impl PI for LeviathanApp {
                                 logs: _logs,
                             };
                             let receipt_with_bloom = ReceiptWithBloom::from(receipt);
+                            //ブロック用のbloomを算出
+                            block_bloom |= receipt_with_bloom.logs_bloom;
+
                             //レシートをRLP化
                             let mut rlp_receipt = Vec::new();
                             receipt_with_bloom.encode(&mut rlp_receipt);
@@ -199,10 +206,20 @@ impl PI for LeviathanApp {
                 }
             }
         }
-        //レシートMPTのルートハッシュを求める
-        let receipt_root_hash = receipt_trie.root_hash().unwrap();
+        //ブロックヘッダーを完成させる
+        //レシートMPTのルートハッシュ
+        block_header.receipts_root = receipt_trie.root_hash().unwrap();
         //トランザクションMPTのルートハッシュを求める
-        let transaction_root_hash = transaction_trie.root_hash().unwrap();
+        block_header.transactions_root = transaction_trie.root_hash().unwrap();
+        //MPTルートハッシュ
+        block_header.state_root = state.eth_trie.root_hash().unwrap();
+        //消費ガスの累計
+        block_header.gas_used = cumulative_gas;
+        //全レシートのログからのbloom
+        block_header.logs_bloom = block_bloom;
+        //親ブロックのハッシュ
+        block_header.parent_hash = state.parent_block;
+
 
         tx_results
     }
