@@ -135,7 +135,11 @@ impl TransactionChecks for LEVIATHAN {
         }
 
         //トランザクションの実行ガス価格が，ブロックのベースフィー以上
-        if transaction.t_price < block_header.h_basefee {
+        let basefee = match block_header.base_fee_per_gas {
+            Some(fee) => U256::from(fee),
+            None => U256::ZERO,
+        };
+        if transaction.t_price < basefee {
             return Err("トランザクションの実行ガス価格がブロックのベースフィーを下回っている");
         }
 
