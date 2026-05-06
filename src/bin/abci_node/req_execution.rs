@@ -1,5 +1,5 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, U256, hex};
+use alloy_primitives::{Address, U256, hex, keccak256};
 use alloy_consensus::{Header as BlockHeader, Block, Receipt, ReceiptWithBloom};
 use alloy_rlp::{Decodable, Encodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
@@ -88,6 +88,11 @@ impl PI for LeviathanApp {
                             let mut rlp_receipt = Vec::new();
                             receipt_with_bloom.encode(&mut rlp_receipt);
 
+                            let receipt_hash = keccak256(&rlp_receipt);
+                            let receipt_key: Vec<u8> = [b"receipt:".as_slice(), receipt_hash.as_slice()].concat();
+                            //RocksDBWrapperに保存
+                            state.insert_receipt(&receipt_key, &rlp_receipt);
+
                             let mut abci_events = Vec::new();
                             for eth_log in logs {
                                 let mut attributes = Vec::new();
@@ -150,6 +155,11 @@ impl PI for LeviathanApp {
                             //レシートをRLP化
                             let mut rlp_receipt = Vec::new();
                             receipt_with_bloom.encode(&mut rlp_receipt);
+
+                            let receipt_hash = keccak256(&rlp_receipt);
+                            let receipt_key: Vec<u8> = [b"receipt:".as_slice(), receipt_hash.as_slice()].concat();
+                            //RocksDBWrapperに保存
+                            state.insert_receipt(&receipt_key, &rlp_receipt);
 
                             tx_results.push(ExecTxResult {
                                 code: 1,
