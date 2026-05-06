@@ -190,6 +190,17 @@ impl WorldState {
         }
     }
 
+
+    pub fn insert_tx_lookup(&self, key: &[u8], val: &[u8]) {
+        self.data.insert_txlookup(key, val);
+    }
+
+    pub fn get_tx_lookup(&self, key: &[u8]) -> Vec<u8> {
+        match self.data.get_txlookup(key) {
+            Some(data) => return data,
+            None => return Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
