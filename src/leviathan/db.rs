@@ -99,6 +99,23 @@ impl RocksDBWrapper {
         let cf = self.db.cf_handle(CF_RECEIPT).unwrap();
         self.db.get_cf(&cf, receipt_hash).unwrap_or(None)
     }
+
+
+    pub fn insert_block(&self, block_hash: &[u8], block_rlp: &[u8]) {
+        let mut inner = self.inner.lock().unwrap();
+        let cf = self.db.cf_handle(CF_BLOCK).unwrap();
+        inner.batch.put_cf(&cf, block_hash, block_rlp);
+        inner.overlay.insert(block_hash.to_vec(), Some(block_rlp.to_vec()));
+    }
+
+    pub fn get_block(&self, block_hash: &[u8]) -> Option<Vec<u8>> {
+        let inner = self.inner.lock().unwrap();
+        if let Some(cache_result) = inner.overlay.get(block_hash) {
+            return cache_result.clone();
+        }
+        let cf = self.db.cf_handle(CF_BLOCK).unwrap();
+        self.db.get_cf(&cf, block_hash).unwrap_or(None)
+    }
 }
 
 // --- MPT (eth_trie) 用メソッド ---
