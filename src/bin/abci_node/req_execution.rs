@@ -72,14 +72,11 @@ impl PI for LeviathanApp {
                                     index: true,
                                 });
 
-                                // 2. トピックを属性に追加
-                                for (i, topic) in eth_log.topic.iter().enumerate() {
+                                for (i, topic) in eth_log.data.topics().iter().enumerate() { // ★ eth_log.data.topics() に変更
                                     attributes.push(EventAttribute {
                                         key: format!("topic{}", i),
-                                        value: format!(
-                                            "0x{}",
-                                            hex::encode(topic.to_be_bytes::<32>())
-                                        ),
+                                        // ★ topic はすでに B256 なので、そのまま as_slice() でバイト列として扱える
+                                        value: format!("0x{}", hex::encode(topic.as_slice())),
                                         index: true,
                                     });
                                 }
@@ -87,9 +84,11 @@ impl PI for LeviathanApp {
                                 // 3. データを属性に追加
                                 attributes.push(EventAttribute {
                                     key: "data".to_string(),
-                                    value: format!("0x{}", hex::encode(&eth_log.data)),
+                                    // ★ eth_log.data (LogData構造体) の中の .data (Bytes型) にアクセスする
+                                    value: format!("0x{}", hex::encode(&eth_log.data.data)),
                                     index: false,
                                 });
+
 
                                 // 1つの Ethereum Log を 1つの CometBFT Event にまとめる
                                 abci_events.push(Event {

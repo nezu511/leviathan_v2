@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{Address, TxKind, U256, Bytes};
-use alloy_rlp::{RlpDecodable, RlpEncodable};
+use alloy_primitives::{Address, TxKind, U256, Bytes, B256, Bloom, Log};
+use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use std::collections::HashMap;
+use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VersionId {
@@ -143,22 +144,6 @@ impl SubState {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Log {
-    pub address: Address,
-    pub topic: Vec<U256>, //0~4個
-    pub data: Vec<u8>,
-}
-
-impl Log {
-    pub fn new(address: Address, topic: Vec<U256>, data: Vec<u8>) -> Self {
-        Self {
-            address,
-            topic,
-            data,
-        }
-    }
-}
 
 pub struct ExecutionEnvironment<'a> {
     pub i_address: Address, //現在実行中のコードを所有しているアカウント
@@ -208,4 +193,30 @@ pub struct BlockHeader {
     pub h_prevrandao: U256,     //前のブロックbいー今ステートから提供される乱数生成用の値
     pub h_gaslimit: U256,       //ブロック全体のガス上限
     pub h_basefee: U256,        //消費されたガス１単位あたりにバーンされるお金
+}
+
+
+//#[derive(Serialize)]
+pub struct TransactionReceipt {
+    pub r_thash: B256,      //トランザクションハッシュ
+    pub r_index: usize,
+    pub r_bhash: B256,
+    pub r_bnumber: i64,
+    pub r_from: Address,
+    pub r_to: Option<Address>,
+    pub r_cumula_used_gas: U256,
+    pub r_used_gas: U256,
+    pub r_contract_add: Option<Address>,
+    pub r_log: Vec<Log>,
+    pub r_bloom: Bloom,
+    pub r_status: bool,
+    pub r_type: u8,
+}
+
+//#[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
+pub struct Receipt {
+    pub status: bool,
+    pub cumulative_gas_used: u64,
+    pub logs_bloom: Bloom,
+    pub logs: Vec<Log>,
 }

@@ -3,11 +3,11 @@
 use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
-use crate::leviathan::structs::{ExecutionEnvironment, Log, SubState, VersionId};
+use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::{ContractCreation, MessageCall, State};
-use alloy_primitives::{Address, B256, I256, U256, hex};
+use alloy_primitives::{Address, B256, I256, U256, hex, Log, Bytes, LogData};
 use sha3::{Digest, Keccak256};
 
 impl Ofunction for EVM {
@@ -1414,7 +1414,7 @@ impl Ofunction for EVM {
         let mut topic = Vec::new();
         while topic_n > 0 {
             let topi = self.pop();
-            topic.push(topi);
+            topic.push(B256::from(topi.to_be_bytes()));
             topic_n -= 1;
         }
 
@@ -1431,7 +1431,11 @@ impl Ofunction for EVM {
         }
         //アドレス
         let address = &execution_environment.i_address;
-        let log = Log::new(*address, topic, data);
+        let log_data:Bytes = data.into();
+        let log = Log{
+            address: *address,
+            data: LogData::new_unchecked(topic, log_data),
+        };
         substate.a_log.push(log);
         //アクティブなword数を更新
         let active_words = self.memory.len() / 32;
