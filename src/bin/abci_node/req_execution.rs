@@ -1,7 +1,7 @@
 use crate::LeviathanApp;
 use alloy_primitives::{Address, U256, hex};
 use alloy_consensus::{Header as BlockHeader, Block, Receipt, ReceiptWithBloom};
-use alloy_rlp::Decodable;
+use alloy_rlp::{Decodable, Encodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
 use std::sync::Arc;
 
@@ -44,6 +44,7 @@ impl PI for LeviathanApp {
 
         let mut leviathan = self.leviathan.lock().unwrap();
         let mut tx_results = Vec::new();
+        let mut cumulative_gas:u64 = 0;
 
         //トランザクション・レシートのルートハッシュ算出用のMPTを準備
         let memdb = Arc::new(MemoryDB::new(true));
@@ -71,6 +72,22 @@ impl PI for LeviathanApp {
                     let result = leviathan.execution(&mut state, transaction, &block_header);
                     match result {
                         Ok((final_bill_gas, logs)) => {
+                            let Ok(final_bill_gas_u64) = u64::try_from(final_bill_gas) else {
+                                panic!("U256の値が大きすぎて u64 に収まりません！");
+                            };
+                            //累積ガスを更新
+                            cumulative_gas += final_bill_gas_u64;
+                            //レシートを作成
+                            let receipt = Receipt {
+                                status: alloy_consensus::Eip658Value::Eip658(true),
+                                cumulative_gas_used: cumulative_gas,
+                                logs: logs.clone(),
+                            };
+                            let receipt_with_bloom = ReceiptWithBloom::from(receipt);
+                            //レシートをRLP化
+                            let mut rlp_receipt = Vec::new();
+                            receipt_with_bloom.encode(&mut rlp_receipt);
+
                             let mut abci_events = Vec::new();
                             for eth_log in logs {
                                 let mut attributes = Vec::new();
@@ -118,6 +135,22 @@ impl PI for LeviathanApp {
                         }
 
                         Err((final_bill_gas, _logs)) => {
+                            let Ok(final_bill_gas_u64) = u64::try_from(final_bill_gas) else {
+                                panic!("U256の値が大きすぎて u64 に収まりません！");
+                            };
+                            //累積ガスを更新
+                            cumulative_gas += final_bill_gas_u64;
+                            //レシートを作成
+                            let receipt = Receipt {
+                                status: alloy_consensus::Eip658Value::Eip658(true),
+                                cumulative_gas_used: cumulative_gas,
+                                logs: _logs,
+                            };
+                            let receipt_with_bloom = ReceiptWithBloom::from(receipt);
+                            //レシートをRLP化
+                            let mut rlp_receipt = Vec::new();
+                            receipt_with_bloom.encode(&mut rlp_receipt);
+
                             tx_results.push(ExecTxResult {
                                 code: 1,
                                 log: "Execution Failed".to_string(),
