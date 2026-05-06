@@ -1,6 +1,6 @@
 use crate::LeviathanApp;
 use alloy_primitives::{Address, U256, hex, keccak256, Bloom};
-use alloy_consensus::{Header as BlockHeader, Block, Receipt, ReceiptWithBloom};
+use alloy_consensus::{Header as BlockHeader, Block, Receipt, ReceiptWithBloom, BlockBody};
 use alloy_rlp::{Decodable, Encodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
 use std::sync::Arc;
@@ -46,6 +46,7 @@ impl PI for LeviathanApp {
         let mut tx_results = Vec::new();
         let mut cumulative_gas:u64 = 0;
         let mut block_bloom = Bloom::default();
+        let mut decoded_txs: Vec<Transaction> = Vec::new();
 
         //トランザクション・レシートのルートハッシュ算出用のMPTを準備
         let memdb = Arc::new(MemoryDB::new(true));
@@ -220,6 +221,30 @@ impl PI for LeviathanApp {
         block_header.logs_bloom = block_bloom;
         //親ブロックのハッシュ
         block_header.parent_hash = state.parent_block;
+        
+        //ブロックヘッダーをrlp化
+        let mut rlp_header = Vec::new();
+        block_header.encode(&mut rlp_header);
+        let current_block_hash = keccak256(&rlp_header);
+        state.parent_block = current_block_hash;
+    
+        //ブロックのbodyを作成
+        let block_body = BlockBody {
+            transactions: decoded_txs,
+            ommers: vec![],
+            withdrawals: None,
+        };
+
+        // 次にヘッダーとボディをガッチャンコして「完全なブロック」にする！
+        let full_block = Block {
+            header: block_header,
+            body: block_body,
+        };
+
+        
+        //ブロックをrlp化
+        let mut rlp_block = Vec::new();
+        full_block.encode(&mut rlp_block);
 
 
         tx_results
