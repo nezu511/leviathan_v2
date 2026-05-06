@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use alloy_primitives::{Address, TxKind, U256, Bytes, B256, Bloom, Log};
+use alloy_consensus::Header;
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use std::collections::HashMap;
 use serde::Serialize;
@@ -186,6 +187,7 @@ impl<'a> ExecutionEnvironment<'a> {
     }
 }
 
+/*
 pub struct BlockHeader {
     pub h_beneficiary: Address, //ブロックの優先手数料を受け取るアドレス
     pub h_timestamp: U256,      //ブロック生成時の妥当なUnixスタンプ:
@@ -194,7 +196,7 @@ pub struct BlockHeader {
     pub h_gaslimit: U256,       //ブロック全体のガス上限
     pub h_basefee: U256,        //消費されたガス１単位あたりにバーンされるお金
 }
-
+*/
 
 //#[derive(Serialize)]
 pub struct TransactionReceipt {
