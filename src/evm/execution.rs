@@ -7,7 +7,7 @@ use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::{ContractCreation, MessageCall, State};
-use alloy_primitives::{Address, B256, I256, U256, hex, Log, Bytes, LogData};
+use alloy_primitives::{Address, B256, Bytes, I256, Log, LogData, U256, hex};
 use sha3::{Digest, Keccak256};
 
 impl Ofunction for EVM {
@@ -270,8 +270,7 @@ impl Ofunction for EVM {
                         state.add_account(&to_address, Account::new()); //アカウントを追加
                         Action::AccountCreation(to_address).push(leviathan, state); //アカウントが存在しない場合
                     }
-                    Action::SendEth(*from_address, to_address, balance)
-                        .push(leviathan, state); //ロールバック用
+                    Action::SendEth(*from_address, to_address, balance).push(leviathan, state); //ロールバック用
                     state.send_eth(from_address, &to_address, balance);
                 }
                 substate.a_des.push(*from_address);
@@ -1434,8 +1433,8 @@ impl Ofunction for EVM {
         }
         //アドレス
         let address = &execution_environment.i_address;
-        let log_data:Bytes = data.into();
-        let log = Log{
+        let log_data: Bytes = data.into();
+        let log = Log {
             address: *address,
             data: LogData::new_unchecked(topic, log_data),
         };

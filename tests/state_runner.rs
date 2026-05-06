@@ -3,11 +3,11 @@ use std::fs;
 use std::io::Write;
 
 // alloy_primitives の hex を使用して E0433 を解消
-use alloy_primitives::{Address, TxKind, U256, hex, keccak256, B256};
+use alloy_primitives::{Address, B256, TxKind, U256, hex, keccak256};
 
 // 署名生成のためのクレート
+use alloy_consensus::Header as BlockHeader;
 use alloy_rlp::{Encodable, Header};
-use alloy_consensus::{Header as BlockHeader};
 use bytes::BytesMut;
 use eth_trie::{EthTrie, Trie};
 use secp256k1::{Message, Secp256k1, SecretKey};
@@ -410,10 +410,19 @@ fn state_test() {
 
                                     let block_header = BlockHeader {
                                         beneficiary: parse_address(&test_data.env.current_coinbase),
-                                        timestamp: parse_u256(&test_data.env.current_timestamp).try_into().unwrap_or(0),
-                                        number: parse_u256(&test_data.env.current_number).try_into().unwrap_or(0),
-                                        mix_hash: B256::from(parse_u256(&test_data.env.current_difficulty).to_be_bytes()),
-                                        gas_limit: parse_u256(&test_data.env.current_gas_limit).try_into().unwrap_or(0),
+                                        timestamp: parse_u256(&test_data.env.current_timestamp)
+                                            .try_into()
+                                            .unwrap_or(0),
+                                        number: parse_u256(&test_data.env.current_number)
+                                            .try_into()
+                                            .unwrap_or(0),
+                                        mix_hash: B256::from(
+                                            parse_u256(&test_data.env.current_difficulty)
+                                                .to_be_bytes(),
+                                        ),
+                                        gas_limit: parse_u256(&test_data.env.current_gas_limit)
+                                            .try_into()
+                                            .unwrap_or(0),
                                         ..Default::default()
                                     };
 

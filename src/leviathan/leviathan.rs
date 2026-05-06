@@ -1,15 +1,13 @@
 #![allow(dead_code)]
 
 use crate::leviathan::roleback::Action;
-use crate::leviathan::structs::{
-    BackupSubstate, SubState, Transaction, VersionId,
-};
+use crate::leviathan::structs::{BackupSubstate, SubState, Transaction, VersionId};
 use crate::leviathan::world_state::{Account, MptAccount, WorldState};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
-use alloy_primitives::{TxKind, U256, hex, keccak256, Log};
-use alloy_consensus::{Header as BlockHeader};
+use alloy_consensus::Header as BlockHeader;
+use alloy_primitives::{Log, TxKind, U256, hex, keccak256};
 use alloy_rlp::Encodable;
 use eth_trie::{EthTrie, Trie};
 use sha3::Digest;

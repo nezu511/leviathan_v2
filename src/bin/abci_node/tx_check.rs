@@ -66,7 +66,6 @@ impl Tx_Checker for LeviathanApp {
         let max_cost =
             transaction.t_gas_limit.saturating_mul(transaction.t_price) + transaction.t_value;
 
-
         let Ok(t_w_u64) = u64::try_from(transaction.t_w) else {
             tracing::warn!("t_w is too large for u64");
             return false;
@@ -75,9 +74,9 @@ impl Tx_Checker for LeviathanApp {
         // vの値から「リカバリID」と「Chain ID」を逆算する！
         let v_val = t_w_u64;
         let (recovery_id_u8, chain_id) = if v_val == 27 || v_val == 28 {
-            ( (v_val - 27) as u8, None ) // 昔の方式
+            ((v_val - 27) as u8, None) // 昔の方式
         } else if v_val >= 35 {
-            ( ((v_val - 35) % 2) as u8, Some((v_val - 35) / 2) ) // 最新のEIP-155方式
+            (((v_val - 35) % 2) as u8, Some((v_val - 35) / 2)) // 最新のEIP-155方式
         } else {
             tracing::warn!("Invalid v value: {}", v_val);
             return false;
@@ -131,12 +130,12 @@ impl Tx_Checker for LeviathanApp {
         }
 
         let rlp_encoded = out.freeze();
-        
+
         // 4. Keccak256でハッシュ化して32バイトのh(T)を得る
         let mut hasher = Keccak256::new();
         hasher.update(&rlp_encoded);
         let tx_hash_bytes: [u8; 32] = hasher.finalize().into();
-        
+
         // --- 公開鍵のリカバリ部分 ---
         let message = Message::from_digest(tx_hash_bytes);
 

@@ -62,22 +62,25 @@ impl RocksDBWrapper {
         self.db.get_cf(&cf, code_hash).unwrap_or(None)
     }
 
-    pub fn update_block_number(&self, new_number:i64) {
+    pub fn update_block_number(&self, new_number: i64) {
         let data = new_number.to_be_bytes();
         let mut inner = self.inner.lock().unwrap();
         let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
         inner.batch.put_cf(&cf, BLOCK_NUMBER_KEY, data);
-        inner.overlay.insert(BLOCK_NUMBER_KEY.to_vec(), Some(data.to_vec()));
+        inner
+            .overlay
+            .insert(BLOCK_NUMBER_KEY.to_vec(), Some(data.to_vec()));
     }
 
     pub fn get_block_number(&self) -> Option<i64> {
         let inner = self.inner.lock().unwrap();
-        let bytes_opt = if let Some(block_number_bytes) = inner.overlay.get(&BLOCK_NUMBER_KEY.to_vec()) {
-            block_number_bytes.clone()
-        } else {
-            let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
-            self.db.get_cf(&cf, BLOCK_NUMBER_KEY).unwrap_or(None)
-        };
+        let bytes_opt =
+            if let Some(block_number_bytes) = inner.overlay.get(&BLOCK_NUMBER_KEY.to_vec()) {
+                block_number_bytes.clone()
+            } else {
+                let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
+                self.db.get_cf(&cf, BLOCK_NUMBER_KEY).unwrap_or(None)
+            };
         // バイト列が見つかったら、i64に復元する
         bytes_opt.map(|bytes| {
             let array: [u8; 8] = bytes.try_into().unwrap_or([0; 8]);
@@ -89,7 +92,9 @@ impl RocksDBWrapper {
         let mut inner = self.inner.lock().unwrap();
         let cf = self.db.cf_handle(CF_RECEIPT).unwrap();
         inner.batch.put_cf(&cf, receipt_hash, receipt_rlp);
-        inner.overlay.insert(receipt_hash.to_vec(), Some(receipt_rlp.to_vec()));
+        inner
+            .overlay
+            .insert(receipt_hash.to_vec(), Some(receipt_rlp.to_vec()));
     }
 
     pub fn get_receipt(&self, receipt_hash: &[u8]) -> Option<Vec<u8>> {
@@ -101,12 +106,13 @@ impl RocksDBWrapper {
         self.db.get_cf(&cf, receipt_hash).unwrap_or(None)
     }
 
-
     pub fn insert_block(&self, block_hash: &[u8], block_rlp: &[u8]) {
         let mut inner = self.inner.lock().unwrap();
         let cf = self.db.cf_handle(CF_BLOCK).unwrap();
         inner.batch.put_cf(&cf, block_hash, block_rlp);
-        inner.overlay.insert(block_hash.to_vec(), Some(block_rlp.to_vec()));
+        inner
+            .overlay
+            .insert(block_hash.to_vec(), Some(block_rlp.to_vec()));
     }
 
     pub fn get_block(&self, block_hash: &[u8]) -> Option<Vec<u8>> {
@@ -117,7 +123,6 @@ impl RocksDBWrapper {
         let cf = self.db.cf_handle(CF_BLOCK).unwrap();
         self.db.get_cf(&cf, block_hash).unwrap_or(None)
     }
-
 
     pub fn insert_txlookup(&self, key: &[u8], val: &[u8]) {
         let mut inner = self.inner.lock().unwrap();
@@ -134,7 +139,6 @@ impl RocksDBWrapper {
         let cf = self.db.cf_handle(CF_TX_LOOKUP).unwrap();
         self.db.get_cf(&cf, key).unwrap_or(None)
     }
-
 }
 
 // --- MPT (eth_trie) 用メソッド ---

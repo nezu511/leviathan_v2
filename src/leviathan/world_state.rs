@@ -40,7 +40,7 @@ impl WorldState {
             cache,
             data,
             eth_trie,
-            parent_block: B256::ZERO
+            parent_block: B256::ZERO,
         }
     }
 
@@ -178,7 +178,6 @@ impl WorldState {
         }
     }
 
-
     pub fn insert_block(&self, block_hash: &[u8], block_rlp: &[u8]) {
         self.data.insert_block(block_hash, block_rlp);
     }
@@ -189,7 +188,6 @@ impl WorldState {
             None => return Vec::new(),
         }
     }
-
 
     pub fn insert_tx_lookup(&self, key: &[u8], val: &[u8]) {
         self.data.insert_txlookup(key, val);

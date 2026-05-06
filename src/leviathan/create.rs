@@ -3,14 +3,12 @@
 use crate::evm::evm::EVM;
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::roleback::Action;
-use crate::leviathan::structs::{
-    BackupSubstate, ExecutionEnvironment, SubState, VersionId,
-};
+use crate::leviathan::structs::{BackupSubstate, ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction, Xi};
 use crate::my_trait::leviathan_trait::{ContractCreation, RoleBack, State};
+use alloy_consensus::Header as BlockHeader;
 use alloy_primitives::{Address, B256, U256, hex};
-use alloy_consensus::{Header as BlockHeader};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use sha3::{Digest, Keccak256};

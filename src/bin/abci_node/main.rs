@@ -1,16 +1,16 @@
-mod my_rpc;
 mod my_abci;
-mod tx_check;
+mod my_rpc;
 mod req_execution;
+mod tx_check;
 
 use alloy_rlp::Decodable;
 use eth_trie::{DB, Trie};
 use std::sync::Arc;
-use std::sync::{RwLock, Mutex};
+use std::sync::{Mutex, RwLock};
 use tendermint_abci::{Application, ServerBuilder};
 use tendermint_proto::abci::{
-    RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx,
-    ResponseCommit, ResponseFinalizeBlock, ResponseInfo,
+    RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx, ResponseCommit,
+    ResponseFinalizeBlock, ResponseInfo,
 };
 use tracing::{Level, info};
 
@@ -18,10 +18,8 @@ use tracing::{Level, info};
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::WorldState;
-use my_rpc::run_rpc_server;
 use my_abci::LeviathanApp;
-
-
+use my_rpc::run_rpc_server;
 
 #[tokio::main]
 async fn main() {
@@ -41,13 +39,11 @@ async fn main() {
     });
     info!("Leviathan RPC Serverを起動");
 
-
-
     let state_abci = state.clone();
     info!("Leviathan ABCI Serverを起動中...");
     let app = LeviathanApp {
         state: Arc::clone(&state_abci),
-        leviathan:  Arc::clone(&leviathan),
+        leviathan: Arc::clone(&leviathan),
         version: VersionId::Constantinople,
     };
 

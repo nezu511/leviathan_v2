@@ -1,15 +1,13 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, U256, hex, keccak256, Bloom};
-use alloy_consensus::{Header as BlockHeader, Block, Receipt, ReceiptWithBloom, BlockBody};
+use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom};
+use alloy_primitives::{Address, Bloom, U256, hex, keccak256};
 use alloy_rlp::{Decodable, Encodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
 use std::sync::Arc;
 
-use leviathan_v2::leviathan::structs::{Transaction};
+use leviathan_v2::leviathan::structs::Transaction;
 use leviathan_v2::my_trait::leviathan_trait::TransactionExecution;
-use tendermint_proto::abci::{
-    Event, EventAttribute, ExecTxResult, RequestFinalizeBlock,
-};
+use tendermint_proto::abci::{Event, EventAttribute, ExecTxResult, RequestFinalizeBlock};
 
 pub trait PI {
     fn tx_execution(&self, req: &RequestFinalizeBlock) -> Vec<ExecTxResult>;
@@ -44,19 +42,17 @@ impl PI for LeviathanApp {
 
         let mut leviathan = self.leviathan.lock().unwrap();
         let mut tx_results = Vec::new();
-        let mut cumulative_gas:u64 = 0;
+        let mut cumulative_gas: u64 = 0;
         let mut block_bloom = Bloom::default();
         let mut decoded_txs: Vec<Transaction> = Vec::new();
-        let mut txs= Vec::new();
+        let mut txs = Vec::new();
 
         //トランザクション・レシートのルートハッシュ算出用のMPTを準備
         let memdb = Arc::new(MemoryDB::new(true));
         let mut eth_trie = EthTrie::new(memdb.clone());
-        let origin_root= eth_trie.root_hash().unwrap();
-        let mut transaction_trie =
-            EthTrie::from(memdb.clone(), origin_root).unwrap();
-        let mut receipt_trie =
-            EthTrie::from(memdb.clone(), origin_root).unwrap();
+        let origin_root = eth_trie.root_hash().unwrap();
+        let mut transaction_trie = EthTrie::from(memdb.clone(), origin_root).unwrap();
+        let mut receipt_trie = EthTrie::from(memdb.clone(), origin_root).unwrap();
 
         for (i, tx) in req.txs.iter().enumerate() {
             let mut raw_tx_slice = tx.as_ref();
@@ -72,7 +68,6 @@ impl PI for LeviathanApp {
                     transaction_trie.insert(&mpt_key, &transaction_rlp).unwrap();
                     let tx_hash = keccak256(&transaction_rlp);
                     txs.push(tx_hash.clone());
-
 
                     tracing::info!(
                         "[CHECK_TX] デコード成功: Nonce={}, GasLimit={}",
@@ -106,7 +101,8 @@ impl PI for LeviathanApp {
                             receipt_with_bloom.encode(&mut rlp_receipt);
 
                             let receipt_hash = keccak256(&rlp_receipt);
-                            let receipt_key: Vec<u8> = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
+                            let receipt_key: Vec<u8> =
+                                [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
                             //RocksDBWrapperに保存
                             state.insert_receipt(&receipt_key, &rlp_receipt);
 
@@ -124,7 +120,8 @@ impl PI for LeviathanApp {
                                     index: true,
                                 });
 
-                                for (i, topic) in eth_log.data.topics().iter().enumerate() { // ★ eth_log.data.topics() に変更
+                                for (i, topic) in eth_log.data.topics().iter().enumerate() {
+                                    // ★ eth_log.data.topics() に変更
                                     attributes.push(EventAttribute {
                                         key: format!("topic{}", i),
                                         // ★ topic はすでに B256 なので、そのまま as_slice() でバイト列として扱える
@@ -141,14 +138,12 @@ impl PI for LeviathanApp {
                                     index: false,
                                 });
 
-
                                 // 1つの Ethereum Log を 1つの CometBFT Event にまとめる
                                 abci_events.push(Event {
                                     r#type: "evm_log".to_string(), // イベントの種類を識別する名前
                                     attributes,
                                 });
                             }
-
 
                             tx_results.push(ExecTxResult {
                                 code: 0,
@@ -181,7 +176,8 @@ impl PI for LeviathanApp {
                             receipt_with_bloom.encode(&mut rlp_receipt);
 
                             let receipt_hash = keccak256(&rlp_receipt);
-                            let receipt_key: Vec<u8> = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
+                            let receipt_key: Vec<u8> =
+                                [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
                             //RocksDBWrapperに保存
                             state.insert_receipt(&receipt_key, &rlp_receipt);
 
@@ -224,13 +220,13 @@ impl PI for LeviathanApp {
         block_header.logs_bloom = block_bloom;
         //親ブロックのハッシュ
         block_header.parent_hash = state.parent_block;
-        
+
         //ブロックヘッダーをrlp化
         let mut rlp_header = Vec::new();
         block_header.encode(&mut rlp_header);
         let current_block_hash = keccak256(&rlp_header);
         state.parent_block = current_block_hash;
-    
+
         //ブロックのbodyを作成
         let block_body = BlockBody {
             transactions: decoded_txs,
@@ -256,9 +252,9 @@ impl PI for LeviathanApp {
             state.insert_tx_lookup(&tx_lookup_key, &tx_lookup_val);
         }
 
-
         //ブロックヘッダーを保存
-        let block_header_key: Vec<u8> = [b"header:".as_slice(), current_block_hash.as_slice()].concat();
+        let block_header_key: Vec<u8> =
+            [b"header:".as_slice(), current_block_hash.as_slice()].concat();
         state.insert_block(&block_header_key, &rlp_header);
 
         //ブロックヘッダーを保存
@@ -266,9 +262,6 @@ impl PI for LeviathanApp {
         let mut rlp_body = Vec::new();
         full_block.body.encode(&mut rlp_body);
         state.insert_block(&block_body_key, &rlp_body);
-        
-
-
 
         tx_results
     }

@@ -4,9 +4,9 @@ use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::{Transaction, VersionId};
 use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionChecks};
+use alloy_consensus::Header as BlockHeader;
 use alloy_primitives::{Address, TxKind, U256};
 use alloy_rlp::{Encodable, Header};
-use alloy_consensus::{Header as BlockHeader};
 use bytes::BytesMut;
 use secp256k1::{
     Message, Secp256k1,
@@ -37,7 +37,8 @@ impl TransactionChecks for LEVIATHAN {
             return Err("Invalid v value");
         };
 
-        let recovery_id = RecoveryId::try_from(recovery_id_u8 as i32).map_err(|_| "Invalid recovery id")?;
+        let recovery_id =
+            RecoveryId::try_from(recovery_id_u8 as i32).map_err(|_| "Invalid recovery id")?;
 
         // 1. 各要素のRLPペイロード長を事前計算する (alloy-rlpの特徴)
         let mut payload_length = 0;
@@ -52,7 +53,7 @@ impl TransactionChecks for LEVIATHAN {
         payload_length += to_slice.length();
         payload_length += transaction.t_value.length();
         payload_length += transaction.data.length();
-    
+
         //EIP-155用に3フィールドを準備
         if let Some(cid) = chain_id {
             payload_length += cid.length();
@@ -62,7 +63,11 @@ impl TransactionChecks for LEVIATHAN {
 
         // 2. バッファを確保し、リストのヘッダーを書き込む
         let mut out = BytesMut::with_capacity(payload_length + 10); // ヘッダー分少し余分に確保
-        Header { list: true, payload_length }.encode(&mut out);
+        Header {
+            list: true,
+            payload_length,
+        }
+        .encode(&mut out);
         transaction.t_nonce.encode(&mut out);
         transaction.t_price.encode(&mut out);
         transaction.t_gas_limit.encode(&mut out);

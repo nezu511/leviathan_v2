@@ -1,24 +1,22 @@
+use alloy_primitives::{Address, U256, hex};
 use alloy_rlp::Decodable;
 use eth_trie::{DB, Trie};
 use std::sync::Arc;
-use std::sync::{RwLock, Mutex};
+use std::sync::{Mutex, RwLock};
 use tendermint_abci::{Application, ServerBuilder};
-use alloy_primitives::{U256, Address, hex};
 use tendermint_proto::abci::{
-    RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx,
+    RequestCheckTx, RequestFinalizeBlock, RequestInfo, RequestInitChain, ResponseCheckTx,
     ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain,
-    RequestInitChain,
 };
 use tracing::{Level, info};
 
 //自作構造体
-use leviathan_v2::leviathan::leviathan::LEVIATHAN;
-use leviathan_v2::leviathan::structs::{Transaction, VersionId};
-use leviathan_v2::leviathan::world_state::{WorldState, Account};
 use crate::my_rpc::run_rpc_server;
 use crate::req_execution::PI;
 use crate::tx_check::Tx_Checker;
-
+use leviathan_v2::leviathan::leviathan::LEVIATHAN;
+use leviathan_v2::leviathan::structs::{Transaction, VersionId};
+use leviathan_v2::leviathan::world_state::{Account, WorldState};
 
 #[derive(Clone)]
 pub struct LeviathanApp {
@@ -135,7 +133,8 @@ impl Application for LeviathanApp {
         tracing::info!("[INIT_CHAIN] ブロックチェーンの創世を開始します...");
 
         // 1. ジェネシスアドレスを決める
-        let genesis_address_bytes = hex::decode("c755095A6D433b4E744f706881D5d7E0D84237B5").unwrap();
+        let genesis_address_bytes =
+            hex::decode("c755095A6D433b4E744f706881D5d7E0D84237B5").unwrap();
         let genesis_address = Address::from_slice(&genesis_address_bytes);
 
         // 2. 1万ETH（10000 * 10^18 wei）を付与
@@ -153,7 +152,10 @@ impl Application for LeviathanApp {
         // 4. 初期のState Root（AppHash）を取得してCometBFTに教える
         let app_hash = state.eth_trie.root_hash().unwrap().0.to_vec();
 
-        tracing::info!("[INIT_CHAIN] ジェネシス完了。AppHash: 0x{}", hex::encode(&app_hash));
+        tracing::info!(
+            "[INIT_CHAIN] ジェネシス完了。AppHash: 0x{}",
+            hex::encode(&app_hash)
+        );
 
         ResponseInitChain {
             app_hash: app_hash.into(),
