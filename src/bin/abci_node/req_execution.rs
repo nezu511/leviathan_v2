@@ -1,7 +1,10 @@
 use crate::LeviathanApp;
 use alloy_primitives::{Address, U256, hex};
-use alloy_consensus::{Header as BlockHeader};
+use alloy_consensus::{Header as BlockHeader, Block, Receipt, ReceiptWithBloom};
 use alloy_rlp::Decodable;
+use eth_trie::{EthTrie, MemoryDB, Trie};
+use std::sync::Arc;
+
 use leviathan_v2::leviathan::structs::{Transaction};
 use leviathan_v2::my_trait::leviathan_trait::TransactionExecution;
 use tendermint_proto::abci::{
@@ -41,6 +44,15 @@ impl PI for LeviathanApp {
 
         let mut leviathan = self.leviathan.lock().unwrap();
         let mut tx_results = Vec::new();
+
+        //トランザクション・レシートのルートハッシュ算出用のMPTを準備
+        let memdb = Arc::new(MemoryDB::new(true));
+        let mut eth_trie = EthTrie::new(memdb.clone());
+        let origin_root= eth_trie.root_hash().unwrap();
+        let mut transaction_trie =
+            EthTrie::from(memdb.clone(), origin_root).unwrap();
+        let mut receipt_trie =
+            EthTrie::from(memdb.clone(), origin_root).unwrap();
 
         for tx in &req.txs {
             let mut raw_tx_slice = tx.as_ref();
