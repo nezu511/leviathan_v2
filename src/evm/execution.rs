@@ -7,7 +7,7 @@ use crate::leviathan::structs::{ExecutionEnvironment, SubState, VersionId};
 use crate::leviathan::world_state::{Account, WorldState};
 use crate::my_trait::evm_trait::{Gfunction, Ofunction};
 use crate::my_trait::leviathan_trait::{ContractCreation, MessageCall, State};
-use alloy_primitives::{Address, B256, I256, U256, hex, Log, Bytes, LogData};
+use alloy_primitives::{Address, B256, Bytes, I256, Log, LogData, U256, hex};
 use sha3::{Digest, Keccak256};
 
 impl Ofunction for EVM {
@@ -270,8 +270,7 @@ impl Ofunction for EVM {
                         state.add_account(&to_address, Account::new()); //アカウントを追加
                         Action::AccountCreation(to_address).push(leviathan, state); //アカウントが存在しない場合
                     }
-                    Action::SendEth(*from_address, to_address, balance)
-                        .push(leviathan, state); //ロールバック用
+                    Action::SendEth(*from_address, to_address, balance).push(leviathan, state); //ロールバック用
                     state.send_eth(from_address, &to_address, balance);
                 }
                 substate.a_des.push(*from_address);
@@ -1093,8 +1092,8 @@ impl Ofunction for EVM {
                 //BLOCKHASH
                 let header = &execution_environment.i_block_header;
                 let num = self.pop();
-                let my_num = header.h_number;
-                if num > my_num.saturating_sub(U256::from(256)) {
+                let my_num = header.number;
+                if num > my_num.saturating_sub(256) {
                     //この場合はそのブロックのハッシュ値を返す
                 } else {
                     self.push(U256::ZERO);
@@ -1104,7 +1103,7 @@ impl Ofunction for EVM {
             0x41 => {
                 //COINBASE
                 let header = &execution_environment.i_block_header;
-                let address = &header.h_beneficiary;
+                let address = &header.beneficiary;
                 let val = U256::from_be_bytes(address.into_word().0);
                 self.push(val);
             }
@@ -1112,29 +1111,29 @@ impl Ofunction for EVM {
             0x42 => {
                 //TIMESTAMP
                 let header = &execution_environment.i_block_header;
-                let val = header.h_timestamp;
-                self.push(val);
+                let val = header.timestamp;
+                self.push(U256::from(val));
             }
 
             0x43 => {
                 //NUMBER
                 let header = &execution_environment.i_block_header;
-                let my_num = header.h_number;
-                self.push(my_num);
+                let my_num = header.number;
+                self.push(U256::from(my_num));
             }
 
             0x44 => {
                 //PREVRANDAO
                 let header = &execution_environment.i_block_header;
-                let val = header.h_prevrandao;
-                self.push(val);
+                let val = header.mix_hash;
+                self.push(U256::from_be_bytes(val.0));
             }
 
             0x45 => {
                 //GASLIMIT
                 let header = &execution_environment.i_block_header;
-                let val = header.h_gaslimit;
-                self.push(val);
+                let val = header.gas_limit;
+                self.push(U256::from(val));
             }
 
             0x46 => {
@@ -1155,8 +1154,11 @@ impl Ofunction for EVM {
             0x48 => {
                 //BASEFEE
                 let header = &execution_environment.i_block_header;
-                let val = header.h_basefee;
-                self.push(val);
+                let val = header.base_fee_per_gas;
+                match val {
+                    Some(val_u64) => self.push(U256::from(val_u64)),
+                    None => self.push(U256::ZERO),
+                }
             }
             0_u8..=63_u8 | 73_u8..=u8::MAX => todo!(),
         }
@@ -1431,8 +1433,8 @@ impl Ofunction for EVM {
         }
         //アドレス
         let address = &execution_environment.i_address;
-        let log_data:Bytes = data.into();
-        let log = Log{
+        let log_data: Bytes = data.into();
+        let log = Log {
             address: *address,
             data: LogData::new_unchecked(topic, log_data),
         };

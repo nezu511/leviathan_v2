@@ -201,7 +201,7 @@ impl Gfunction for EVM {
                 //計算の動的コスト
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
                 let dynamic_cost = words.saturating_mul(U256::from(6));
-                
+
                 ext_cost
                     .saturating_add(dynamic_cost)
                     .saturating_add(U256::from(30))
@@ -259,7 +259,7 @@ impl Gfunction for EVM {
                 //計算の動的コスト
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
                 let dynamic_cost = words.saturating_mul(U256::from(3));
-                
+
                 ext_cost
                     .saturating_add(dynamic_cost)
                     .saturating_add(U256::from(3))
@@ -276,7 +276,7 @@ impl Gfunction for EVM {
                 let ext_cost = self.extension_cost(offset, size);
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
                 let dynamic_cost = words.saturating_mul(U256::from(3));
-                
+
                 acc_cost
                     .saturating_add(ext_cost)
                     .saturating_add(dynamic_cost)
@@ -286,7 +286,7 @@ impl Gfunction for EVM {
                 //MLOAD, MSTORE
                 let offset = self.peek(0);
                 let ext_cost = self.extension_cost(offset, U256::from(32));
-                
+
                 ext_cost.saturating_add(U256::from(3))
             }
 
@@ -294,7 +294,7 @@ impl Gfunction for EVM {
                 //MSTORE8
                 let offset = self.peek(0);
                 let ext_cost = self.extension_cost(offset, U256::from(1));
-                
+
                 ext_cost.saturating_add(U256::from(3))
             }
 
@@ -401,7 +401,7 @@ impl Gfunction for EVM {
                 let topic_cost = U256::from(topic).saturating_mul(U256::from(375));
                 //dynamic_cost
                 let dynamic_cost = size.saturating_mul(U256::from(8));
-                
+
                 ext_cost
                     .saturating_add(topic_cost)
                     .saturating_add(dynamic_cost)
@@ -417,10 +417,8 @@ impl Gfunction for EVM {
                 let words = size.saturating_add(U256::from(31)) / U256::from(32);
                 let dynamic_cost = words.saturating_mul(U256::from(2));
                 if self.version < VersionId::Shanghai {
-                    
                     ext_cost.saturating_add(U256::from(32000))
                 } else {
-                    
                     dynamic_cost
                         .saturating_add(ext_cost)
                         .saturating_add(U256::from(32000))
@@ -555,7 +553,7 @@ impl Gfunction for EVM {
                 //RETURN
                 let offset = self.peek(0);
                 let size = self.peek(1);
-                
+
                 self.extension_cost(offset, size)
             }
 
@@ -621,7 +619,7 @@ impl Gfunction for EVM {
                 } else {
                     dynamic_cost = words.saturating_mul(U256::from(8));
                 }
-                
+
                 dynamic_cost
                     .saturating_add(ext_cost)
                     .saturating_add(U256::from(32000))

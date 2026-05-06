@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
-use alloy_primitives::{Address, TxKind, U256, Bytes, B256, Bloom, Log};
+use alloy_consensus::Header as BlockHeader;
+use alloy_primitives::{Address, B256, Bloom, Bytes, Log, TxKind, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
-use std::collections::HashMap;
 use serde::Serialize;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VersionId {
@@ -23,17 +24,16 @@ pub enum VersionId {
     Latest,
 }
 
-
 #[derive(Debug, Clone, RlpDecodable, RlpEncodable)]
 pub struct Transaction {
     pub t_nonce: usize,
-    pub t_price: U256,      
+    pub t_price: U256,
     pub t_gas_limit: U256,
     pub t_to: TxKind,
     pub t_value: U256,
     pub data: Bytes,
-    pub t_w: U256,  
-    pub t_r: U256,  
+    pub t_w: U256,
+    pub t_r: U256,
     pub t_s: U256,
 }
 
@@ -144,7 +144,6 @@ impl SubState {
     }
 }
 
-
 pub struct ExecutionEnvironment<'a> {
     pub i_address: Address, //現在実行中のコードを所有しているアカウント
     pub i_origin: Address,  //実行の起点となった大本のトランザクション送信者
@@ -186,6 +185,7 @@ impl<'a> ExecutionEnvironment<'a> {
     }
 }
 
+/*
 pub struct BlockHeader {
     pub h_beneficiary: Address, //ブロックの優先手数料を受け取るアドレス
     pub h_timestamp: U256,      //ブロック生成時の妥当なUnixスタンプ:
@@ -194,11 +194,11 @@ pub struct BlockHeader {
     pub h_gaslimit: U256,       //ブロック全体のガス上限
     pub h_basefee: U256,        //消費されたガス１単位あたりにバーンされるお金
 }
-
+*/
 
 //#[derive(Serialize)]
 pub struct TransactionReceipt {
-    pub r_thash: B256,      //トランザクションハッシュ
+    pub r_thash: B256, //トランザクションハッシュ
     pub r_index: usize,
     pub r_bhash: B256,
     pub r_bnumber: i64,

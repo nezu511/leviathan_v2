@@ -1,16 +1,15 @@
+use alloy_primitives::hex;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::ServerBuilder;
-use std::sync::RwLock;
+use jsonrpsee::types::ErrorObjectOwned;
 use std::sync::Arc;
+use std::sync::RwLock;
 use tendermint_rpc::{Client, HttpClient};
-use alloy_primitives::hex;
-use jsonrpsee::types::ErrorObjectOwned; 
 
 use leviathan_v2::leviathan::world_state::WorldState;
 
 #[rpc(server)]
 pub trait EthApi {
-
     #[method(name = "eth_chainId")]
     async fn chain_id(&self) -> jsonrpsee::core::RpcResult<String>;
 
@@ -27,7 +26,7 @@ pub struct LeviathanRPC {
 
 impl LeviathanRPC {
     pub fn new(state: Arc<RwLock<WorldState>>) -> Self {
-        Self {state}
+        Self { state }
     }
 }
 
@@ -41,7 +40,7 @@ impl EthApiServer for LeviathanRPC {
         let state = self.state.read().unwrap();
         let block_number = state.current_block_number();
 
-        Ok(format!("0x{}",block_number).to_string())
+        Ok(format!("0x{:x}", block_number).to_string())
     }
 
     async fn send_raw_transaction(&self, tx_bytes: String) -> jsonrpsee::core::RpcResult<String> {
@@ -64,10 +63,7 @@ impl EthApiServer for LeviathanRPC {
 
         Ok(format!("0x{}", hex::encode(response.hash)))
     }
-
 }
-
-
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {
     // サーバーのビルド (ポート8545)
