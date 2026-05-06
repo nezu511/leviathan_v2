@@ -165,6 +165,17 @@ impl WorldState {
         self.data.get_block_number().unwrap_or(0)
     }
 
+    pub fn insert_receipt(&self, receipt_hash: &[u8], receipt_rlp: &[u8]) {
+        self.data.insert_receipt(receipt_hash, receipt_rlp);
+    }
+
+    pub fn get_receipt(&self, receipt_hash: &[u8]) -> Vec<u8> {
+        match self.data.get_receipt(receipt_hash) {
+            Some(data) => return data,
+            None => return Vec::new(),
+        }
+    }
+
 }
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
