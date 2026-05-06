@@ -8,6 +8,7 @@ pub const CF_CODE: &str = "code_data";
 pub const CF_BLOCK_NUMBER: &str = "block_number";
 pub const CF_BLOCK: &str = "block_data";
 pub const CF_RECEIPT: &str = "receipt_data";
+pub const CF_TX_LOOKUP: &str = "tx_lookup_data";
 pub const BLOCK_NUMBER_KEY: &[u8] = &[1];
 
 struct RocksDBInner {
@@ -116,6 +117,24 @@ impl RocksDBWrapper {
         let cf = self.db.cf_handle(CF_BLOCK).unwrap();
         self.db.get_cf(&cf, block_hash).unwrap_or(None)
     }
+
+
+    pub fn insert_txlookup(&self, key: &[u8], val: &[u8]) {
+        let mut inner = self.inner.lock().unwrap();
+        let cf = self.db.cf_handle(CF_TX_LOOKUP).unwrap();
+        inner.batch.put_cf(&cf, key, val);
+        inner.overlay.insert(key.to_vec(), Some(val.to_vec()));
+    }
+
+    pub fn get_txlookup(&self, key: &[u8]) -> Option<Vec<u8>> {
+        let inner = self.inner.lock().unwrap();
+        if let Some(cache_result) = inner.overlay.get(key) {
+            return cache_result.clone();
+        }
+        let cf = self.db.cf_handle(CF_TX_LOOKUP).unwrap();
+        self.db.get_cf(&cf, key).unwrap_or(None)
+    }
+
 }
 
 // --- MPT (eth_trie) 用メソッド ---
