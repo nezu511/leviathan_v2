@@ -55,11 +55,19 @@ impl PI for LeviathanApp {
         let mut receipt_trie =
             EthTrie::from(memdb.clone(), origin_root).unwrap();
 
-        for tx in &req.txs {
+        for (i, tx) in req.txs.iter().enumerate() {
             let mut raw_tx_slice = tx.as_ref();
+            let mut transaction_rlp = raw_tx_slice.clone();
 
             match Transaction::decode(&mut raw_tx_slice) {
                 Ok(transaction) => {
+
+                    let mut mpt_key = Vec::new();
+                    i.encode(&mut mpt_key);
+                    //トランザクションををMPTに入れる
+                    transaction_trie.insert(&mpt_key, &transaction_rlp).unwrap();
+
+
                     tracing::info!(
                         "[CHECK_TX] デコード成功: Nonce={}, GasLimit={}",
                         transaction.t_nonce,
@@ -92,6 +100,9 @@ impl PI for LeviathanApp {
                             let receipt_key: Vec<u8> = [b"receipt:".as_slice(), receipt_hash.as_slice()].concat();
                             //RocksDBWrapperに保存
                             state.insert_receipt(&receipt_key, &rlp_receipt);
+
+                            //レシートをMPTに入れる
+                            receipt_trie.insert(&mpt_key, &rlp_receipt).unwrap();
 
                             let mut abci_events = Vec::new();
                             for eth_log in logs {
@@ -129,6 +140,7 @@ impl PI for LeviathanApp {
                                 });
                             }
 
+
                             tx_results.push(ExecTxResult {
                                 code: 0,
                                 log: "Success".to_string(),
@@ -161,6 +173,9 @@ impl PI for LeviathanApp {
                             //RocksDBWrapperに保存
                             state.insert_receipt(&receipt_key, &rlp_receipt);
 
+                            //レシートをMPTに入れる
+                            receipt_trie.insert(&mpt_key, &rlp_receipt).unwrap();
+
                             tx_results.push(ExecTxResult {
                                 code: 1,
                                 log: "Execution Failed".to_string(),
@@ -184,6 +199,11 @@ impl PI for LeviathanApp {
                 }
             }
         }
+        //レシートMPTのルートハッシュを求める
+        let receipt_root_hash = receipt_trie.root_hash().unwrap();
+        //トランザクションMPTのルートハッシュを求める
+        let transaction_root_hash = transaction_trie.root_hash().unwrap();
+
         tx_results
     }
 }
