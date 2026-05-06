@@ -120,7 +120,7 @@ impl TransactionExecution for LEVIATHAN {
 
         //a_touchにトランザクションの基本要素（送信者，ブロックの受取人）を追加
         substate.a_touch.push(sender_address);
-        substate.a_touch.push(block_header.h_beneficiary);
+        substate.a_touch.push(block_header.beneficiary);
 
         //gasから初期ガスを引く
         let mut gas = gas.unwrap();
@@ -215,19 +215,22 @@ impl TransactionExecution for LEVIATHAN {
                 let f = if self.version < VersionId::London {
                     transaction.t_price
                 } else {
-                    transaction.t_price - block_header.h_basefee
+                    match block_header.base_fee_per_gas {
+                        Some(basefee) => transaction.t_price - U256::from(basefee),
+                        None => transaction.t_price,
+                    }
                 };
                 let reward = final_billed_gas.saturating_mul(f);
-                if state.is_dead(self.version, &block_header.h_beneficiary) {
+                if state.is_dead(self.version, &block_header.beneficiary) {
                     //add_balance前の確認
-                    if !state.is_physically_exist(&block_header.h_beneficiary) {
-                        state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
+                    if !state.is_physically_exist(&block_header.beneficiary) {
+                        state.add_account(&block_header.beneficiary, Account::new()); //アカウントを追加
                     }
                 }
-                state.add_balance(&block_header.h_beneficiary, reward);
+                state.add_balance(&block_header.beneficiary, reward);
                 //デバック用
                 tracing::info!(
-                    beneficiary =  format_args!("0x{}", hex::encode(block_header.h_beneficiary.0)),
+                    beneficiary =  format_args!("0x{}", hex::encode(block_header.beneficiary.0)),
                     reward = %reward,
                     reimburse = %reimburse,
                     final_billed_gas = %final_billed_gas,
@@ -364,19 +367,22 @@ impl TransactionExecution for LEVIATHAN {
                 let f = if self.version < VersionId::London {
                     transaction.t_price
                 } else {
-                    transaction.t_price - block_header.h_basefee
+                    match block_header.base_fee_per_gas {
+                        Some(basefee) => transaction.t_price - U256::from(basefee),
+                        None => transaction.t_price,
+                    }
                 };
                 let reward = final_billed_gas.saturating_mul(f);
-                if state.is_dead(self.version, &block_header.h_beneficiary) {
+                if state.is_dead(self.version, &block_header.beneficiary) {
                     //add_balance前の確認
-                    if !state.is_physically_exist(&block_header.h_beneficiary) {
-                        state.add_account(&block_header.h_beneficiary, Account::new()); //アカウントを追加
+                    if !state.is_physically_exist(&block_header.beneficiary) {
+                        state.add_account(&block_header.beneficiary, Account::new()); //アカウントを追加
                     }
                 }
-                state.add_balance(&block_header.h_beneficiary, reward);
+                state.add_balance(&block_header.beneficiary, reward);
                 //デバック用
                 tracing::info!(
-                    beneficiary =  format_args!("0x{}", hex::encode(block_header.h_beneficiary.0)),
+                    beneficiary =  format_args!("0x{}", hex::encode(block_header.beneficiary.0)),
                     reward = %reward,
                     reimburse = %reimburse,
                     final_billed_gas = %final_billed_gas,
