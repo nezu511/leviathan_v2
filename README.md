@@ -433,9 +433,8 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 - [x] Geth型アーキテクチャに基づく RocksDB への Block / Receipt / TxLookup 永続化。
 - [x] `jsonrpsee` を用いた JSON-RPC サーバー基盤の構築とネットワーク連携
 
-[ ] Phase 4: Relayer & Frontend Integration
+[ ] Phase 4: Relayer API
 - メタトランザクションを処理するRelayer APIの構築．
-- 有権者登録・匿名投票用のフロントエンド構築．
 
 [ ] Phase 5: TEE Integration (Future Work)
 SGX等のTEE環境を利用した実行環境の完全秘匿化へのリサーチ
@@ -459,5 +458,5 @@ SGX等のTEE環境を利用した実行環境の完全秘匿化へのリサー�
 
 ## About the Author 
 Taku Hashimoto  
-土木工学（都市計画）と生命科学（細胞小器官と疾患）という異分野のバックグラウンドを持つ．
+土木工学（都市計画）と生命科学（タンパク質変異と疾患）という異分野のバックグラウンドを持つ．
 過去にアセンブリ言語でOSをスクラッチ開発した経験から得た低レイヤー・メモリ管理の知見を活かし，次世代の社会インフラとなる暗号プロトコルの構築中．
