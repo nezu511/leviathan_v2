@@ -38,7 +38,67 @@ Leviathanは，行政手続きや公共インフラ（選挙，給付金分配�
 
 ##  Architecture & Data Flow
 
-本EVMの最大の特徴は，トランザクションの実行コンテキスト（Cache）と暗号学的な状態保管庫（MPT）の厳格な分離，およびカスタムプレコンパイルへのルーティング機構にあります．
+### Full Node Architecture (Consensus, Execution, RPC)
+
+Leviathanは単なるスマートコントラクトの実行環境（VM）に留まらず、独立したブロックチェーンノード（L1/L2）として自律稼働する完全なシステムアーキテクチャを備えています。コンセンサス層、実行層、ストレージ層、そして外部インターフェース（RPC）がそれぞれ独立したコンポーネントとして強固に連携する設計を採用しています。
+
+本アーキテクチャは以下の4つの主要レイヤーで構成されています。
+- **Consensus Layer (CometBFT)**: ブロックの提案と合意形成を担うエンジンです。P2Pネットワーク通信とコンセンサスアルゴリズムを処理し、確定したブロックの骨組み（トランザクションリストとタイムスタンプ等）をABCI経由で実行層へ送ります。
+- **Execution Layer (Leviathan ABCI & EVM)**: CometBFTから渡されたトランザクションを実行し、Ethereum仕様に完全準拠したレシートやMPTのルートハッシュ（State Root）を計算します。処理中はすべて揮発性のインメモリキャッシュ上で完結させ、極限までI/Oのボトルネックを排除します。
+- **Storage Layer (RocksDB)**: 実行エンジンによって確定したステート（MPT）とブロックの履歴を永続化します。Gethの設計思想を踏襲し、フルブロックをそのまま保存するのではなく「Header」と「Body」に完全に解体して保存し、さらに TxLookup という専用の索引（インデックス）を構築することで、ストレージ効率と検索速度を最大化しています。
+- **RPC Layer (JSON-RPC Server)**: 外部のWeb3クライアント（MetaMaskや cast コマンドなど）からのリクエストを非同期で処理する窓口です。ノードの実行サイクルを妨害しないよう、RPCサーバーはEVMから独立して稼働し、RocksDBから直接データを抽出・結合（Hydration）してユーザーに返却します。また，`eth_sendRawTransaction`のような「書き込み系」のリクエストが来た場合、RPCサーバーは単にDBを見るだけではなく、トランザクションをネットワークに流すために CometBFTのRPCポート（通常 26657）へ転送（ブロードキャスト）します．
+
+このように、各コンポーネントの責務をプロトコルレベルで完全に分離することで、行政やエンタープライズの商用トラフィックに耐えうる堅牢性とスケーラビリティを実現しています。
+
+```mermaid
+graph TD
+    %% 外部クライアント
+    Client["Web3 Client<br/>(MetaMask, cast, etc.)"]
+
+    %% RPCレイヤー
+    subgraph RPC_Layer [RPC Layer]
+        RPC["JSON-RPC Server<br/>(jsonrpsee)"]
+    end
+
+    %% コンセンサスレイヤー
+    subgraph Consensus_Layer [Consensus Layer]
+        BFT["CometBFT Engine<br/>(Consensus & P2P)"]
+    end
+
+    %% 実行レイヤー
+    subgraph Execution_Layer [Execution Layer]
+        ABCI["Leviathan ABCI<br/>(Application Interface)"]
+        EVM["Leviathan EVM<br/>(Execution Engine)"]
+        CACHE["In-Memory Cache<br/>& Local MPT"]
+    end
+
+    %% ストレージレイヤー
+    subgraph Storage_Layer [Storage Layer]
+        DB[("RocksDB<br/>(Geth-style Storage)")]
+    end
+
+    %% --- 接続関係 ---
+
+    %% 1. クライアントからの入り口
+    Client <-->|JSON-RPC| RPC
+
+    %% 2. RPCサーバーの二面性 (ここを修正)
+    RPC -.->|Read: eth_getBalance etc.| DB
+    RPC -->|Write: eth_sendRawTransaction| BFT
+
+    %% 3. コンセンサスと実行ユニットの対話
+    BFT <-->|ABCI: CheckTx, FinalizeBlock, Commit| ABCI
+    
+    %% 4. 実行エンジン内部
+    ABCI -->|Execute Txs| EVM
+    EVM <-->|State Updates| CACHE
+    ABCI -->|Commit| DB
+    
+    classDef storage fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    class DB storage;
+    classDef highlight fill:#fff4dd,stroke:#d4a017,stroke-width:2px;
+    class RPC,BFT highlight;
+```
 
 ### Transaction Execution Flow
 
