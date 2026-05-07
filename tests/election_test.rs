@@ -20,7 +20,6 @@ sol! {
         bytes memory modulus,
         bytes memory exponent,
         bytes memory signature,
-        bytes memory message,
         bytes32 commitment
     );
 
@@ -194,7 +193,7 @@ fn register_voter(
     println!("Generating RSA Keys and Signature...");
     let mut rng = OsRng;
     let rsa_private_key = RsaPrivateKey::new(&mut rng, 2048).unwrap();
-    let message = b"I want to register my commitment to Leviathan";
+    let message = commitment.0;
     let hashed_message = Sha256::digest(message);
     let signature = rsa_private_key
         .sign(Pkcs1v15Sign::new::<Sha256>(), &hashed_message)
@@ -207,7 +206,6 @@ fn register_voter(
         modulus: Bytes::from(pub_key_n),
         exponent: Bytes::from(pub_key_e),
         signature: Bytes::from(signature),
-        message: Bytes::from(message.to_vec()),
         commitment,
     }
     .abi_encode();
