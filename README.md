@@ -199,6 +199,19 @@ graph TD
     CheckResult -->|Some True| Revert[Revert<br/>Return Err Some]
     CheckResult -->|Some False| NormalStop[Normal Halt: STOP/RETURN<br/>Return Ok]
 ```
+### Advanced Architecture: Dual Merkle Tree
+Leviathanは、Ethereum標準への完全準拠と、ZKインフラとしての高効率を両立するため、二階建てのステート管理構造を採用しています。
+
+1. **Layer 1: World State (Standard MPT)**
+   - **Hash Algorithm**: Keccak256
+   - **役割**: アカウント残高、Nonce、コントラクトストレージの管理。
+   - **意義**: ここを標準仕様に留めることで、公式の `VMTests` 互換性を100%維持し、既存のWeb3エコシステムとの親和性を担保します。
+
+2. **Layer 2: Application State (Poseidon Tree)**
+   - **Hash Algorithm**: Poseidon (ZK-Friendly)
+   - **役割**: 投票箱（Commitment）の包含証明専用のツリー。
+   - **意義**: ZK回路内での計算コストが極めて低いPoseidonを採用することで、モバイルデバイス等での証明生成（Proof Generation）を現実的な速度で可能にします。
+
 ## Technical Excellence: Rust Idiomatic Design 
 単に「動く」だけでなく，長期的な保守性と拡張性を担保するためのRustらしい設計を徹底しています．
 
@@ -226,6 +239,36 @@ EVMの複雑な仕様とエッジケースを正確にハンドリングする�
 ### モダンな型システムとオーバーフローの完全排除
 
 数値型には最新の alloy_primitives::{U256, I256} を採用．また，メモリ拡張コストの計算時など，悪意ある巨大な入力による整数オーバーフロー攻撃を防ぐため，境界チェックにはRustの saturating_add などを徹底し，セキュアな算術演算を実装しています．
+
+## Case Study: "Unmanned City Hall" Election Simulation
+
+2026年5月、本エンジン上にて以下のEnd-to-Endシナリオの完遂に成功しました。
+
+**シミュレーション内容:**
+1.  **身元登録**: 有権者がマイナンバーカード（RSA-2048）で署名。EVMプレコンパイルがこれを検証し、成功時のみ `Commitment` をPoseidonツリーに登録。
+2.  **匿名投票**: 登録済み有権者が、ZK-SNARKs（Groth16）を用いて「自分がツリーに含まれる正当な有権者であること」を匿名で証明。
+3.  **二重投票防止**: `Nullifier Hash` を用いて、匿名性を保ちつつ「同じ人が2回投票すること」をプロトコルレベルで拒絶。
+4.  **最終結果**: 候補者1が2票、候補者2が1票という投票結果が、不正なくステートに反映されることを確認。
+
+**Execution Log (Proof of Work):**
+```text
+--- Phase 0: Generate Dynamic Commitments ---
+✅ Generated Commitment for secret 11111: 0x0d9bd617a1576...
+--- Phase 1: Voter Registration ---
+Deploying IdentityRegistry...
+ Success! Precompile verified the signature. Remaining Gas: 1030987
+Is commitment registered? true
+...
+--- Phase 2: Anonymous ZK Voting ---
+--- Voting for Voter 0 (Choice 1) ---
+✅ input.json generated for Voter 0!
+ Call Success! Remaining Gas: 244714
+...
+--- Final Check: Vote Count ---
+Votes for choice 1: 2
+Votes for choice 2: 1
+test test_election_e2e ... ok
+```
 
 ## Case Studies: Overcoming Protocol-Level Challenges
 
@@ -377,19 +420,24 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 現在，PoCに向けたコアエンジンの検証フェーズを完了し，暗号統合フェーズを実行中です．
 
 [x] Phase 1: Core Engine & MPT Integration
-- EVM実行エンジンの構築と公式 GeneralStateTests の広範なパス．
-- HashMapレイヤーの排除と，Merkle Patricia Trie (MPT) を用いた StateDB の完全統合．
+- [x] EVM実行エンジンの構築と公式 GeneralStateTests の広範なパス．
+- [x] HashMapレイヤーの排除と，Merkle Patricia Trie (MPT) を用いた StateDB の完全統合．
 
-[] Phase 2: ZK & Cryptography Integration
-- [x] ZK検証・運用用プレコンパイルコントラクト(Groth16, Poseidon)の実装
-- [x] 自プレコンパイル(0x0a)としての RSA-2048 署名検証ロジックのネイティブ実装と、統計的ベンチマークに基づくガスコスト最適化（168,000 gas）の完了．
-- [ ] CircomによるZK回路の作成（Commitment / Nullifier）とBN254プレコンパイルの統合．
+[x] **Phase 2: ZK & Cryptography Integration (PoC 実証完了)**
+- [x] **E2E 選挙シミュレーションの成功**: RSAによる身元確認とZKによる匿名投票を組み合わせた一連のフローが，EVM上で正確にステート遷移することを確認（2026年5月）．
+- [x] **Poseidon Merkle Treeの実装**: ZK-SNARKsの包含証明（Inclusion Proof）に特化した、Poseidonハッシュベースの専用ツリー構造を統合．
+- [x] **RSA-2048 プレコンパイルの最適化**: Rustネイティブ実装により、マイナンバー署名検証のガスコストを実用圏内（O(1)）に抑制．
 
-[ ] Phase 3: Relayer & Frontend Integration
+[x] **Phase 3: Node Architecture & Data Persistence (New!)**
+- [x] CometBFT (ABCI) の統合によるコンセンサス層との連携・ブロック生成。
+- [x] Geth型アーキテクチャに基づく RocksDB への Block / Receipt / TxLookup 永続化。
+- [x] `jsonrpsee` を用いた JSON-RPC サーバー基盤の構築とネットワーク連携
+
+[ ] Phase 4: Relayer & Frontend Integration
 - メタトランザクションを処理するRelayer APIの構築．
 - 有権者登録・匿名投票用のフロントエンド構築．
 
-[ ] Phase 4: TEE Integration (Future Work)
+[ ] Phase 5: TEE Integration (Future Work)
 SGX等のTEE環境を利用した実行環境の完全秘匿化へのリサーチ
 
 ## Tech Stack
