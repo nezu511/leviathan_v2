@@ -393,10 +393,11 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 SGX等のTEE環境を利用した実行環境の完全秘匿化へのリサーチ
 
 ## Tech Stack
-- Core: Rust
-- EVM Components: Custom Implementation, alloy_primitives, alloy_rlp
-- Cryptography: ZK-SNARKs (Circom), RSA-2048, BN254
-- Frontend / Middleware: React, Node.js
+- **Core:** Rust
+- **Consensus & RPC:** CometBFT (Tendermint ABCI), jsonrpsee
+- **EVM Components:** Custom Implementation, alloy_primitives, alloy_consensus, alloy_rlp, eth_trie
+- **Database:** RocksDB
+- **Cryptography:** ZK-SNARKs (Circom), RSA-2048, BN254
 
 ### Why Rust & Full-Scratch?
 次世代の行政インフラを構築するにあたり，以下の理由から実行エンジンの開発言語としてRustを選定しました．
