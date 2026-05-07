@@ -1,11 +1,12 @@
-use alloy_primitives::hex;
+use alloy_primitives::{hex, B256};
+use alloy_rlp::{Decodable, Encodable};
+use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::ServerBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tendermint_rpc::{Client, HttpClient};
-use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom};
 
 use leviathan_v2::leviathan::world_state::WorldState;
 
@@ -70,12 +71,26 @@ impl EthApiServer for LeviathanRPC {
 
         Ok(format!("0x{}", hex::encode(response.hash)))
     }
-
-    /*
+/*
     async fn get_transaction_receipt(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<TransactionReceipt>> {
+        let state = self.state.read().unwrap();
         //レシートの取得
         let receipt_key: Vec<u8> = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
+        let Some(receipt) = state.get_receipt_struct(&receipt_key) else {
+            return None
+        };
+
+        //TxLookupの取得
+        let tx_lookup_key: Vec<u8> = [b"tx_lookup:".as_slice(), tx_hash.as_slice()].concat();
+        let Some((block_hash, tx_index)) = state.get_block_hash(&tx_lookup_key) else {
+            return None
+        };
+
+        return Some(full_block);
+    }
 */
+
+
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {
