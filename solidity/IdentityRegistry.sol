@@ -15,7 +15,7 @@ contract IdentityRegistry {
         bytes memory modulus,
         bytes memory exponent,
         bytes memory signature,
-        bytes memory message,
+        bytes32  commitment
     ) public {
         // 二重登録の防止
         require(!isRegistered[commitment], "Already registered");
