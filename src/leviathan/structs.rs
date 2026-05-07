@@ -183,5 +183,3 @@ impl<'a> ExecutionEnvironment<'a> {
         }
     }
 }
-
-

@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
+use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom};
 use alloy_primitives::{Address, B256, U256, b256, hex, keccak256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
-use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom};
 use eth_trie::{EthTrie, Trie};
 use sha3::Digest;
 use std::collections::HashMap;
@@ -182,7 +182,7 @@ impl WorldState {
     }
 
     pub fn get_block(&self, block_hash: &[u8]) -> Option<Vec<u8>> {
-        self.data.get_block(block_hash) 
+        self.data.get_block(block_hash)
     }
 
     pub fn insert_tx_lookup(&self, key: &[u8], val: &[u8]) {
@@ -190,26 +190,26 @@ impl WorldState {
     }
 
     pub fn get_tx_lookup(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.data.get_txlookup(key) 
+        self.data.get_txlookup(key)
     }
 
     pub fn get_receipt_struct(&self, key: &[u8]) -> Option<ReceiptWithBloom> {
         let Some(rlp_receipt) = self.data.get_receipt(&key) else {
-            return None
+            return None;
         };
         let mut slice = rlp_receipt.as_slice();
-        match  ReceiptWithBloom::decode(&mut slice)  {
+        match ReceiptWithBloom::decode(&mut slice) {
             Ok(receipt) => return Some(receipt),
             Err(_) => {
                 tracing::warn!("Decoded ReceiptWithBloom Error");
-                return None
-            },
+                return None;
+            }
         }
     }
 
     pub fn get_block_hash(&self, key: &[u8]) -> Option<(B256, u64)> {
         let Some(tx_lookup_raw) = self.data.get_txlookup(&key) else {
-            return None
+            return None;
         };
         if tx_lookup_raw.len() < 40 {
             tracing::warn!("Get Block Hash Error");
@@ -224,35 +224,30 @@ impl WorldState {
 
     pub fn get_full_block(&self, key: &[u8]) -> Option<Block<Transaction>> {
         //ヘッダー
-        let block_header_key: Vec<u8> =[b"header:".as_slice(), key].concat();
+        let block_header_key: Vec<u8> = [b"header:".as_slice(), key].concat();
         let Some(header_rlp) = self.data.get_block(&block_header_key) else {
-            return None
+            return None;
         };
         let mut slice = header_rlp.as_slice();
         let Ok(mut header) = BlockHeader::decode(&mut slice) else {
             tracing::warn!("Decoded BlockHeader Error");
-            return None
+            return None;
         };
         //ボディー
         let block_body_key: Vec<u8> = [b"body:".as_slice(), key].concat();
         let Some(header_rlp) = self.data.get_block(&block_body_key) else {
-            return None
+            return None;
         };
         let mut slice = header_rlp.as_slice();
         let Ok(mut body) = BlockBody::<Transaction>::decode(&mut slice) else {
             tracing::warn!("Decoded BlockBody Error");
-            return None
+            return None;
         };
 
         //Blockの取得
-        let full_block = Block {
-            header,
-            body,
-        };
+        let full_block = Block { header, body };
         return Some(full_block);
     }
-
-
 }
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]

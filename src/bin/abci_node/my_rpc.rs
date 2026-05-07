@@ -1,22 +1,22 @@
-use alloy_primitives::{hex, B256, Address, TxKind};
-use alloy_rlp::{Decodable, Encodable, Header};
 use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom};
+use alloy_primitives::{Address, B256, TxKind, hex};
+use alloy_rlp::{Decodable, Encodable, Header};
 use alloy_rpc_types::TransactionReceipt;
+use bytes::BytesMut;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::ServerBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
-use std::sync::Arc;
-use std::sync::RwLock;
-use tendermint_rpc::{Client, HttpClient};
 use secp256k1::{
     Message, Secp256k1,
     ecdsa::{RecoverableSignature, RecoveryId},
 };
 use sha3::{Digest, Keccak256};
-use bytes::BytesMut;
+use std::sync::Arc;
+use std::sync::RwLock;
+use tendermint_rpc::{Client, HttpClient};
 
-use leviathan_v2::leviathan::world_state::WorldState;
 use leviathan_v2::leviathan::structs::Transaction;
+use leviathan_v2::leviathan::world_state::WorldState;
 
 #[rpc(server)]
 pub trait EthApi {
@@ -30,10 +30,20 @@ pub trait EthApi {
     async fn send_raw_transaction(&self, tx_bytes: String) -> jsonrpsee::core::RpcResult<String>;
 
     #[method(name = "eth_getTransactionReceipt")]
-    async fn get_transaction_receipt(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<TransactionReceipt>>;
+    async fn get_transaction_receipt(
+        &self,
+        tx_hash: B256,
+    ) -> jsonrpsee::core::RpcResult<Option<TransactionReceipt>>;
 
-   // #[method(name = "eth_getTransactionByHash")]
-   // async fn get_transaction_by_hash(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<Transaction>>;
+    #[method(name = "eth_getTransactionCount")]
+    async fn get_transaction_count(
+        &self,
+        address: Address,
+        block: Option<String>,
+    ) -> jsonrpsee::core::RpcResult<String>;
+
+    // #[method(name = "eth_getTransactionByHash")]
+    // async fn get_transaction_by_hash(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<Transaction>>;
 }
 
 pub struct LeviathanRPC {
@@ -80,28 +90,31 @@ impl EthApiServer for LeviathanRPC {
         Ok(format!("0x{}", hex::encode(response.hash)))
     }
 
-    async fn get_transaction_receipt(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<TransactionReceipt>> {
+    async fn get_transaction_receipt(
+        &self,
+        tx_hash: B256,
+    ) -> jsonrpsee::core::RpcResult<Option<TransactionReceipt>> {
         let state = self.state.read().unwrap();
         //レシートの取得
         let receipt_key: Vec<u8> = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
         let Some(receipt) = state.get_receipt_struct(&receipt_key) else {
-            return Ok(None)
+            return Ok(None);
         };
 
         //TxLookupの取得
         let tx_lookup_key: Vec<u8> = [b"tx_lookup:".as_slice(), tx_hash.as_slice()].concat();
         let Some((block_hash, tx_index)) = state.get_block_hash(&tx_lookup_key) else {
-            return Ok(None)
+            return Ok(None);
         };
 
         //Blockの取得
         let Some(block) = state.get_full_block(&block_hash.as_slice()) else {
-            return Ok(None)
+            return Ok(None);
         };
 
         let tx_index_usize = tx_index as usize;
         let Some(tx) = block.body.transactions.get(tx_index_usize) else {
-            return Ok(None)
+            return Ok(None);
         };
 
         let status = match receipt.receipt.status {
@@ -132,7 +145,10 @@ impl EthApiServer for LeviathanRPC {
         let sender_opt = get_sender(&tx);
         let contract_address = if tx.t_to.is_create() {
             if let Some(sender) = sender_opt {
-                Some(alloy_primitives::Address::create(&sender, tx.t_nonce as u64))
+                Some(alloy_primitives::Address::create(
+                    &sender,
+                    tx.t_nonce as u64,
+                ))
             } else {
                 None
             }
@@ -141,8 +157,12 @@ impl EthApiServer for LeviathanRPC {
         };
 
         // 内部ログを RPC 用のログ構造体にマッピング
-        let rpc_logs: Vec<alloy_rpc_types::Log> = receipt.receipt.logs.iter().enumerate().map(|(i, eth_log)| {
-            alloy_rpc_types::Log {
+        let rpc_logs: Vec<alloy_rpc_types::Log> = receipt
+            .receipt
+            .logs
+            .iter()
+            .enumerate()
+            .map(|(i, eth_log)| alloy_rpc_types::Log {
                 inner: eth_log.clone(),
                 block_hash: Some(block_hash),
                 block_number: Some(block.header.number),
@@ -151,8 +171,8 @@ impl EthApiServer for LeviathanRPC {
                 log_index: Some(i as u64),
                 removed: false,
                 block_timestamp: None,
-            }
-        }).collect();
+            })
+            .collect();
 
         // --- レシート特有のデータは `inner` 用の構造体にまとめる ---
         let inner_receipt = alloy_consensus::ReceiptWithBloom {
@@ -182,14 +202,26 @@ impl EthApiServer for LeviathanRPC {
 
         Ok(Some(rpc_receipt))
     }
+
+    async fn get_transaction_count(
+        &self,
+        address: Address,
+        _block: Option<String>,
+    ) -> jsonrpsee::core::RpcResult<String> {
+        let mut state = self.state.write().unwrap();
+        let nonce = if let Some(account) = state.contain_mpt(&address) {
+            account.nonce
+        } else {
+            0
+        };
+        Ok(format!("0x{:x}", nonce))
+    }
 }
-
-
 
 pub fn get_sender(transaction: &Transaction) -> Option<Address> {
     let Ok(t_w_u64) = u64::try_from(transaction.t_w) else {
         tracing::warn!("t_w is too large for u64");
-        return None
+        return None;
     };
     let (recovery_id_u8, chain_id) = if t_w_u64 == 27 || t_w_u64 == 28 {
         ((t_w_u64 - 27) as u8, None)
@@ -197,11 +229,11 @@ pub fn get_sender(transaction: &Transaction) -> Option<Address> {
         (((t_w_u64 - 35) % 2) as u8, Some((t_w_u64 - 35) / 2))
     } else {
         tracing::warn!("[get_sender] Invalid v value");
-        return None
+        return None;
     };
     let Ok(recovery_id) = RecoveryId::try_from(recovery_id_u8 as i32) else {
         tracing::warn!("Invalid recovery id");
-        return None
+        return None;
     };
     // 1. 各要素のRLPペイロード長を事前計算する (alloy-rlpの特徴)
     let mut payload_length = 0;
@@ -254,13 +286,13 @@ pub fn get_sender(transaction: &Transaction) -> Option<Address> {
     sig_bytes[32..64].copy_from_slice(&transaction.t_s.to_be_bytes::<32>());
     let Ok(signature) = RecoverableSignature::from_compact(&sig_bytes, recovery_id) else {
         tracing::warn!("Invalid signature");
-        return None
+        return None;
     };
     let secp = Secp256k1::verification_only();
     // 【解決策7】 最新版では `&message` ではなく `message` (値渡し) にする
     let Ok(public_key) = secp.recover_ecdsa(message, &signature) else {
         tracing::warn!("Failed to recover public key");
-        return None
+        return None;
     };
     // あとは前回のコードと同じようにアドレスを抽出！
     let uncompressed_pubkey = public_key.serialize_uncompressed();
@@ -268,7 +300,7 @@ pub fn get_sender(transaction: &Transaction) -> Option<Address> {
     let mut sender_address = [0u8; 20];
     sender_address.copy_from_slice(&pubkey_hash[12..32]);
     let sender_address = Address::new(sender_address);
-    return Some(sender_address)
+    return Some(sender_address);
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {
