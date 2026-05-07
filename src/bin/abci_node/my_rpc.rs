@@ -5,6 +5,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tendermint_rpc::{Client, HttpClient};
+use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom};
 
 use leviathan_v2::leviathan::world_state::WorldState;
 
@@ -18,6 +19,12 @@ pub trait EthApi {
 
     #[method(name = "eth_sendRawTransaction")]
     async fn send_raw_transaction(&self, tx_bytes: String) -> jsonrpsee::core::RpcResult<String>;
+
+    //#[method(name = "eth_getTransactionReceipt")]
+    //async fn get_transaction_receipt(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<TransactionReceipt>>;
+
+   // #[method(name = "eth_getTransactionByHash")]
+   // async fn get_transaction_by_hash(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<Transaction>>;
 }
 
 pub struct LeviathanRPC {
@@ -63,6 +70,12 @@ impl EthApiServer for LeviathanRPC {
 
         Ok(format!("0x{}", hex::encode(response.hash)))
     }
+
+    /*
+    async fn get_transaction_receipt(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<TransactionReceipt>> {
+        //レシートの取得
+        let receipt_key: Vec<u8> = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
+*/
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {

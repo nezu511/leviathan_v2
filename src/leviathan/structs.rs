@@ -184,17 +184,6 @@ impl<'a> ExecutionEnvironment<'a> {
     }
 }
 
-/*
-pub struct BlockHeader {
-    pub h_beneficiary: Address, //ブロックの優先手数料を受け取るアドレス
-    pub h_timestamp: U256,      //ブロック生成時の妥当なUnixスタンプ:
-    pub h_number: U256,         //ブロックnumber
-    pub h_prevrandao: U256,     //前のブロックbいー今ステートから提供される乱数生成用の値
-    pub h_gaslimit: U256,       //ブロック全体のガス上限
-    pub h_basefee: U256,        //消費されたガス１単位あたりにバーンされるお金
-}
-*/
-
 //#[derive(Serialize)]
 pub struct TransactionReceipt {
     pub r_thash: B256, //トランザクションハッシュ
@@ -212,10 +201,3 @@ pub struct TransactionReceipt {
     pub r_type: u8,
 }
 
-//#[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
-pub struct Receipt {
-    pub status: bool,
-    pub cumulative_gas_used: u64,
-    pub logs_bloom: Bloom,
-    pub logs: Vec<Log>,
-}

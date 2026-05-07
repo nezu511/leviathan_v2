@@ -171,33 +171,24 @@ impl WorldState {
         self.data.insert_receipt(receipt_hash, receipt_rlp);
     }
 
-    pub fn get_receipt(&self, receipt_hash: &[u8]) -> Vec<u8> {
-        match self.data.get_receipt(receipt_hash) {
-            Some(data) => data,
-            None => Vec::new(),
-        }
+    pub fn get_receipt(&self, receipt_hash: &[u8]) -> Option<Vec<u8>> {
+        self.data.get_receipt(receipt_hash)
     }
 
     pub fn insert_block(&self, block_hash: &[u8], block_rlp: &[u8]) {
         self.data.insert_block(block_hash, block_rlp);
     }
 
-    pub fn get_block(&self, block_hash: &[u8]) -> Vec<u8> {
-        match self.data.get_block(block_hash) {
-            Some(data) => data,
-            None => Vec::new(),
-        }
+    pub fn get_block(&self, block_hash: &[u8]) -> Option<Vec<u8>> {
+        self.data.get_block(block_hash) 
     }
 
     pub fn insert_tx_lookup(&self, key: &[u8], val: &[u8]) {
         self.data.insert_txlookup(key, val);
     }
 
-    pub fn get_tx_lookup(&self, key: &[u8]) -> Vec<u8> {
-        match self.data.get_txlookup(key) {
-            Some(data) => data,
-            None => Vec::new(),
-        }
+    pub fn get_tx_lookup(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.data.get_txlookup(key) 
     }
 }
 
