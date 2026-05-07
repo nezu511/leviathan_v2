@@ -3,15 +3,14 @@ use alloy_rlp::Decodable;
 use eth_trie::{DB, Trie};
 use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
-use tendermint_abci::{Application, ServerBuilder};
+use tendermint_abci::Application;
 use tendermint_proto::abci::{
     RequestCheckTx, RequestFinalizeBlock, RequestInfo, RequestInitChain, ResponseCheckTx,
     ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain,
 };
-use tracing::{Level, info};
+use tracing::info;
 
 //自作構造体
-use crate::my_rpc::run_rpc_server;
 use crate::req_execution::PI;
 use crate::tx_check::Tx_Checker;
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;

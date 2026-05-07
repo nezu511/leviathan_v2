@@ -1,6 +1,6 @@
 use crate::LeviathanApp;
 use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom};
-use alloy_primitives::{Address, Bloom, U256, hex, keccak256};
+use alloy_primitives::{Address, Bloom, hex, keccak256};
 use alloy_rlp::{Decodable, Encodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
 use std::sync::Arc;
@@ -56,7 +56,7 @@ impl PI for LeviathanApp {
 
         for (i, tx) in req.txs.iter().enumerate() {
             let mut raw_tx_slice = tx.as_ref();
-            let mut transaction_rlp = raw_tx_slice.clone();
+            let transaction_rlp = raw_tx_slice;
 
             match Transaction::decode(&mut raw_tx_slice) {
                 Ok(transaction) => {
@@ -65,9 +65,9 @@ impl PI for LeviathanApp {
                     let mut mpt_key = Vec::new();
                     i.encode(&mut mpt_key);
                     //トランザクションををMPTに入れる
-                    transaction_trie.insert(&mpt_key, &transaction_rlp).unwrap();
-                    let tx_hash = keccak256(&transaction_rlp);
-                    txs.push(tx_hash.clone());
+                    transaction_trie.insert(&mpt_key, transaction_rlp).unwrap();
+                    let tx_hash = keccak256(transaction_rlp);
+                    txs.push(tx_hash);
 
                     tracing::info!(
                         "[CHECK_TX] デコード成功: Nonce={}, GasLimit={}",
@@ -100,7 +100,7 @@ impl PI for LeviathanApp {
                             let mut rlp_receipt = Vec::new();
                             receipt_with_bloom.encode(&mut rlp_receipt);
 
-                            let receipt_hash = keccak256(&rlp_receipt);
+                            let _receipt_hash = keccak256(&rlp_receipt);
                             let receipt_key: Vec<u8> =
                                 [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
                             //RocksDBWrapperに保存
@@ -175,7 +175,7 @@ impl PI for LeviathanApp {
                             let mut rlp_receipt = Vec::new();
                             receipt_with_bloom.encode(&mut rlp_receipt);
 
-                            let receipt_hash = keccak256(&rlp_receipt);
+                            let _receipt_hash = keccak256(&rlp_receipt);
                             let receipt_key: Vec<u8> =
                                 [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
                             //RocksDBWrapperに保存

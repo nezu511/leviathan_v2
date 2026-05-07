@@ -3,20 +3,14 @@ mod my_rpc;
 mod req_execution;
 mod tx_check;
 
-use alloy_rlp::Decodable;
-use eth_trie::{DB, Trie};
 use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
-use tendermint_abci::{Application, ServerBuilder};
-use tendermint_proto::abci::{
-    RequestCheckTx, RequestFinalizeBlock, RequestInfo, ResponseCheckTx, ResponseCommit,
-    ResponseFinalizeBlock, ResponseInfo,
-};
+use tendermint_abci::ServerBuilder;
 use tracing::{Level, info};
 
 //自作構造体
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
-use leviathan_v2::leviathan::structs::{Transaction, VersionId};
+use leviathan_v2::leviathan::structs::VersionId;
 use leviathan_v2::leviathan::world_state::WorldState;
 use my_abci::LeviathanApp;
 use my_rpc::run_rpc_server;

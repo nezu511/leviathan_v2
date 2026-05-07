@@ -3,7 +3,6 @@
 use alloy_consensus::Header as BlockHeader;
 use alloy_primitives::{Address, B256, Bloom, Bytes, Log, TxKind, U256};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
-use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

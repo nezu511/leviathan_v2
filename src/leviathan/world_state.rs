@@ -173,8 +173,8 @@ impl WorldState {
 
     pub fn get_receipt(&self, receipt_hash: &[u8]) -> Vec<u8> {
         match self.data.get_receipt(receipt_hash) {
-            Some(data) => return data,
-            None => return Vec::new(),
+            Some(data) => data,
+            None => Vec::new(),
         }
     }
 
@@ -184,8 +184,8 @@ impl WorldState {
 
     pub fn get_block(&self, block_hash: &[u8]) -> Vec<u8> {
         match self.data.get_block(block_hash) {
-            Some(data) => return data,
-            None => return Vec::new(),
+            Some(data) => data,
+            None => Vec::new(),
         }
     }
 
@@ -195,8 +195,8 @@ impl WorldState {
 
     pub fn get_tx_lookup(&self, key: &[u8]) -> Vec<u8> {
         match self.data.get_txlookup(key) {
-            Some(data) => return data,
-            None => return Vec::new(),
+            Some(data) => data,
+            None => Vec::new(),
         }
     }
 }

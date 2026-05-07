@@ -32,6 +32,6 @@ fn main() {
         "Private Key (絶対秘密!) : 0x{}",
         hex::encode(secret_key.secret_bytes())
     );
-    println!("Address (公開用)        : {}", address.to_string()); // alloyのAddressは自動でEIP-55チェックサム形式になります
+    println!("Address (公開用)        : {}", address); // alloyのAddressは自動でEIP-55チェックサム形式になります
     println!("--------------------------------------------------");
 }
