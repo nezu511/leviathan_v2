@@ -143,19 +143,18 @@ impl EthApiServer for LeviathanRPC {
         // 内部ログを RPC 用のログ構造体にマッピング
         let rpc_logs: Vec<alloy_rpc_types::Log> = receipt.receipt.logs.iter().enumerate().map(|(i, eth_log)| {
             alloy_rpc_types::Log {
-                address: eth_log.address,
-                topics: eth_log.data.topics().to_vec(),
-                data: eth_log.data.data.clone(),
+                inner: eth_log.clone(),
                 block_hash: Some(block_hash),
                 block_number: Some(block.header.number),
                 transaction_hash: Some(tx_hash),
                 transaction_index: Some(tx_index),
                 log_index: Some(i as u64),
                 removed: false,
+                block_timestamp: None,
             }
         }).collect();
 
-        //レシート特有のデータは `inner` 用の構造体にまとめる
+        // --- レシート特有のデータは `inner` 用の構造体にまとめる ---
         let inner_receipt = alloy_consensus::ReceiptWithBloom {
             receipt: alloy_consensus::Receipt {
                 status: receipt.receipt.status,
@@ -165,19 +164,20 @@ impl EthApiServer for LeviathanRPC {
             logs_bloom: receipt.logs_bloom,
         };
 
-        //最終的な TransactionReceipt の組み立て
+        // --- 最終的な TransactionReceipt の組み立て ---
         let rpc_receipt = TransactionReceipt {
             transaction_hash: tx_hash,
             transaction_index: Some(tx_index),
             block_hash: Some(block_hash),
             block_number: Some(block.header.number),
             from: sender_opt.unwrap_or_default(),
-            to: tx.t_to.into(), // TxKind から Option<Address> へ自動変換
-            gas_used: gas_used as u64, // Optionではなく直接u64
+            to: tx.t_to.into(),
+            gas_used: gas_used as u64,
             contract_address,
             effective_gas_price: 0,
-            inner: inner_receipt.into(), 
-            ..Default::default()
+            blob_gas_used: None,
+            blob_gas_price: None,
+            inner: alloy_consensus::ReceiptEnvelope::Legacy(inner_receipt),
         };
 
         Ok(Some(rpc_receipt))
