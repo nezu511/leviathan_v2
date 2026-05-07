@@ -27,7 +27,7 @@ impl RocksDBWrapper {
         opts.create_if_missing(true);
         opts.create_missing_column_families(true);
 
-        let cfs = vec![CF_MPT, CF_CODE, CF_BLOCK_NUMBER, CF_BLOCK, CF_RECEIPT];
+        let cfs = vec![CF_MPT, CF_CODE, CF_BLOCK_NUMBER, CF_BLOCK, CF_RECEIPT, CF_TX_LOOKUP];
         let db = RocksDB::open_cf(&opts, path, cfs).expect("RocksDBのオープンに失敗しました");
 
         Self {
