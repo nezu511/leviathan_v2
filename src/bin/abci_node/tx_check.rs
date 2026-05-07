@@ -66,7 +66,28 @@ impl Tx_Checker for LeviathanApp {
         let max_cost =
             transaction.t_gas_limit.saturating_mul(transaction.t_price) + transaction.t_value;
 
-        // 1. 各要素のRLPペイロード長を事前計算する (alloy-rlpの特徴)
+        let Ok(t_w_u64) = u64::try_from(transaction.t_w) else {
+            tracing::warn!("t_w is too large for u64");
+            return false;
+        };
+
+        // vの値から「リカバリID」と「Chain ID」を逆算する！
+        let v_val = t_w_u64;
+        let (recovery_id_u8, chain_id) = if v_val == 27 || v_val == 28 {
+            ((v_val - 27) as u8, None) // 昔の方式
+        } else if v_val >= 35 {
+            (((v_val - 35) % 2) as u8, Some((v_val - 35) / 2)) // 最新のEIP-155方式
+        } else {
+            tracing::warn!("Invalid v value: {}", v_val);
+            return false;
+        };
+
+        let Ok(recovery_id) = RecoveryId::try_from(recovery_id_u8 as i32) else {
+            tracing::warn!("Invalid recovery id");
+            return false;
+        };
+
+        // --- RLPエンコード (署名検証用のハッシュ生成) ---
         let mut payload_length = 0;
         payload_length += transaction.t_nonce.length();
         payload_length += transaction.t_price.length();
@@ -78,41 +99,46 @@ impl Tx_Checker for LeviathanApp {
         };
         payload_length += to_slice.length();
         payload_length += transaction.t_value.length();
-        payload_length += transaction.data.as_slice().length();
+        payload_length += transaction.data.length(); // Bytesに変更したのでコレでOK！
 
-        // 2. バッファを確保し、リストのヘッダーを書き込む
-        let mut out = BytesMut::with_capacity(payload_length + 10); // ヘッダー分少し余分に確保
+        // ★ EIP-155の場合は、ハッシュ化するデータに ChainID, 0, 0 を追加する！
+        if let Some(cid) = chain_id {
+            payload_length += cid.length();
+            payload_length += 0u64.length(); // r の代わり (0)
+            payload_length += 0u64.length(); // s の代わり (0)
+        }
+
+        let mut out = BytesMut::with_capacity(payload_length + 10);
         Header {
             list: true,
             payload_length,
         }
         .encode(&mut out);
 
-        // 3. 要素を順次書き込む (U256のゼロ省略などはalloy-rlpが自動処理します)
         transaction.t_nonce.encode(&mut out);
         transaction.t_price.encode(&mut out);
         transaction.t_gas_limit.encode(&mut out);
         to_slice.encode(&mut out);
         transaction.t_value.encode(&mut out);
-        transaction.data.as_slice().encode(&mut out);
+        transaction.data.encode(&mut out);
+
+        // ★ 追加データもエンコードして書き込む
+        if let Some(cid) = chain_id {
+            cid.encode(&mut out);
+            0u64.encode(&mut out);
+            0u64.encode(&mut out);
+        }
+
         let rlp_encoded = out.freeze();
-        //4. Keccak256でハッシュ化して32バイトのh(T)を得る
+
+        // 4. Keccak256でハッシュ化して32バイトのh(T)を得る
         let mut hasher = Keccak256::new();
         hasher.update(&rlp_encoded);
         let tx_hash_bytes: [u8; 32] = hasher.finalize().into();
+
         // --- 公開鍵のリカバリ部分 ---
         let message = Message::from_digest(tx_hash_bytes);
-        let Ok(t_w_u64) = u64::try_from(transaction.t_w) else {
-            tracing::warn!("t_w is too large for u64");
-            return false;
-        };
 
-        let v_val = (t_w_u64 - 27) as u8;
-        // 【解決策5】 `from_i32` の代わりに `TryFrom::try_from` を使う
-        let Ok(recovery_id) = RecoveryId::try_from(v_val as i32) else {
-            tracing::warn!("Invalid v");
-            return false;
-        };
         // 【解決策6】 `to_big_endian` の代わりに `to_be_bytes::<32>()` を使う
         let mut sig_bytes = [0u8; 64];
         sig_bytes[0..32].copy_from_slice(&transaction.t_r.to_be_bytes::<32>());
@@ -135,7 +161,7 @@ impl Tx_Checker for LeviathanApp {
         let sender_address = Address::new(sender_address);
 
         //self.stateをロックして，中身のstateを取り出す
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.write().unwrap();
 
         //Nonceの整合性
         let Some(sender_nonce) = state.get_nonce(&sender_address) else {

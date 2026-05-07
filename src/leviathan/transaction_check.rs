@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{BlockHeader, Transaction, VersionId};
+use crate::leviathan::structs::{Transaction, VersionId};
 use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionChecks};
+use alloy_consensus::Header as BlockHeader;
 use alloy_primitives::{Address, TxKind, U256};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
@@ -22,6 +23,23 @@ impl TransactionChecks for LEVIATHAN {
         pre_cost: &U256,
         block_header: &BlockHeader,
     ) -> Result<Address, &'static str> {
+        //vの値からリカバリIDとChain IDを抽出
+        let t_w_u64: u64 = transaction
+            .t_w
+            .try_into()
+            .map_err(|_| "t_w is too large for u64")?;
+
+        let (recovery_id_u8, chain_id) = if t_w_u64 == 27 || t_w_u64 == 28 {
+            ((t_w_u64 - 27) as u8, None)
+        } else if t_w_u64 >= 35 {
+            (((t_w_u64 - 35) % 2) as u8, Some((t_w_u64 - 35) / 2))
+        } else {
+            return Err("Invalid v value");
+        };
+
+        let recovery_id =
+            RecoveryId::try_from(recovery_id_u8 as i32).map_err(|_| "Invalid recovery id")?;
+
         // 1. 各要素のRLPペイロード長を事前計算する (alloy-rlpの特徴)
         let mut payload_length = 0;
         payload_length += transaction.t_nonce.length();
@@ -34,7 +52,14 @@ impl TransactionChecks for LEVIATHAN {
         };
         payload_length += to_slice.length();
         payload_length += transaction.t_value.length();
-        payload_length += transaction.data.as_slice().length();
+        payload_length += transaction.data.length();
+
+        //EIP-155用に3フィールドを準備
+        if let Some(cid) = chain_id {
+            payload_length += cid.length();
+            payload_length += 0u64.length();
+            payload_length += 0u64.length();
+        }
 
         // 2. バッファを確保し、リストのヘッダーを書き込む
         let mut out = BytesMut::with_capacity(payload_length + 10); // ヘッダー分少し余分に確保
@@ -43,14 +68,18 @@ impl TransactionChecks for LEVIATHAN {
             payload_length,
         }
         .encode(&mut out);
-
-        // 3. 要素を順次書き込む (U256のゼロ省略などはalloy-rlpが自動処理します)
         transaction.t_nonce.encode(&mut out);
         transaction.t_price.encode(&mut out);
         transaction.t_gas_limit.encode(&mut out);
         to_slice.encode(&mut out);
         transaction.t_value.encode(&mut out);
-        transaction.data.as_slice().encode(&mut out);
+        transaction.data.encode(&mut out);
+
+        if let Some(cid) = chain_id {
+            cid.encode(&mut out);
+            0u64.encode(&mut out);
+            0u64.encode(&mut out);
+        }
         let rlp_encoded = out.freeze();
         //4. Keccak256でハッシュ化して32バイトのh(T)を得る
         let mut hasher = Keccak256::new();
@@ -58,13 +87,6 @@ impl TransactionChecks for LEVIATHAN {
         let tx_hash_bytes: [u8; 32] = hasher.finalize().into();
         // --- 公開鍵のリカバリ部分 ---
         let message = Message::from_digest(tx_hash_bytes);
-        let t_w_u64: u64 = transaction
-            .t_w
-            .try_into()
-            .map_err(|_| "t_w is too large for u64")?;
-        let v_val = (t_w_u64 - 27) as u8;
-        // 【解決策5】 `from_i32` の代わりに `TryFrom::try_from` を使う
-        let recovery_id = RecoveryId::try_from(v_val as i32).map_err(|_| "Invalid v")?;
         // 【解決策6】 `to_big_endian` の代わりに `to_be_bytes::<32>()` を使う
         let mut sig_bytes = [0u8; 64];
         sig_bytes[0..32].copy_from_slice(&transaction.t_r.to_be_bytes::<32>());
@@ -118,7 +140,11 @@ impl TransactionChecks for LEVIATHAN {
         }
 
         //トランザクションの実行ガス価格が，ブロックのベースフィー以上
-        if transaction.t_price < block_header.h_basefee {
+        let basefee = match block_header.base_fee_per_gas {
+            Some(fee) => U256::from(fee),
+            None => U256::ZERO,
+        };
+        if transaction.t_price < basefee {
             return Err("トランザクションの実行ガス価格がブロックのベースフィーを下回っている");
         }
 

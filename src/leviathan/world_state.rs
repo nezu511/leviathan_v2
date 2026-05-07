@@ -20,6 +20,7 @@ pub struct WorldState {
     pub cache: HashMap<Address, Account>,
     pub data: Arc<RocksDBWrapper>,
     pub eth_trie: EthTrie<RocksDBWrapper>,
+    pub parent_block: B256,
 }
 
 impl WorldState {
@@ -39,6 +40,7 @@ impl WorldState {
             cache,
             data,
             eth_trie,
+            parent_block: B256::ZERO,
         }
     }
 
@@ -155,6 +157,47 @@ impl WorldState {
     pub fn update_eth_trie(&mut self, state_root: B256) {
         let new_eth_trie = EthTrie::from(self.data.clone(), state_root).unwrap();
         self.eth_trie = new_eth_trie;
+    }
+
+    pub fn update_block_number(&self, new_number: i64) {
+        self.data.update_block_number(new_number);
+    }
+
+    pub fn current_block_number(&self) -> i64 {
+        self.data.get_block_number().unwrap_or(0)
+    }
+
+    pub fn insert_receipt(&self, receipt_hash: &[u8], receipt_rlp: &[u8]) {
+        self.data.insert_receipt(receipt_hash, receipt_rlp);
+    }
+
+    pub fn get_receipt(&self, receipt_hash: &[u8]) -> Vec<u8> {
+        match self.data.get_receipt(receipt_hash) {
+            Some(data) => data,
+            None => Vec::new(),
+        }
+    }
+
+    pub fn insert_block(&self, block_hash: &[u8], block_rlp: &[u8]) {
+        self.data.insert_block(block_hash, block_rlp);
+    }
+
+    pub fn get_block(&self, block_hash: &[u8]) -> Vec<u8> {
+        match self.data.get_block(block_hash) {
+            Some(data) => data,
+            None => Vec::new(),
+        }
+    }
+
+    pub fn insert_tx_lookup(&self, key: &[u8], val: &[u8]) {
+        self.data.insert_txlookup(key, val);
+    }
+
+    pub fn get_tx_lookup(&self, key: &[u8]) -> Vec<u8> {
+        match self.data.get_txlookup(key) {
+            Some(data) => data,
+            None => Vec::new(),
+        }
     }
 }
 

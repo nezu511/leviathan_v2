@@ -1,9 +1,10 @@
 use crate::leviathan::leviathan::LEVIATHAN;
-use crate::leviathan::structs::{BlockHeader, Log, Transaction};
+use crate::leviathan::structs::Transaction;
 use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionExecution};
 
-use alloy_primitives::{Address, TxKind, U256, hex, keccak256, uint};
+use alloy_consensus::Header as BlockHeader;
+use alloy_primitives::{Address, Log, TxKind, U256, hex, keccak256};
 use alloy_rlp::{Encodable, Header};
 use bytes::BytesMut;
 use secp256k1::{Message, Secp256k1, SecretKey};
@@ -105,7 +106,7 @@ pub fn deploy_contract(
     );
 
     let transaction = Transaction {
-        data: init_code,
+        data: init_code.into(),
         t_to: TxKind::Create,
         t_gas_limit: gas_limit,
         t_price: gas_price,
@@ -118,12 +119,11 @@ pub fn deploy_contract(
 
     //5. ブロックヘッダー構築
     let block = BlockHeader {
-        h_beneficiary: Address::repeat_byte(0xfe),
-        h_timestamp: uint!(1600000000_U256),
-        h_number: uint!(1_U256),
-        h_prevrandao: U256::ZERO,
-        h_gaslimit: uint!(30_000_000_U256),
-        h_basefee: U256::ZERO,
+        beneficiary: Address::repeat_byte(0xfe),
+        number: 1,
+        gas_limit: 30_000_000,
+        base_fee_per_gas: Some(0),
+        ..Default::default()
     };
 
     //実行
@@ -194,7 +194,7 @@ pub fn call_contract(
     );
 
     let transaction = Transaction {
-        data,
+        data: data.into(),
         t_to: TxKind::Call(contract_addr),
         t_gas_limit: gas_limit,
         t_price: gas_price,
@@ -207,12 +207,11 @@ pub fn call_contract(
 
     // 3. ブロックヘッダー
     let block = BlockHeader {
-        h_beneficiary: Address::repeat_byte(0xfe),
-        h_timestamp: uint!(1600000000_U256),
-        h_number: uint!(1_U256),
-        h_prevrandao: U256::ZERO,
-        h_gaslimit: uint!(30_000_000_U256),
-        h_basefee: U256::ZERO,
+        beneficiary: Address::repeat_byte(0xfe),
+        number: 1,
+        gas_limit: 30_000_000,
+        base_fee_per_gas: Some(0),
+        ..Default::default()
     };
 
     // 4. 実行
@@ -256,7 +255,7 @@ pub fn deploy_contract_raw(
     );
 
     let transaction = Transaction {
-        data: init_code,
+        data: init_code.into(),
         t_to: TxKind::Create,
         t_gas_limit: gas_limit,
         t_price: gas_price,
@@ -267,14 +266,13 @@ pub fn deploy_contract_raw(
         t_s: s,
     };
 
-    // 3. ブロックヘッダーの準備
+    // 3. ブロックヘッダー
     let block = BlockHeader {
-        h_beneficiary: Address::repeat_byte(0xfe),
-        h_timestamp: uint!(1600000000_U256),
-        h_number: uint!(1_U256),
-        h_prevrandao: U256::ZERO,
-        h_gaslimit: uint!(30_000_000_U256),
-        h_basefee: U256::ZERO,
+        beneficiary: Address::repeat_byte(0xfe),
+        number: 1,
+        gas_limit: 30_000_000,
+        base_fee_per_gas: Some(0),
+        ..Default::default()
     };
 
     // 4. Leviathan で実行
