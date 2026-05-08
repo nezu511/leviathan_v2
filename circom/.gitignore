@@ -1,5 +1,4 @@
 *.ptau
-*.zkey
 voting.sym
 proof.json
 public.json
