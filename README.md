@@ -490,6 +490,19 @@ source ~/.bashrc
 foundryup
 ```
 
+**Node.js & Snarkjs (For ZK Testing)**
+ゼロ知識証明のE2Eテスト（`election_test`）を実行する場合、裏側で回路の計算を行うためにNode.jsおよび `snarkjs` が必要です。
+
+```bash
+# 1. Node.js (v20) と npm をインストール
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+
+# 2. snarkjs をグローバルインストール
+npm install -g snarkjs
+```
+
+
 ### 2. Run the Node
 
 以下の手順で、実行エンジン（Leviathan）とコンセンサスエンジン（CometBFT）を連動させます。
