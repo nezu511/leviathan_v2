@@ -515,7 +515,7 @@ CometBFTがブロックの提案を開始し、Leviathan側でトランザクシ
 ジェネシスアカウントのPRIVATE_KEYは0x80c58089c4343be9bd0ae0d2af81c615211d1e354a4c6073c9a1c32840f6274aです．
 ```bash
 # 例: ローカルノードに対して、単純なETH送金を実行
-cast send 0x0000000000000000000000000000000000001337   --value 1ether   --private-key 0x80c58089c4343be9bd0ae0d2af81c615211d1e354a4c6073c9a1c32840f6274a   --rpc-url http://127.0.0.1:8545   --nonce 1   --gas-price 0   --gas-limit 21000   --legacy   --async
+cast send 0x0000000000000000000000000000000000001337   --value 1ether   --private-key 0x80c58089c4343be9bd0ae0d2af81c615211d1e354a4c6073c9a1c32840f6274a   --rpc-url http://127.0.0.1:8545    --gas-price 0   --gas-limit 21000   --legacy   --async
 ```
 RPCサーバーがトランザクションを受け取り、CometBFTのネットワークへブロードキャストし、次のブロックでEVMによって実行・永続化されます。
 
