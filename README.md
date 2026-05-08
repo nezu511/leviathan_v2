@@ -456,6 +456,91 @@ SGX等のTEE環境を利用した実行環境の完全秘匿化へのリサー�
 3. **アセンブリ・低レイヤー開発の経験値とのシナジー:**
    過去にアセンブリ言語を用いてOSをスクラッチ開発した経験から，スタックマシンの挙動，メモリレイアウトの設計，およびハードウェアリソースを直接意識した開発を得意としています．この低レイヤーの知見が，Rustの厳しいコンパイラと極めて高いシナジーを生み，EVMという巨大なステートマシンの高速な実装を可能にしています．
 
+
+## Quick Start: How to Run Leviathan
+
+本エンジンをローカル環境でビルドし、CometBFTを用いたブロック生成とRPC経由でのトランザクション送信を行う手順です。
+
+### 1. Prerequisites (環境構築)
+
+**Rust Toolchain**
+本プロジェクトはRustで記述されています。公式の `rustup` を用いてインストールしてください。
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
+
+**CometBFT**
+コンセンサス層としてCometBFT（v0.38+推奨）が必要です。
+```bash
+# CometBFTのダウンロードと解凍
+curl -LO https://github.com/cometbft/cometbft/releases/download/v0.38.0/cometbft_0.38.0_linux_amd64.tar.gz
+tar -zxvf cometbft_0.38.0_linux_amd64.tar.gz
+
+# 実行ファイルをパスの通ったディレクトリへ移動し、初期化
+sudo mv cometbft /usr/local/bin/
+cometbft init
+```
+
+**Foundry (cast)**
+RPC経由でノードと対話するためのCLIツールとして、Foundryの `cast` コマンドを使用します。
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+source ~/.bashrc
+foundryup
+```
+
+### 2. Run the Node
+
+以下の手順で、実行エンジン（Leviathan）とコンセンサスエンジン（CometBFT）を連動させます。
+
+**Terminal 1: Start Leviathan ABCI & RPC Server**
+```bash
+# リポジトリのルートディレクトリで実行
+cargo run --bin abci_node
+```
+これにより、ABCIサーバー（CometBFTとの通信用）と、JSON-RPCサーバー（クライアントからのリクエスト受付用）が起動します。
+
+**Terminal 2: Start CometBFT**
+```bash
+# CometBFTノードを起動し、LeviathanのABCIへ接続
+cometbft node --proxy_app=tcp://127.0.0.1:26658
+```
+CometBFTがブロックの提案を開始し、Leviathan側でトランザクションの実行とステートの確定処理が走るログが確認できます。
+
+### 3. Interact via RPC (Simple Transfer)
+
+ノードが稼働している状態で、`cast` コマンドを使用してEthereum互換のトランザクションを送信します。
+
+ジェネシスアカウントのPRIVATE_KEYは0x80c58089c4343be9bd0ae0d2af81c615211d1e354a4c6073c9a1c32840f6274aです．
+```bash
+# 例: ローカルノードに対して、単純なETH送金を実行
+cast send 0x0000000000000000000000000000000000001337   --value 1ether   --private-key 0x80c58089c4343be9bd0ae0d2af81c615211d1e354a4c6073c9a1c32840f6274a   --rpc-url http://127.0.0.1:8545   --nonce 1   --gas-price 0   --gas-limit 21000   --legacy   --async
+```
+RPCサーバーがトランザクションを受け取り、CometBFTのネットワークへブロードキャストし、次のブロックでEVMによって実行・永続化されます。
+
+---
+
+## Testing
+
+本プロジェクトでは、Ethereum公式のテストベクタ（GeneralStateTests）や複雑な暗号処理の統合テストを実行できます。
+
+**⚠️ Important: Stack Size Limit**
+EVMの深いネスト（再帰呼び出し）を再現するテスト（`stCallCodes`等）を実行する際、OSのデフォルトのスタックメモリ制限（通常8MB）ではRustのスタックオーバーフローが発生する場合があります。
+そのため、テスト実行時は環境変数 `RUST_MIN_STACK` を指定してスタックサイズを拡張（例: 64MB）してください。
+
+**Run End-to-End Election Simulation**
+マイナンバーカードのRSA署名検証とZK-SNARKsを統合した無人の市役所（選挙）シミュレーションを実行します。
+```bash
+RUST_MIN_STACK=67108864 cargo test --test election_test --release -- --nocapture
+```
+
+**Run Official Ethereum State Tests**
+Ethereum Yellow Paper仕様への準拠を証明するための、公式StateTestランナーを実行します。
+```bash
+RUST_MIN_STACK=67108864 cargo test --test state_runner --release -- --nocapture
+```
+
 ## About the Author 
 Taku Hashimoto  
 土木工学（都市計画）と生命科学（タンパク質変異と疾患）という異分野のバックグラウンドを持つ．
