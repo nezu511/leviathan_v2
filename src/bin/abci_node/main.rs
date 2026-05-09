@@ -2,6 +2,7 @@ mod my_abci;
 mod my_rpc;
 mod req_execution;
 mod tx_check;
+mod utils;
 
 use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
