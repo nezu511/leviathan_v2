@@ -417,27 +417,28 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 
 ## Current Status & Roadmap
 
-現在，PoCに向けたコアエンジンの検証フェーズを完了し，暗号統合フェーズを実行中です．
+現在，PoCに向けたコアエンジンの検証フェーズを完了し，ネットワークインターフェースの完成およびTEEを用いたハードウェアレベルの秘匿化フェーズへ移行しています．
 
 [x] Phase 1: Core Engine & MPT Integration
 - [x] EVM実行エンジンの構築と公式 GeneralStateTests の広範なパス．
 - [x] HashMapレイヤーの排除と，Merkle Patricia Trie (MPT) を用いた StateDB の完全統合．
 
 [x] **Phase 2: ZK & Cryptography Integration (PoC 実証完了)**
-- [x] **E2E 選挙シミュレーションの成功**: RSAによる身元確認とZKによる匿名投票を組み合わせた一連のフローが，EVM上で正確にステート遷移することを確認（2026年5月）．
-- [x] **Poseidon Merkle Treeの実装**: ZK-SNARKsの包含証明（Inclusion Proof）に特化した、Poseidonハッシュベースの専用ツリー構造を統合．
-- [x] **RSA-2048 プレコンパイルの最適化**: Rustネイティブ実装により、マイナンバー署名検証のガスコストを実用圏内（O(1)）に抑制．
+- [x] E2E 選挙シミュレーションの成功（RSA署名検証 × ZK匿名投票）．
+- [x] Poseidon Merkle Treeの統合と、RSA-2048 プレコンパイルのネイティブ実装．
 
-[x] **Phase 3: Node Architecture & Data Persistence (New!)**
-- [x] CometBFT (ABCI) の統合によるコンセンサス層との連携・ブロック生成。
-- [x] Geth型アーキテクチャに基づく RocksDB への Block / Receipt / TxLookup 永続化。
-- [x] `jsonrpsee` を用いた JSON-RPC サーバー基盤の構築とネットワーク連携
+[🔄] **Phase 3: RPC Completion & MetaMask Integration (In Progress)**
+- [x] CometBFT (ABCI) の統合および RocksDB へのブロック/ステート永続化．
+- [ ] JSON-RPC サーバーの完全実装とメソッドの拡充．
+- [ ] **MetaMaskとの完全な双方向通信の確立**（カスタムチェーンとしての残高表示とトランザクション送信）．
 
-[ ] Phase 4: Relayer API
-- メタトランザクションを処理するRelayer APIの構築．
+[ ] **Phase 4: TEE (Trusted Execution Environment) & AWS Deployment**
+- [ ] ZKの計算オーバーヘッドを抜本的に解決するため、TEE（Intel SGX / AWS Nitro Enclaves等）のセキュアエンクレーブ内でのEVM実行基盤のリサーチと実装．
+- [ ] クラウドインフラ（AWS）上でのバリデータノードの構築とテストネットのパブリックデプロイ．
 
-[ ] Phase 5: TEE Integration (Future Work)
-SGX等のTEE環境を利用した実行環境の完全秘匿化へのリサーチ
+[ ] **Phase 5: Layer 2 & Cross-Chain Interoperability**
+- [ ] 外部のブロックチェーン（Layer 1 / Layer 2）と安全に通信するための、IBC（Inter-Blockchain Communication）プロトコルやライトクライアント検証機能の統合．
+
 
 ## Tech Stack
 - **Core:** Rust
