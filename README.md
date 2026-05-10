@@ -1,6 +1,6 @@
 # Leviathan
 
-**An Enterprise-Grade TEE × ZK Hybrid EVM in Rust**
+**An Enterprise-Grade RSA × ZK Hybrid EVM in Rust**
 
 Leviathanは，行政手続きや公共インフラ（選挙，給付金分配など）の完全自動化 **「無人の市役所」** の実現を目指してフルスクラッチ開発された，行政・エンタープライズ特化型のカスタムEVM（Ethereum Virtual Machine）です．
 
@@ -223,7 +223,7 @@ Leviathanは、Ethereum標準への完全準拠と、ZKインフラとしての�
 ## Technical Philosophy (ADR)
 本プロジェクトは既存EVMの単なるクローンではなく，スケーラビリティ・仕様準拠・保守性を極限まで担保するため，以下のアーキテクチャ設計を採用しています．
 
-### O(1) ロールバックを実現するジャーナルベースの状態管理
+### メモリ効率を極限まで高めた $O(N)$ ロールバック
 
 スマートコントラクトの実行において，サブコール（CALL等）失敗時の状態（State）リバートはパフォーマンスのボトルネックになります．
 本EVMでは，状態全体のディープコピーを避け，ジャーナル（変更履歴）ベースのロールバック機構を採用しました．トランザクションのコア実行構造体内部に直接ジャーナルを保持させることで，状態の逆再生（Undo）のみでメモリオーバーヘッドなく正確な復元を可能にしています．
@@ -341,7 +341,9 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 ### Detailed Test Results
 特に優先度の高い重要項目は，**太字**で強調しています．
 
-**A - G**
+<details>
+<summary><b> A - G: 基本動作・コントラクト作成 (クリックで展開)</b></summary>
+    
 | テストスイート | 進捗 | 備考 |
 | :--- | :---: | :--- |
 | stArgsZeroOneBalance | ❌ | 全ファイルがyml形式のため実行不可 |
@@ -364,7 +366,11 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 | stExample | 🔄 | 未着手 |
 | stExtCodeHash | ✅ | **Pass** (6ファイル・40ケース) |
 
-**H - O**
+</details>
+
+<details>
+<summary><b> H - S: メモリ・スタック・リバート処理 (クリックで展開)</b></summary>
+    
 | テストスイート | 進捗 | 備考 |
 | :--- | :---: | :--- |
 | stHomesteadSpecific | ✅ | **Pass** (5ファイル・20ケース) |
@@ -374,10 +380,6 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 | **stMemoryStressTest** | ✅ | **Pass** (38ファイル・287ケース）|
 | **stMemoryTest** | ✅ | **Pass** (58ファイル・406ケース) |
 | stNonZeroCallsTest | 🔄 | 未着手 |
-
-**P - S**
-| テストスイート | 進捗 | 備考 |
-| :--- | :---: | :--- |
 | stPreCompiledContracts | 🔄 | Balance不一致 |
 | stPreCompiledContracts2 | 🔄 | Balance不一致 |
 | stQuadraticComplexityTest | ✅ | **Pass** (16ファイル・124ケース) |
@@ -395,7 +397,11 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 | stStaticCall | 🔄 | 呼び出し元の残ガスが6ガス相違 |
 | stSystemOperationsTest | 🔄 | 挙動確認中 |
 
-**T - Z**
+</details>
+
+<details>
+<summary><b> T - Z: 署名検証・ゼロ知識証明 (クリックで展開)</b></summary>
+    
 | テストスイート | 進捗 | 備考 |
 | :--- | :---: | :--- |
 | stTimeConsuming | ✅ | **Pass** (1ファイル・6ケース） |
@@ -406,6 +412,7 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 | stZeroCallsTest | ✅ | **Pass** (24ファイル・168ケース） |
 | stZeroKnowledge | ✅ | **Pass** (33ファイル・1612ケース) |
 | stZeroKnowledge2 | 🔄 | 未着手 |
+</details>
 
 ### Phase 3: Integration Benchmarking & Data-Driven Gas Profiling
 独自の暗号処理（RSA検証など）をEVMコアに統合するにあたり、DoS攻撃を防ぎつつ実用的なガスコストを設定するためのベンチマーク環境（`bench_runner`）を構築しました。
