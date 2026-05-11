@@ -164,21 +164,23 @@ impl Tx_Checker for LeviathanApp {
 
         //self.stateをロックして，中身のstateを取り出す
         let mut cache = self.cache.write().unwrap();
-        let mut state = self.state.write().unwrap();
         
         //cacheを調査
         let target = match cache.get(&sender_address) {
             Some(target) => target.clone(),
             None => {
+                let mut state = self.state.write().unwrap();
                 //MPTを調査
                 let address_hash = keccak256(sender_address);
 
                 let Some(rlp_bytes) = state.eth_trie.get(address_hash.as_slice()).unwrap() else {
+                    tracing::warn!("[tx_check]送信者のアカウントが見つからない");
                     return false;
                 };
                 let mut slice = rlp_bytes.as_slice();
                 let Ok(mpt_account) = MptAccount::decode(&mut slice) else {
                     tracing::warn!("[contain_mpt] MptAccount::decodeでエラー");
+                    tracing::warn!("[tx_check]送信者のアカウントが見つからない");
                     return false;
                 };
                 mpt_account
@@ -187,18 +189,13 @@ impl Tx_Checker for LeviathanApp {
 
 
         //Nonceの整合性
-        let Some(sender_nonce) = state.get_nonce(&sender_address) else {
-            tracing::warn!("送信者のアカウントが見つからない");
-            return false;
-        };
-        if sender_nonce as usize != transaction.t_nonce {
+        if target.nonce as usize != transaction.t_nonce {
             tracing::warn!("nonceが不一致");
             return false;
         }
 
         //Codeの不在
-        let sender_code = state.get_code(&sender_address).unwrap();
-        if !sender_code.is_empty() {
+        if target.code_hash == EMPTY_CODE_HASH {
             tracing::warn!("送信者のアカウントにコントラクトコードがデプロイされている");
             return false;
         }
@@ -211,8 +208,7 @@ impl Tx_Checker for LeviathanApp {
         }
 
         //残高の妥当性
-        let sender_balance = state.get_balance(&sender_address).unwrap();
-        if sender_balance < max_cost {
+        if target.balance < max_cost {
             tracing::warn!("送信者の残高が事前支払いコストを満たしていない");
             return false;
         }
