@@ -1,11 +1,11 @@
 use crate::LeviathanApp;
 use alloy_primitives::{Address, TxKind, U256, keccak256};
-use alloy_rlp::{Encodable, Header, Decodable};
-use eth_trie::Trie;
+use alloy_rlp::{Decodable, Encodable, Header};
 use bytes::BytesMut;
+use eth_trie::Trie;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
+use leviathan_v2::leviathan::world_state::{EMPTY_CODE_HASH, MptAccount};
 use leviathan_v2::my_trait::leviathan_trait::State;
-use leviathan_v2::leviathan::world_state::{MptAccount, EMPTY_CODE_HASH};
 use secp256k1::{
     Message, Secp256k1,
     ecdsa::{RecoverableSignature, RecoveryId},
@@ -164,7 +164,7 @@ impl Tx_Checker for LeviathanApp {
 
         //self.stateをロックして，中身のstateを取り出す
         let mut cache = self.cache.write().unwrap();
-        
+
         //cacheを調査
         let target = match cache.get(&sender_address) {
             Some(target) => target.clone(),
@@ -186,7 +186,6 @@ impl Tx_Checker for LeviathanApp {
                 mpt_account
             }
         };
-
 
         //Nonceの整合性
         if target.nonce as usize != transaction.t_nonce {
