@@ -103,7 +103,7 @@ impl Tx_Checker for LeviathanApp {
         payload_length += transaction.t_value.length();
         payload_length += transaction.data.length(); // Bytesに変更したのでコレでOK！
 
-        // ★ EIP-155の場合は、ハッシュ化するデータに ChainID, 0, 0 を追加する！
+        // EIP-155の場合は、ハッシュ化するデータに ChainID, 0, 0 を追加する！
         if let Some(cid) = chain_id {
             payload_length += cid.length();
             payload_length += 0u64.length(); // r の代わり (0)
@@ -124,7 +124,7 @@ impl Tx_Checker for LeviathanApp {
         transaction.t_value.encode(&mut out);
         transaction.data.encode(&mut out);
 
-        // ★ 追加データもエンコードして書き込む
+        // 追加データもエンコードして書き込む
         if let Some(cid) = chain_id {
             cid.encode(&mut out);
             0u64.encode(&mut out);
@@ -195,7 +195,7 @@ impl Tx_Checker for LeviathanApp {
         }
 
         //Codeの不在
-        if target.code_hash == EMPTY_CODE_HASH {
+        if target.code_hash != EMPTY_CODE_HASH {
             tracing::warn!("送信者のアカウントにコントラクトコードがデプロイされている");
             return false;
         }
@@ -221,6 +221,12 @@ impl Tx_Checker for LeviathanApp {
                 return false;
             }
         }
+
+        // キャッシュに保存（上書き または 新規追加）
+        let mut updated_target = target.clone();
+        updated_target.nonce += 1;
+        updated_target.balance = updated_target.balance.saturating_sub(max_cost);
+        cache.put(sender_address, updated_target);
 
         true
     }

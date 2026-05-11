@@ -124,16 +124,15 @@ impl Application for LeviathanApp {
         let state = self.state.read().unwrap();
         let Err(e) = state.data.flush() else {
             tracing::info!("[COMMIT] 無事書き込み成功");
+
+            //LeviathanApp.cacheをクリアー
+            let mut cache = self.cache.write().unwrap();
+            cache.clear();
             return ResponseCommit { retain_height: 0 };
         };
 
         tracing::error!("RocksDBへのFlushに失敗: {:?}", e);
         panic!("Critical Database Error: {}", e);
-        //LeviathanApp.cacheをクリアー
-        let mut cache = self.cache.write().unwrap();
-        cache.clear();
-
-        ResponseCommit { retain_height: 0 }
     }
 
     fn init_chain(&self, _req: RequestInitChain) -> ResponseInitChain {
