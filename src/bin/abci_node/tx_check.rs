@@ -1,9 +1,11 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, TxKind, U256};
-use alloy_rlp::{Encodable, Header};
+use alloy_primitives::{Address, TxKind, U256, keccak256};
+use alloy_rlp::{Encodable, Header, Decodable};
+use eth_trie::Trie;
 use bytes::BytesMut;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::my_trait::leviathan_trait::State;
+use leviathan_v2::leviathan::world_state::{MptAccount, EMPTY_CODE_HASH};
 use secp256k1::{
     Message, Secp256k1,
     ecdsa::{RecoverableSignature, RecoveryId},
@@ -161,7 +163,28 @@ impl Tx_Checker for LeviathanApp {
         let sender_address = Address::new(sender_address);
 
         //self.stateをロックして，中身のstateを取り出す
+        let mut cache = self.cache.write().unwrap();
         let mut state = self.state.write().unwrap();
+        
+        //cacheを調査
+        let target = match cache.get(&sender_address) {
+            Some(target) => target.clone(),
+            None => {
+                //MPTを調査
+                let address_hash = keccak256(sender_address);
+
+                let Some(rlp_bytes) = state.eth_trie.get(address_hash.as_slice()).unwrap() else {
+                    return false;
+                };
+                let mut slice = rlp_bytes.as_slice();
+                let Ok(mpt_account) = MptAccount::decode(&mut slice) else {
+                    tracing::warn!("[contain_mpt] MptAccount::decodeでエラー");
+                    return false;
+                };
+                mpt_account
+            }
+        };
+
 
         //Nonceの整合性
         let Some(sender_nonce) = state.get_nonce(&sender_address) else {

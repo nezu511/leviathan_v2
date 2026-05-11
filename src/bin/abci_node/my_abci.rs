@@ -17,14 +17,14 @@ use crate::req_execution::PI;
 use crate::tx_check::Tx_Checker;
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
-use leviathan_v2::leviathan::world_state::{Account, WorldState};
+use leviathan_v2::leviathan::world_state::{Account, WorldState, MptAccount};
 
 #[derive(Clone)]
 pub struct LeviathanApp {
     pub state: Arc<RwLock<WorldState>>,
     pub leviathan: Arc<Mutex<LEVIATHAN>>,
     pub version: VersionId,
-    pub cache: Arc<RwLock<LruCache<Address, Account>>>,
+    pub cache: Arc<RwLock<LruCache<Address, MptAccount>>>,
 }
 
 impl LeviathanApp {
