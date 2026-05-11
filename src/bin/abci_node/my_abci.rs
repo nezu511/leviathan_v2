@@ -9,6 +9,8 @@ use tendermint_proto::abci::{
     ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain,
 };
 use tracing::info;
+use lru::LruCache;
+use std::num::NonZeroUsize;
 
 //自作構造体
 use crate::req_execution::PI;
@@ -22,6 +24,7 @@ pub struct LeviathanApp {
     pub state: Arc<RwLock<WorldState>>,
     pub leviathan: Arc<Mutex<LEVIATHAN>>,
     pub version: VersionId,
+    pub cache: Arc<RwLock<LruCache<Address, Account>>>,
 }
 
 impl LeviathanApp {
@@ -30,6 +33,7 @@ impl LeviathanApp {
             state: Arc::new(RwLock::new(WorldState::new(db_path))),
             leviathan: Arc::new(Mutex::new(LEVIATHAN::new(version))),
             version,
+            cache: Arc::new(RwLock::new(LruCache::new(NonZeroUsize::new(100).unwrap()))),
         }
     }
 }
