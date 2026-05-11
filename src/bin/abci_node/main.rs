@@ -3,6 +3,8 @@ mod my_rpc;
 mod req_execution;
 mod tx_check;
 
+use lru::LruCache;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
 use tendermint_abci::ServerBuilder;
@@ -39,6 +41,7 @@ async fn main() {
         state: Arc::clone(&state_abci),
         leviathan: Arc::clone(&leviathan),
         version: VersionId::Constantinople,
+        cache: Arc::new(RwLock::new(LruCache::new(NonZeroUsize::new(100).unwrap()))),
     };
 
     let server = ServerBuilder::default()
