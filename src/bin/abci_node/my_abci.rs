@@ -129,6 +129,10 @@ impl Application for LeviathanApp {
 
         tracing::error!("RocksDBへのFlushに失敗: {:?}", e);
         panic!("Critical Database Error: {}", e);
+        //LeviathanApp.cacheをクリアー
+        let mut cache = self.cache.write().unwrap();
+        cache.clear();
+
         ResponseCommit { retain_height: 0 }
     }
 
