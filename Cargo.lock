@@ -3242,6 +3242,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "eth_trie",
+ "http 1.4.0",
  "jsonrpsee",
  "light-poseidon",
  "num-bigint",
@@ -3260,6 +3261,8 @@ dependencies = [
  "tendermint-proto",
  "tendermint-rpc",
  "tokio",
+ "tower",
+ "tower-http",
  "tracing",
  "tracing-subscriber 0.3.23",
 ]
@@ -6213,6 +6216,7 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]

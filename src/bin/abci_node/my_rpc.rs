@@ -15,6 +15,8 @@ use secp256k1::{
 use sha3::{Digest, Keccak256};
 use std::sync::RwLock;
 use tendermint_rpc::{Client, HttpClient};
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
 use leviathan_v2::leviathan::structs::Transaction;
 use leviathan_v2::leviathan::world_state::WorldState;
@@ -293,9 +295,18 @@ impl EthApiServer for LeviathanRPC {
 
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {
+        // 1. CORSの設定
+    let cors = CorsLayer::permissive();
+
+    // 2. ミドルウェアの構築
+    let middleware = tower::ServiceBuilder::new()
+        .layer(TraceLayer::new_for_http())
+        .layer(cors);
+
     // サーバーのビルド (ポート8545)
     let server = ServerBuilder::default()
-        .build("127.0.0.1:8545")
+        .set_http_middleware(middleware)
+        .build("0.0.0.0:8545")
         .await
         .expect("RPCサーバーの起動に失敗しました");
 
