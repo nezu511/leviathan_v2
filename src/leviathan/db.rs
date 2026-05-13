@@ -14,7 +14,7 @@ pub const BLOCK_NUMBER_KEY: &[u8] = &[1];
 struct RocksDBInner {
     batch: WriteBatch,
     overlay: HashMap<Vec<u8>, Option<Vec<u8>>>,
-    block_number: i64,
+    block_number: Option<i64>,
 }
 
 pub struct RocksDBWrapper {
@@ -43,7 +43,7 @@ impl RocksDBWrapper {
             inner: Mutex::new(RocksDBInner {
                 batch: WriteBatch::default(),
                 overlay: HashMap::new(),
-                block_number: 0,
+                block_number: None,
             }),
         }
     }
@@ -74,7 +74,7 @@ impl RocksDBWrapper {
     pub fn update_block_number(&self, new_number: i64, block_hash: &[u8]) {
         let mut inner = self.inner.lock().unwrap();
         //RocksDBWrapper.inner.block_numberを更新
-        inner.block_number = new_number;
+        inner.block_number = Some(new_number);
         //i64をu64に変換
         let Ok(new_number) = u64::try_from(new_number) else {
             panic!("block_numberが限界");
@@ -88,8 +88,23 @@ impl RocksDBWrapper {
     }
 
     pub fn get_block_number(&self) -> Option<i64> {
-        let inner = self.inner.lock().unwrap();
-        Some(inner.block_number)
+        let mut inner = self.inner.lock().unwrap();
+        if inner.block_number.is_none() {
+            let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
+            let mut iter = self.db.iterator_cf(cf, rocksdb::IteratorMode::End);
+            // 一番最後の要素を取得
+            if let Some(Ok((key, _value))) = iter.next() {
+                let block_number = i64::from_be_bytes(key.as_ref().try_into().unwrap_or([0; 8]));
+                inner.block_number = Some(block_number);
+                Some(block_number)
+            } else {
+                inner.block_number = Some(0);
+                Some(0)
+            }
+
+        }else{
+            return inner.block_number
+        }
         
     }
 
