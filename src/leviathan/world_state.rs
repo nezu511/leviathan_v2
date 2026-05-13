@@ -161,8 +161,8 @@ impl WorldState {
         self.eth_trie = new_eth_trie;
     }
 
-    pub fn update_block_number(&self, new_number: i64) {
-        self.data.update_block_number(new_number);
+    pub fn update_block_number(&self, new_number: i64, block_hash: &[u8]) {
+        self.data.update_block_number(new_number, block_hash);
     }
 
     pub fn current_block_number(&self) -> i64 {
