@@ -14,6 +14,7 @@ pub const BLOCK_NUMBER_KEY: &[u8] = &[1];
 struct RocksDBInner {
     batch: WriteBatch,
     overlay: HashMap<Vec<u8>, Option<Vec<u8>>>,
+    block_number: i64,
 }
 
 pub struct RocksDBWrapper {
@@ -42,6 +43,7 @@ impl RocksDBWrapper {
             inner: Mutex::new(RocksDBInner {
                 batch: WriteBatch::default(),
                 overlay: HashMap::new(),
+                block_number: 0,
             }),
         }
     }
@@ -69,31 +71,43 @@ impl RocksDBWrapper {
         self.db.get_cf(&cf, code_hash).unwrap_or(None)
     }
 
-    pub fn update_block_number(&self, new_number: i64) {
-        let data = new_number.to_be_bytes();
+    pub fn update_block_number(&self, new_number: i64, block_hash: &[u8]) {
         let mut inner = self.inner.lock().unwrap();
+        //RocksDBWrapper.inner.block_numberを更新
+        inner.block_number = new_number;
+        //i64をu64に変換
+        let Ok(new_number) = u64::try_from(new_number) else {
+            panic!("block_numberが限界");
+        };
+        let block_number = new_number.to_be_bytes();
         let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
-        inner.batch.put_cf(&cf, BLOCK_NUMBER_KEY, data);
+        inner.batch.put_cf(&cf, block_number, block_hash);
         inner
             .overlay
-            .insert(BLOCK_NUMBER_KEY.to_vec(), Some(data.to_vec()));
+            .insert(block_number.to_vec(), Some(block_hash.to_vec()));
     }
 
     pub fn get_block_number(&self) -> Option<i64> {
         let inner = self.inner.lock().unwrap();
-        let bytes_opt =
-            if let Some(block_number_bytes) = inner.overlay.get(&BLOCK_NUMBER_KEY.to_vec()) {
-                block_number_bytes.clone()
-            } else {
-                let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
-                self.db.get_cf(&cf, BLOCK_NUMBER_KEY).unwrap_or(None)
-            };
-        // バイト列が見つかったら、i64に復元する
-        bytes_opt.map(|bytes| {
-            let array: [u8; 8] = bytes.try_into().unwrap_or([0; 8]);
-            i64::from_be_bytes(array)
-        })
+        Some(inner.block_number)
+        
     }
+
+    pub fn get_blockhash_from_index(&self, block_number: i64) -> Option<Vec<u8>> {
+        //i64をu64に変換
+        let Ok(block_number) = u64::try_from(block_number) else {
+            panic!("block_numberが限界");
+        };
+        let block_number = block_number.to_be_bytes();
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(cache_result) = inner.overlay.get(block_number.as_slice()) {
+            return cache_result.clone();
+        }
+        let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
+        self.db.get_cf(&cf, block_number).unwrap_or(None)
+    }
+
+
 
     pub fn insert_receipt(&self, receipt_hash: &[u8], receipt_rlp: &[u8]) {
         let mut inner = self.inner.lock().unwrap();
