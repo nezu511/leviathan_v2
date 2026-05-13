@@ -10,6 +10,7 @@ use tendermint_abci::ServerBuilder;
 use tracing::{Level, info};
 use tower_http::cors::{Any, CorsLayer};
 use http::{Method, header};
+use tracing_subscriber::EnvFilter;
 
 //自作構造体
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
@@ -21,7 +22,9 @@ use my_rpc::run_rpc_server;
 #[tokio::main]
 async fn main() {
     // ログの初期化
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    tracing_subscriber::fmt()
+    .with_env_filter(EnvFilter::from_default_env()) // 環境変数を読み込む
+    .init();
 
     let db_path = "data/leviathan_db";
     let state = Arc::new(RwLock::new(WorldState::new(db_path)));
