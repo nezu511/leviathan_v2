@@ -48,6 +48,9 @@ pub trait EthApi {
 
     #[method(name = "eth_getTransactionByHash")]
     async fn get_transaction_by_hash(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<RPCTransaction>>;
+
+    //#[method(name = "eth_getBalance")]
+    //async fn get_balance(&self, address: Address, block: Option<String> ) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
