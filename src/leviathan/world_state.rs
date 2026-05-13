@@ -248,6 +248,36 @@ impl WorldState {
         let full_block = Block { header, body };
         return Some(full_block);
     }
+
+    pub fn get_full_block_from_index(&self, index: i64) -> Option<Block<Transaction>> {
+        let Some(block_hash) = self.data.get_blockhash_from_index(index)  else {
+            return None;
+        };
+        //ヘッダー
+        let block_header_key: Vec<u8> = [b"header:".as_slice(), &block_hash].concat();
+        let Some(header_rlp) = self.data.get_block(&block_header_key) else {
+            return None;
+        };
+        let mut slice = header_rlp.as_slice();
+        let Ok(mut header) = BlockHeader::decode(&mut slice) else {
+            tracing::warn!("Decoded BlockHeader Error");
+            return None;
+        };
+        //ボディー
+        let block_body_key: Vec<u8> = [b"body:".as_slice(), &block_hash].concat();
+        let Some(header_rlp) = self.data.get_block(&block_body_key) else {
+            return None;
+        };
+        let mut slice = header_rlp.as_slice();
+        let Ok(mut body) = BlockBody::<Transaction>::decode(&mut slice) else {
+            tracing::warn!("Decoded BlockBody Error");
+            return None;
+        };
+
+        //Blockの取得
+        let full_block = Block { header, body };
+        return Some(full_block);
+    }
 }
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
