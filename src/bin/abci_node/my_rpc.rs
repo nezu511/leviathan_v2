@@ -49,8 +49,8 @@ pub trait EthApi {
     #[method(name = "eth_getTransactionByHash")]
     async fn get_transaction_by_hash(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<RPCTransaction>>;
 
-    //#[method(name = "eth_getBalance")]
-    //async fn get_balance(&self, address: Address, block: Option<String> ) -> jsonrpsee::core::RpcResult<String>;
+    #[method(name = "eth_getBalance")]
+    async fn get_balance(&self, address: Address, block: Option<String> ) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -293,6 +293,24 @@ impl EthApiServer for LeviathanRPC {
     }
         
         
+    async fn get_balance(&self, address: Address, index_string: Option<String> ) -> jsonrpsee::core::RpcResult<String> {
+        let state = self.state.read().unwrap();
+        //blockからstate_rootを取り出す
+        //indexを取得
+        let mut index_string = index_string.unwrap();
+        let index = if String::from("latest") == index_string {
+            let block_number = state.current_block_number();
+        }else{
+            let offset = &index_string.finde("0x").unwrap();
+            index_string.replace_range(..offset, "");
+            let Ok(index) = s.parse::<i64>() else {
+                return Err(String::from("0x00"));
+            }
+
+        //Blockの取得
+        let Some(block) = state.get_full_block_from_index(&block_hash[..]) else {
+            return Ok(None);
+        };
 
 }
 
