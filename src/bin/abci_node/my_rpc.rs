@@ -1,6 +1,6 @@
 use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom, TxEnvelope, Signed};
 use alloy_consensus::transaction::Recovered;
-use alloy_primitives::{Address, B256, TxKind, hex, Signature}; 
+use alloy_primitives::{Address, B256, TxKind, hex, Signature, U256}; 
 use alloy_rlp::{Decodable, Encodable, Header};
 use alloy_rpc_types::{TransactionReceipt, Transaction as RPCTransaction};
 use bytes::BytesMut;
@@ -294,23 +294,39 @@ impl EthApiServer for LeviathanRPC {
         
         
     async fn get_balance(&self, address: Address, index_string: Option<String> ) -> jsonrpsee::core::RpcResult<String> {
-        let state = self.state.read().unwrap();
         //blockからstate_rootを取り出す
-        //indexを取得
-        let mut index_string = index_string.unwrap();
-        let index = if String::from("latest") == index_string {
-            let block_number = state.current_block_number();
-        }else{
-            let offset = &index_string.finde("0x").unwrap();
-            index_string.replace_range(..offset, "");
-            let Ok(index) = s.parse::<i64>() else {
-                return Err(String::from("0x00"));
+        let state = self.state.read().unwrap();
+        // index_string が None の場合は "latest" とみなす
+        let block_param = index_string.unwrap_or_else(|| String::from("latest"));
+
+        // パラメータを i64 の index に変換
+        let index: i64 = if block_param == "latest" || block_param == "pending" {
+            state.current_block_number()
+        } else {
+            // "0x" を取り除いて 16進数(base 16) として i64 にパースする
+            let hex_str = block_param.trim_start_matches("0x");
+            match i64::from_str_radix(hex_str, 16) {
+                Ok(idx) => idx,
+                Err(_) => {
+                    tracing::warn!("無効なブロックパラメータです: {}", block_param);
+                    return Ok(String::from("0x0")); // エラーの代わりに 0 ETH を返す
+                }
             }
+        };
 
         //Blockの取得
-        let Some(block) = state.get_full_block_from_index(&block_hash[..]) else {
-            return Ok(None);
+        let Some(block) = state.get_full_block_from_index(index) else {
+            return Ok(format!("0x{:x}", U256::ZERO));
         };
+        //state_rootを取得
+        let target_root = block.header.state_root;
+        let Some(target_balance) = state.get_balance_state(&address, target_root) else {
+            return Ok(format!("0x{:x}", U256::ZERO));
+        };
+
+        return Ok(format!("0x{:x}", target_balance));
+    }
+
 
 }
 

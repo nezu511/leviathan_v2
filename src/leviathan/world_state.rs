@@ -284,7 +284,9 @@ impl WorldState {
         let address_hash = keccak256(address);
         //MPTに現在登録されているRLPを取得
         let existing_mpt_val = target_state.get(address_hash.as_slice()).unwrap_or(None);
-        let mut mpt_byte_vec = existing_mpt_val.unwrap();
+        let Some(mut mpt_byte_vec) = existing_mpt_val else {
+            return None;
+        };
         let Ok(mpt_account) = MptAccount::decode(&mut mpt_byte_vec.as_slice()) else {
             tracing::warn!("[get_balance_state] MptAccount::decodeでエラー");
             return None;
