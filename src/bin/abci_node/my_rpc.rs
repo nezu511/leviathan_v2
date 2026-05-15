@@ -1,7 +1,10 @@
-use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom};
-use alloy_primitives::{Address, B256, TxKind, hex};
+use alloy_consensus::transaction::Recovered;
+use alloy_consensus::{
+    Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom, Signed, TxEnvelope,
+};
+use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex};
 use alloy_rlp::{Decodable, Encodable, Header};
-use alloy_rpc_types::TransactionReceipt;
+use alloy_rpc_types::{Transaction as RPCTransaction, TransactionReceipt};
 use bytes::BytesMut;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::ServerBuilder;
@@ -14,7 +17,10 @@ use sha3::{Digest, Keccak256};
 use std::sync::Arc;
 use std::sync::RwLock;
 use tendermint_rpc::{Client, HttpClient};
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
+use crate::utils::get_sender;
 use leviathan_v2::leviathan::structs::Transaction;
 use leviathan_v2::leviathan::world_state::WorldState;
 
@@ -42,8 +48,18 @@ pub trait EthApi {
         block: Option<String>,
     ) -> jsonrpsee::core::RpcResult<String>;
 
-    // #[method(name = "eth_getTransactionByHash")]
-    // async fn get_transaction_by_hash(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<Transaction>>;
+    #[method(name = "eth_getTransactionByHash")]
+    async fn get_transaction_by_hash(
+        &self,
+        tx_hash: B256,
+    ) -> jsonrpsee::core::RpcResult<Option<RPCTransaction>>;
+
+    #[method(name = "eth_getBalance")]
+    async fn get_balance(
+        &self,
+        address: Address,
+        block: Option<String>,
+    ) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -216,97 +232,126 @@ impl EthApiServer for LeviathanRPC {
         };
         Ok(format!("0x{:x}", nonce))
     }
-}
 
-pub fn get_sender(transaction: &Transaction) -> Option<Address> {
-    let Ok(t_w_u64) = u64::try_from(transaction.t_w) else {
-        tracing::warn!("t_w is too large for u64");
-        return None;
-    };
-    let (recovery_id_u8, chain_id) = if t_w_u64 == 27 || t_w_u64 == 28 {
-        ((t_w_u64 - 27) as u8, None)
-    } else if t_w_u64 >= 35 {
-        (((t_w_u64 - 35) % 2) as u8, Some((t_w_u64 - 35) / 2))
-    } else {
-        tracing::warn!("[get_sender] Invalid v value");
-        return None;
-    };
-    let Ok(recovery_id) = RecoveryId::try_from(recovery_id_u8 as i32) else {
-        tracing::warn!("Invalid recovery id");
-        return None;
-    };
-    // 1. 各要素のRLPペイロード長を事前計算する (alloy-rlpの特徴)
-    let mut payload_length = 0;
-    payload_length += transaction.t_nonce.length();
-    payload_length += transaction.t_price.length();
-    payload_length += transaction.t_gas_limit.length();
+    async fn get_transaction_by_hash(
+        &self,
+        tx_hash: B256,
+    ) -> jsonrpsee::core::RpcResult<Option<RPCTransaction>> {
+        let state = self.state.read().unwrap();
+        //TxLookupの取得
+        let tx_lookup_key: Vec<u8> = [b"tx_lookup:".as_slice(), tx_hash.as_slice()].concat();
+        let Some((block_hash, tx_index)) = state.get_block_hash(&tx_lookup_key) else {
+            return Ok(None);
+        };
+        //Blockの取得
+        let Some(block) = state.get_full_block(&block_hash[..]) else {
+            return Ok(None);
+        };
+        //Transactionを取得
+        let tx_index_usize = tx_index as usize;
+        let Some(tx) = block.body.transactions.get(tx_index_usize) else {
+            return Ok(None);
+        };
 
-    let to_slice = match &transaction.t_to {
-        TxKind::Call(address) => address.0.as_slice(),
-        TxKind::Create => &[], // 空のバイト列
-    };
-    payload_length += to_slice.length();
-    payload_length += transaction.t_value.length();
-    payload_length += transaction.data.length();
-    //EIP-155用に3フィールドを準備
-    if let Some(cid) = chain_id {
-        payload_length += cid.length();
-        payload_length += 0u64.length();
-        payload_length += 0u64.length();
-    }
-    // 2. バッファを確保し、リストのヘッダーを書き込む
-    let mut out = BytesMut::with_capacity(payload_length + 10); // ヘッダー分少し余分に確保
-    Header {
-        list: true,
-        payload_length,
-    }
-    .encode(&mut out);
-    transaction.t_nonce.encode(&mut out);
-    transaction.t_price.encode(&mut out);
-    transaction.t_gas_limit.encode(&mut out);
-    to_slice.encode(&mut out);
-    transaction.t_value.encode(&mut out);
-    transaction.data.encode(&mut out);
+        //送信者の復元
+        let Some(sender_address) = get_sender(&tx) else {
+            return Ok(None);
+        };
 
-    if let Some(cid) = chain_id {
-        cid.encode(&mut out);
-        0u64.encode(&mut out);
-        0u64.encode(&mut out);
+        // 2. v値からパリティと Chain ID を復元 (EIP-155対応)
+        let v: u64 = tx.t_w.try_into().unwrap_or(0);
+        let (y_parity, chain_id) = if v == 27 || v == 28 {
+            (v == 28, None)
+        } else if v >= 35 {
+            ((v - 35) % 2 != 0, Some((v - 35) / 2))
+        } else {
+            (false, None)
+        };
+
+        // 3. 署名オブジェクトの構築
+        let signature = Signature::new(tx.t_r, tx.t_s, y_parity);
+
+        // 4. TxLegacy (レガシートランザクション) の構築
+        let tx_legacy = alloy_consensus::TxLegacy {
+            chain_id,
+            nonce: tx.t_nonce.try_into().unwrap_or(0),
+            gas_price: tx.t_price.try_into().unwrap_or(0),
+            gas_limit: tx.t_gas_limit.try_into().unwrap_or(0),
+            to: tx.t_to.clone(),
+            value: tx.t_value,
+            input: tx.data.clone(),
+        };
+
+        // 5. Envelope に包む (TxLegacy -> Signed -> Recovered -> TxEnvelope)
+        let signed_tx = alloy_consensus::Signed::new_unchecked(tx_legacy, signature, tx_hash);
+        let tx_envelope = alloy_consensus::TxEnvelope::Legacy(signed_tx);
+        let recovered_tx = Recovered::new_unchecked(tx_envelope, sender_address);
+
+        // 6. 最終的な RPC用 Transaction 構造体の生成
+        let rpc_tx = RPCTransaction {
+            inner: recovered_tx,
+            block_hash: Some(block_hash),
+            block_number: Some(block.header.number),
+            transaction_index: Some(tx_index),
+            effective_gas_price: Some(tx.t_price.try_into().unwrap_or(0)),
+            block_timestamp: Some(block.header.timestamp),
+        };
+
+        Ok(Some(rpc_tx))
     }
-    let rlp_encoded = out.freeze();
-    //4. Keccak256でハッシュ化して32バイトのh(T)を得る
-    let mut hasher = Keccak256::new();
-    hasher.update(&rlp_encoded);
-    let tx_hash_bytes: [u8; 32] = hasher.finalize().into();
-    // --- 公開鍵のリカバリ部分 ---
-    let message = Message::from_digest(tx_hash_bytes);
-    // 【解決策6】 `to_big_endian` の代わりに `to_be_bytes::<32>()` を使う
-    let mut sig_bytes = [0u8; 64];
-    sig_bytes[0..32].copy_from_slice(&transaction.t_r.to_be_bytes::<32>());
-    sig_bytes[32..64].copy_from_slice(&transaction.t_s.to_be_bytes::<32>());
-    let Ok(signature) = RecoverableSignature::from_compact(&sig_bytes, recovery_id) else {
-        tracing::warn!("Invalid signature");
-        return None;
-    };
-    let secp = Secp256k1::verification_only();
-    // 【解決策7】 最新版では `&message` ではなく `message` (値渡し) にする
-    let Ok(public_key) = secp.recover_ecdsa(message, &signature) else {
-        tracing::warn!("Failed to recover public key");
-        return None;
-    };
-    // あとは前回のコードと同じようにアドレスを抽出！
-    let uncompressed_pubkey = public_key.serialize_uncompressed();
-    let pubkey_hash = Keccak256::digest(&uncompressed_pubkey[1..65]);
-    let mut sender_address = [0u8; 20];
-    sender_address.copy_from_slice(&pubkey_hash[12..32]);
-    let sender_address = Address::new(sender_address);
-    return Some(sender_address);
+
+    async fn get_balance(
+        &self,
+        address: Address,
+        index_string: Option<String>,
+    ) -> jsonrpsee::core::RpcResult<String> {
+        //blockからstate_rootを取り出す
+        let state = self.state.read().unwrap();
+        // index_string が None の場合は "latest" とみなす
+        let block_param = index_string.unwrap_or_else(|| String::from("latest"));
+
+        // パラメータを i64 の index に変換
+        let index: i64 = if block_param == "latest" || block_param == "pending" {
+            state.current_block_number()
+        } else {
+            // "0x" を取り除いて 16進数(base 16) として i64 にパースする
+            let hex_str = block_param.trim_start_matches("0x");
+            match i64::from_str_radix(hex_str, 16) {
+                Ok(idx) => idx,
+                Err(_) => {
+                    tracing::warn!("無効なブロックパラメータです: {}", block_param);
+                    return Ok(String::from("0x0")); // エラーの代わりに 0 ETH を返す
+                }
+            }
+        };
+
+        //Blockの取得
+        let Some(block) = state.get_full_block_from_index(index) else {
+            return Ok(format!("0x{:x}", U256::ZERO));
+        };
+        //state_rootを取得
+        let target_root = block.header.state_root;
+        let Some(target_balance) = state.get_balance_state(&address, target_root) else {
+            return Ok(format!("0x{:x}", U256::ZERO));
+        };
+
+        return Ok(format!("0x{:x}", target_balance));
+    }
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {
+    // 1. CORSの設定
+    let cors = CorsLayer::permissive();
+
+    // 2. ミドルウェアの構築
+    let middleware = tower::ServiceBuilder::new()
+        .layer(TraceLayer::new_for_http())
+        .layer(cors);
+
     // サーバーのビルド (ポート8545)
     let server = ServerBuilder::default()
-        .build("127.0.0.1:8545")
+        .set_http_middleware(middleware)
+        .build("0.0.0.0:8545")
         .await
         .expect("RPCサーバーの起動に失敗しました");
 

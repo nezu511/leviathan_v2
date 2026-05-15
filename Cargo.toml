@@ -8,7 +8,6 @@ alloy-primitives = {version = "1.5.7", features = ["serde", "rlp"]}
 alloy-sol-types = "1.5.7"
 secp256k1 = {version = "0.31.1", features = ["recovery"]}
 sha3 = "0.10.8"
-# 以下の2行のバージョンを下げて、rsaエコシステム(digest 0.10)に合わせます
 sha2 = {version = "0.10.8", features = ["oid"]}
 ripemd = "0.1.3" 
 bytes = "1.11.1"
@@ -42,3 +41,7 @@ tendermint-rpc = { version = "0.40.4", features = ["http-client"] }
 alloy-consensus = "2.0.4"
 alloy-rpc-types = "2.0.4"
 lru = "0.18.0"
+# RPCリクエストのロギング用
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+http = "1.4.0"

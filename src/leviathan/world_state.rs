@@ -85,7 +85,7 @@ impl WorldState {
             self.data
                 .insert_code(code_hash.as_slice(), &cache_account.code);
         }
-        //mpt_accout作成
+        //mpt_account作成
         let mpt_account = MptAccount::new(
             cache_account.nonce,
             cache_account.balance,
@@ -130,7 +130,7 @@ impl WorldState {
             .data
             .get_code(mpt_account.code_hash.as_slice())
             .expect("コードがDBに見つかりません");
-        //mpt_accoutのhashを取得
+        //mpt_accountのhashを取得
         let mut mpt_account_rlp_bytes = Vec::new();
         mpt_account.encode(&mut mpt_account_rlp_bytes);
         let mpt_account_hash = keccak256(mpt_account_rlp_bytes);
@@ -161,8 +161,8 @@ impl WorldState {
         self.eth_trie = new_eth_trie;
     }
 
-    pub fn update_block_number(&self, new_number: i64) {
-        self.data.update_block_number(new_number);
+    pub fn update_block_number(&self, new_number: i64, block_hash: &[u8]) {
+        self.data.update_block_number(new_number, block_hash);
     }
 
     pub fn current_block_number(&self) -> i64 {
@@ -247,6 +247,51 @@ impl WorldState {
         //Blockの取得
         let full_block = Block { header, body };
         return Some(full_block);
+    }
+
+    pub fn get_full_block_from_index(&self, index: i64) -> Option<Block<Transaction>> {
+        let Some(block_hash) = self.data.get_blockhash_from_index(index) else {
+            return None;
+        };
+        //ヘッダー
+        let block_header_key: Vec<u8> = [b"header:".as_slice(), &block_hash].concat();
+        let Some(header_rlp) = self.data.get_block(&block_header_key) else {
+            return None;
+        };
+        let mut slice = header_rlp.as_slice();
+        let Ok(mut header) = BlockHeader::decode(&mut slice) else {
+            tracing::warn!("Decoded BlockHeader Error");
+            return None;
+        };
+        //ボディー
+        let block_body_key: Vec<u8> = [b"body:".as_slice(), &block_hash].concat();
+        let Some(header_rlp) = self.data.get_block(&block_body_key) else {
+            return None;
+        };
+        let mut slice = header_rlp.as_slice();
+        let Ok(mut body) = BlockBody::<Transaction>::decode(&mut slice) else {
+            tracing::warn!("Decoded BlockBody Error");
+            return None;
+        };
+
+        //Blockの取得
+        let full_block = Block { header, body };
+        return Some(full_block);
+    }
+
+    pub fn get_balance_state(&self, address: &Address, state_root: B256) -> Option<U256> {
+        let mut target_state = EthTrie::from(self.data.clone(), state_root).unwrap();
+        let address_hash = keccak256(address);
+        //MPTに現在登録されているRLPを取得
+        let existing_mpt_val = target_state.get(address_hash.as_slice()).unwrap_or(None);
+        let Some(mut mpt_byte_vec) = existing_mpt_val else {
+            return None;
+        };
+        let Ok(mpt_account) = MptAccount::decode(&mut mpt_byte_vec.as_slice()) else {
+            tracing::warn!("[get_balance_state] MptAccount::decodeでエラー");
+            return None;
+        };
+        return Some(mpt_account.balance);
     }
 }
 
