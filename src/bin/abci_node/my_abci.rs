@@ -1,6 +1,8 @@
 use alloy_primitives::{Address, U256, hex};
 use alloy_rlp::Decodable;
 use eth_trie::{DB, Trie};
+use lru::LruCache;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
 use tendermint_abci::Application;
@@ -15,13 +17,14 @@ use crate::req_execution::PI;
 use crate::tx_check::Tx_Checker;
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
-use leviathan_v2::leviathan::world_state::{Account, WorldState};
+use leviathan_v2::leviathan::world_state::{Account, MptAccount, WorldState};
 
 #[derive(Clone)]
 pub struct LeviathanApp {
     pub state: Arc<RwLock<WorldState>>,
     pub leviathan: Arc<Mutex<LEVIATHAN>>,
     pub version: VersionId,
+    pub cache: Arc<RwLock<LruCache<Address, MptAccount>>>,
 }
 
 impl LeviathanApp {
@@ -30,6 +33,7 @@ impl LeviathanApp {
             state: Arc::new(RwLock::new(WorldState::new(db_path))),
             leviathan: Arc::new(Mutex::new(LEVIATHAN::new(version))),
             version,
+            cache: Arc::new(RwLock::new(LruCache::new(NonZeroUsize::new(100).unwrap()))),
         }
     }
 }
@@ -120,12 +124,15 @@ impl Application for LeviathanApp {
         let state = self.state.read().unwrap();
         let Err(e) = state.data.flush() else {
             tracing::info!("[COMMIT] 無事書き込み成功");
+
+            //LeviathanApp.cacheをクリアー
+            let mut cache = self.cache.write().unwrap();
+            cache.clear();
             return ResponseCommit { retain_height: 0 };
         };
 
         tracing::error!("RocksDBへのFlushに失敗: {:?}", e);
         panic!("Critical Database Error: {}", e);
-        ResponseCommit { retain_height: 0 }
     }
 
     fn init_chain(&self, _req: RequestInitChain) -> ResponseInitChain {

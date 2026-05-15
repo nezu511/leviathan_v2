@@ -1,8 +1,10 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, TxKind, U256};
-use alloy_rlp::{Encodable, Header};
+use alloy_primitives::{Address, TxKind, U256, keccak256};
+use alloy_rlp::{Decodable, Encodable, Header};
 use bytes::BytesMut;
+use eth_trie::Trie;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
+use leviathan_v2::leviathan::world_state::{EMPTY_CODE_HASH, MptAccount};
 use leviathan_v2::my_trait::leviathan_trait::State;
 use secp256k1::{
     Message, Secp256k1,
@@ -101,7 +103,7 @@ impl Tx_Checker for LeviathanApp {
         payload_length += transaction.t_value.length();
         payload_length += transaction.data.length(); // Bytesに変更したのでコレでOK！
 
-        // ★ EIP-155の場合は、ハッシュ化するデータに ChainID, 0, 0 を追加する！
+        // EIP-155の場合は、ハッシュ化するデータに ChainID, 0, 0 を追加する！
         if let Some(cid) = chain_id {
             payload_length += cid.length();
             payload_length += 0u64.length(); // r の代わり (0)
@@ -122,7 +124,7 @@ impl Tx_Checker for LeviathanApp {
         transaction.t_value.encode(&mut out);
         transaction.data.encode(&mut out);
 
-        // ★ 追加データもエンコードして書き込む
+        // 追加データもエンコードして書き込む
         if let Some(cid) = chain_id {
             cid.encode(&mut out);
             0u64.encode(&mut out);
@@ -161,21 +163,38 @@ impl Tx_Checker for LeviathanApp {
         let sender_address = Address::new(sender_address);
 
         //self.stateをロックして，中身のstateを取り出す
-        let mut state = self.state.write().unwrap();
+        let mut cache = self.cache.write().unwrap();
+
+        //cacheを調査
+        let target = match cache.get(&sender_address) {
+            Some(target) => target.clone(),
+            None => {
+                let mut state = self.state.write().unwrap();
+                //MPTを調査
+                let address_hash = keccak256(sender_address);
+
+                let Some(rlp_bytes) = state.eth_trie.get(address_hash.as_slice()).unwrap() else {
+                    tracing::warn!("[tx_check]送信者のアカウントが見つからない");
+                    return false;
+                };
+                let mut slice = rlp_bytes.as_slice();
+                let Ok(mpt_account) = MptAccount::decode(&mut slice) else {
+                    tracing::warn!("[contain_mpt] MptAccount::decodeでエラー");
+                    tracing::warn!("[tx_check]送信者のアカウントが見つからない");
+                    return false;
+                };
+                mpt_account
+            }
+        };
 
         //Nonceの整合性
-        let Some(sender_nonce) = state.get_nonce(&sender_address) else {
-            tracing::warn!("送信者のアカウントが見つからない");
-            return false;
-        };
-        if sender_nonce as usize != transaction.t_nonce {
+        if target.nonce as usize != transaction.t_nonce {
             tracing::warn!("nonceが不一致");
             return false;
         }
 
         //Codeの不在
-        let sender_code = state.get_code(&sender_address).unwrap();
-        if !sender_code.is_empty() {
+        if target.code_hash != EMPTY_CODE_HASH {
             tracing::warn!("送信者のアカウントにコントラクトコードがデプロイされている");
             return false;
         }
@@ -188,8 +207,7 @@ impl Tx_Checker for LeviathanApp {
         }
 
         //残高の妥当性
-        let sender_balance = state.get_balance(&sender_address).unwrap();
-        if sender_balance < max_cost {
+        if target.balance < max_cost {
             tracing::warn!("送信者の残高が事前支払いコストを満たしていない");
             return false;
         }
@@ -202,6 +220,12 @@ impl Tx_Checker for LeviathanApp {
                 return false;
             }
         }
+
+        // キャッシュに保存（上書き または 新規追加）
+        let mut updated_target = target.clone();
+        updated_target.nonce += 1;
+        updated_target.balance = updated_target.balance.saturating_sub(max_cost);
+        cache.put(sender_address, updated_target);
 
         true
     }

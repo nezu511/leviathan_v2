@@ -1,6 +1,6 @@
 # Leviathan
 
-**An Enterprise-Grade TEE × ZK Hybrid EVM in Rust**
+**An Enterprise-Grade RSA × ZK Hybrid EVM in Rust**
 
 Leviathanは，行政手続きや公共インフラ（選挙，給付金分配など）の完全自動化 **「無人の市役所」** の実現を目指してフルスクラッチ開発された，行政・エンタープライズ特化型のカスタムEVM（Ethereum Virtual Machine）です．
 
@@ -223,7 +223,7 @@ Leviathanは、Ethereum標準への完全準拠と、ZKインフラとしての�
 ## Technical Philosophy (ADR)
 本プロジェクトは既存EVMの単なるクローンではなく，スケーラビリティ・仕様準拠・保守性を極限まで担保するため，以下のアーキテクチャ設計を採用しています．
 
-### O(1) ロールバックを実現するジャーナルベースの状態管理
+### メモリ効率を極限まで高めた $O(N)$ ロールバック
 
 スマートコントラクトの実行において，サブコール（CALL等）失敗時の状態（State）リバートはパフォーマンスのボトルネックになります．
 本EVMでは，状態全体のディープコピーを避け，ジャーナル（変更履歴）ベースのロールバック機構を採用しました．トランザクションのコア実行構造体内部に直接ジャーナルを保持させることで，状態の逆再生（Undo）のみでメモリオーバーヘッドなく正確な復元を可能にしています．
@@ -341,7 +341,9 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 ### Detailed Test Results
 特に優先度の高い重要項目は，**太字**で強調しています．
 
-**A - G**
+<details>
+<summary><b> A - G: 基本動作・コントラクト作成 (クリックで展開)</b></summary>
+    
 | テストスイート | 進捗 | 備考 |
 | :--- | :---: | :--- |
 | stArgsZeroOneBalance | ❌ | 全ファイルがyml形式のため実行不可 |
@@ -364,7 +366,11 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 | stExample | 🔄 | 未着手 |
 | stExtCodeHash | ✅ | **Pass** (6ファイル・40ケース) |
 
-**H - O**
+</details>
+
+<details>
+<summary><b> H - S: メモリ・スタック・リバート処理 (クリックで展開)</b></summary>
+    
 | テストスイート | 進捗 | 備考 |
 | :--- | :---: | :--- |
 | stHomesteadSpecific | ✅ | **Pass** (5ファイル・20ケース) |
@@ -374,10 +380,6 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 | **stMemoryStressTest** | ✅ | **Pass** (38ファイル・287ケース）|
 | **stMemoryTest** | ✅ | **Pass** (58ファイル・406ケース) |
 | stNonZeroCallsTest | 🔄 | 未着手 |
-
-**P - S**
-| テストスイート | 進捗 | 備考 |
-| :--- | :---: | :--- |
 | stPreCompiledContracts | 🔄 | Balance不一致 |
 | stPreCompiledContracts2 | 🔄 | Balance不一致 |
 | stQuadraticComplexityTest | ✅ | **Pass** (16ファイル・124ケース) |
@@ -395,7 +397,11 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 | stStaticCall | 🔄 | 呼び出し元の残ガスが6ガス相違 |
 | stSystemOperationsTest | 🔄 | 挙動確認中 |
 
-**T - Z**
+</details>
+
+<details>
+<summary><b> T - Z: 署名検証・ゼロ知識証明 (クリックで展開)</b></summary>
+    
 | テストスイート | 進捗 | 備考 |
 | :--- | :---: | :--- |
 | stTimeConsuming | ✅ | **Pass** (1ファイル・6ケース） |
@@ -406,6 +412,7 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 | stZeroCallsTest | ✅ | **Pass** (24ファイル・168ケース） |
 | stZeroKnowledge | ✅ | **Pass** (33ファイル・1612ケース) |
 | stZeroKnowledge2 | 🔄 | 未着手 |
+</details>
 
 ### Phase 3: Integration Benchmarking & Data-Driven Gas Profiling
 独自の暗号処理（RSA検証など）をEVMコアに統合するにあたり、DoS攻撃を防ぎつつ実用的なガスコストを設定するためのベンチマーク環境（`bench_runner`）を構築しました。
@@ -417,27 +424,28 @@ Stateを Merkle Patricia Trie (MPT) へ換装した現在のフェーズでは�
 
 ## Current Status & Roadmap
 
-現在，PoCに向けたコアエンジンの検証フェーズを完了し，暗号統合フェーズを実行中です．
+現在，PoCに向けたコアエンジンの検証フェーズを完了し，ネットワークインターフェースの完成およびTEEを用いたハードウェアレベルの秘匿化フェーズへ移行しています．
 
 [x] Phase 1: Core Engine & MPT Integration
 - [x] EVM実行エンジンの構築と公式 GeneralStateTests の広範なパス．
 - [x] HashMapレイヤーの排除と，Merkle Patricia Trie (MPT) を用いた StateDB の完全統合．
 
 [x] **Phase 2: ZK & Cryptography Integration (PoC 実証完了)**
-- [x] **E2E 選挙シミュレーションの成功**: RSAによる身元確認とZKによる匿名投票を組み合わせた一連のフローが，EVM上で正確にステート遷移することを確認（2026年5月）．
-- [x] **Poseidon Merkle Treeの実装**: ZK-SNARKsの包含証明（Inclusion Proof）に特化した、Poseidonハッシュベースの専用ツリー構造を統合．
-- [x] **RSA-2048 プレコンパイルの最適化**: Rustネイティブ実装により、マイナンバー署名検証のガスコストを実用圏内（O(1)）に抑制．
+- [x] E2E 選挙シミュレーションの成功（RSA署名検証 × ZK匿名投票）．
+- [x] Poseidon Merkle Treeの統合と、RSA-2048 プレコンパイルのネイティブ実装．
 
-[x] **Phase 3: Node Architecture & Data Persistence (New!)**
-- [x] CometBFT (ABCI) の統合によるコンセンサス層との連携・ブロック生成。
-- [x] Geth型アーキテクチャに基づく RocksDB への Block / Receipt / TxLookup 永続化。
-- [x] `jsonrpsee` を用いた JSON-RPC サーバー基盤の構築とネットワーク連携
+[🔄] **Phase 3: RPC Completion & MetaMask Integration (In Progress)**
+- [x] CometBFT (ABCI) の統合および RocksDB へのブロック/ステート永続化．
+- [ ] JSON-RPC サーバーの完全実装とメソッドの拡充．
+- [ ] **MetaMaskとの完全な双方向通信の確立**（カスタムチェーンとしての残高表示とトランザクション送信）．
 
-[ ] Phase 4: Relayer API
-- メタトランザクションを処理するRelayer APIの構築．
+[ ] **Phase 4: TEE (Trusted Execution Environment) & AWS Deployment**
+- [ ] ZKの計算オーバーヘッドを抜本的に解決するため、TEE（Intel SGX / AWS Nitro Enclaves等）のセキュアエンクレーブ内でのEVM実行基盤のリサーチと実装．
+- [ ] クラウドインフラ（AWS）上でのバリデータノードの構築とテストネットのパブリックデプロイ．
 
-[ ] Phase 5: TEE Integration (Future Work)
-SGX等のTEE環境を利用した実行環境の完全秘匿化へのリサーチ
+[ ] **Phase 5: Layer 2 & Cross-Chain Interoperability**
+- [ ] 外部のブロックチェーン（Layer 1 / Layer 2）と安全に通信するための、IBC（Inter-Blockchain Communication）プロトコルやライトクライアント検証機能の統合．
+
 
 ## Tech Stack
 - **Core:** Rust

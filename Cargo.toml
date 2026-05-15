@@ -40,6 +40,7 @@ tokio = { version = "1.52.1", features = ["full"] }
 tendermint-rpc = { version = "0.40.4", features = ["http-client"] }
 alloy-consensus = "2.0.4"
 alloy-rpc-types = "2.0.4"
+lru = "0.18.0"
 # RPCリクエストのロギング用
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace"] }
