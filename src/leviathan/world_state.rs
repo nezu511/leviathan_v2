@@ -250,7 +250,7 @@ impl WorldState {
     }
 
     pub fn get_full_block_from_index(&self, index: i64) -> Option<Block<Transaction>> {
-        let Some(block_hash) = self.data.get_blockhash_from_index(index)  else {
+        let Some(block_hash) = self.data.get_blockhash_from_index(index) else {
             return None;
         };
         //ヘッダー
@@ -279,7 +279,7 @@ impl WorldState {
         return Some(full_block);
     }
 
-    pub fn get_balance_state(&self, address: &Address, state_root: B256) -> Option<U256>{
+    pub fn get_balance_state(&self, address: &Address, state_root: B256) -> Option<U256> {
         let mut target_state = EthTrie::from(self.data.clone(), state_root).unwrap();
         let address_hash = keccak256(address);
         //MPTに現在登録されているRLPを取得
@@ -291,12 +291,8 @@ impl WorldState {
             tracing::warn!("[get_balance_state] MptAccount::decodeでエラー");
             return None;
         };
-        return Some(mpt_account.balance)
+        return Some(mpt_account.balance);
     }
-
-
-
-
 }
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]

@@ -1,26 +1,28 @@
-use alloy_consensus::{Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom, TxEnvelope, Signed};
 use alloy_consensus::transaction::Recovered;
-use alloy_primitives::{Address, B256, TxKind, hex, Signature, U256}; 
+use alloy_consensus::{
+    Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom, Signed, TxEnvelope,
+};
+use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex};
 use alloy_rlp::{Decodable, Encodable, Header};
-use alloy_rpc_types::{TransactionReceipt, Transaction as RPCTransaction};
+use alloy_rpc_types::{Transaction as RPCTransaction, TransactionReceipt};
 use bytes::BytesMut;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::ServerBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
-use std::sync::Arc;
 use secp256k1::{
     Message, Secp256k1,
     ecdsa::{RecoverableSignature, RecoveryId},
 };
 use sha3::{Digest, Keccak256};
+use std::sync::Arc;
 use std::sync::RwLock;
 use tendermint_rpc::{Client, HttpClient};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
+use crate::utils::get_sender;
 use leviathan_v2::leviathan::structs::Transaction;
 use leviathan_v2::leviathan::world_state::WorldState;
-use crate::utils::get_sender;
 
 #[rpc(server)]
 pub trait EthApi {
@@ -47,10 +49,17 @@ pub trait EthApi {
     ) -> jsonrpsee::core::RpcResult<String>;
 
     #[method(name = "eth_getTransactionByHash")]
-    async fn get_transaction_by_hash(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<RPCTransaction>>;
+    async fn get_transaction_by_hash(
+        &self,
+        tx_hash: B256,
+    ) -> jsonrpsee::core::RpcResult<Option<RPCTransaction>>;
 
     #[method(name = "eth_getBalance")]
-    async fn get_balance(&self, address: Address, block: Option<String> ) -> jsonrpsee::core::RpcResult<String>;
+    async fn get_balance(
+        &self,
+        address: Address,
+        block: Option<String>,
+    ) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -224,7 +233,10 @@ impl EthApiServer for LeviathanRPC {
         Ok(format!("0x{:x}", nonce))
     }
 
-    async fn get_transaction_by_hash(&self, tx_hash: B256) -> jsonrpsee::core::RpcResult<Option<RPCTransaction>> {
+    async fn get_transaction_by_hash(
+        &self,
+        tx_hash: B256,
+    ) -> jsonrpsee::core::RpcResult<Option<RPCTransaction>> {
         let state = self.state.read().unwrap();
         //TxLookupの取得
         let tx_lookup_key: Vec<u8> = [b"tx_lookup:".as_slice(), tx_hash.as_slice()].concat();
@@ -257,11 +269,7 @@ impl EthApiServer for LeviathanRPC {
         };
 
         // 3. 署名オブジェクトの構築
-        let signature = Signature::new(
-            tx.t_r,
-            tx.t_s,
-            y_parity,
-        );
+        let signature = Signature::new(tx.t_r, tx.t_s, y_parity);
 
         // 4. TxLegacy (レガシートランザクション) の構築
         let tx_legacy = alloy_consensus::TxLegacy {
@@ -280,7 +288,7 @@ impl EthApiServer for LeviathanRPC {
         let recovered_tx = Recovered::new_unchecked(tx_envelope, sender_address);
 
         // 6. 最終的な RPC用 Transaction 構造体の生成
-        let rpc_tx = RPCTransaction{
+        let rpc_tx = RPCTransaction {
             inner: recovered_tx,
             block_hash: Some(block_hash),
             block_number: Some(block.header.number),
@@ -291,9 +299,12 @@ impl EthApiServer for LeviathanRPC {
 
         Ok(Some(rpc_tx))
     }
-        
-        
-    async fn get_balance(&self, address: Address, index_string: Option<String> ) -> jsonrpsee::core::RpcResult<String> {
+
+    async fn get_balance(
+        &self,
+        address: Address,
+        index_string: Option<String>,
+    ) -> jsonrpsee::core::RpcResult<String> {
         //blockからstate_rootを取り出す
         let state = self.state.read().unwrap();
         // index_string が None の場合は "latest" とみなす
@@ -326,13 +337,10 @@ impl EthApiServer for LeviathanRPC {
 
         return Ok(format!("0x{:x}", target_balance));
     }
-
-
 }
 
-
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {
-        // 1. CORSの設定
+    // 1. CORSの設定
     let cors = CorsLayer::permissive();
 
     // 2. ミドルウェアの構築

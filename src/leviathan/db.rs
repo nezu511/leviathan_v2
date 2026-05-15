@@ -101,11 +101,9 @@ impl RocksDBWrapper {
                 inner.block_number = Some(0);
                 Some(0)
             }
-
-        }else{
-            return inner.block_number
+        } else {
+            return inner.block_number;
         }
-        
     }
 
     pub fn get_blockhash_from_index(&self, block_number: i64) -> Option<Vec<u8>> {
@@ -121,8 +119,6 @@ impl RocksDBWrapper {
         let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
         self.db.get_cf(&cf, block_number).unwrap_or(None)
     }
-
-
 
     pub fn insert_receipt(&self, receipt_hash: &[u8], receipt_rlp: &[u8]) {
         let mut inner = self.inner.lock().unwrap();
