@@ -200,6 +200,24 @@ impl TransactionExecution for LEVIATHAN {
             }
         };
 
+        if self.eth_call.is_some() {
+            return match result {
+                Ok((gas, return_data, _)) => {
+                    self.return_data = return_data;
+                    let used_gas = transaction.t_gas_limit.saturating_sub(gas);
+                    Ok((used_gas, substate.a_log.clone()))
+                }
+                Err((gas, return_data, _)) => {
+                    match return_data {
+                        Some(return_data) => self.return_data = return_data,
+                        None => self.return_data = Vec::<u8>::new(),
+                    }
+                    let used_gas = transaction.t_gas_limit.saturating_sub(gas);
+                    Err((used_gas, Vec::new()))
+                }
+            };
+        }
+
         //払い戻しガス
         match result {
             Ok((gas, return_data, _)) => {
