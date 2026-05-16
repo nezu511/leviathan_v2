@@ -4,7 +4,7 @@ use alloy_consensus::{
 };
 use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex};
 use alloy_rlp::{Decodable, Encodable, Header};
-use alloy_rpc_types::{Transaction as RPCTransaction, TransactionReceipt};
+use alloy_rpc_types::{Transaction as RPCTransaction, TransactionReceipt, BlockNumberOrTag, BlockTransactions, Block as RpcBlock, Header as RpcHeader};
 use bytes::BytesMut;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::ServerBuilder;
@@ -60,6 +60,13 @@ pub trait EthApi {
         address: Address,
         block: Option<String>,
     ) -> jsonrpsee::core::RpcResult<String>;
+
+    #[method(name = "eth_getBlockByNumber")]
+    async fn get_block_by_number(
+        &self,
+        number: BlockNumberOrTag,
+        full_transactions: bool
+        ) -> jsonrpsee::core::RpcResult<Option<RpcBlock>>;
 }
 
 pub struct LeviathanRPC {
@@ -337,6 +344,105 @@ impl EthApiServer for LeviathanRPC {
 
         return Ok(format!("0x{:x}", target_balance));
     }
+
+    async fn get_block_by_number(
+        &self,
+        number: BlockNumberOrTag,
+        full_transactions: bool
+        ) -> jsonrpsee::core::RpcResult<Option<RpcBlock>> {
+
+        let state = self.state.read().unwrap();
+
+        let block_number = match number {
+            BlockNumberOrTag::Latest | BlockNumberOrTag::Pending => state.current_block_number() as u64,
+            BlockNumberOrTag::Number(n) => n,
+            BlockNumberOrTag::Earliest => 0,
+            _ => return Ok(None), // 他のタグ（safe, finalized）は今のところNone
+        };
+        //Blockの取得
+        let Some(block) = state.get_full_block_from_index(block_number as i64) else {
+            return Ok(None);
+        };
+
+        // 2. ブロックハッシュの計算 (ヘッダーを RLP 化して keccak256)
+        let mut header_rlp = Vec::new();
+        block.header.encode(&mut header_rlp);
+        let calculated_block_hash = alloy_primitives::keccak256(&header_rlp);
+
+        // 3. ブロック内トランザクションのハッシュ配列を事前計算
+        let mut tx_hashes = Vec::new();
+        for tx in &block.body.transactions {
+            let mut tx_rlp = Vec::new();
+            tx.encode(&mut tx_rlp);
+            tx_hashes.push(alloy_primitives::keccak256(&tx_rlp));
+        }
+
+        // 4. `full_transactions` フラグに応じたトランザクションデータの分岐組み立て
+        let transactions = if full_transactions {
+            let mut rpc_txs = Vec::new();
+            for (i, tx) in block.body.transactions.iter().enumerate() {
+                let tx_hash = tx_hashes[i];
+                let sender = get_sender(tx).unwrap_or_default();
+
+                let v: u64 = tx.t_w.try_into().unwrap_or(0);
+                let (y_parity, chain_id) = if v == 27 || v == 28 {
+                    (v == 28, None)
+                } else if v >= 35 {
+                    ((v - 35) % 2 != 0, Some((v - 35) / 2))
+                } else {
+                    (false, None)
+                };
+
+                let signature = alloy_primitives::Signature::new(tx.t_r, tx.t_s, y_parity);
+                let tx_legacy = alloy_consensus::TxLegacy {
+                    chain_id,
+                    nonce: tx.t_nonce.try_into().unwrap_or(0),
+                    gas_price: tx.t_price.try_into().unwrap_or(0),
+                    gas_limit: tx.t_gas_limit.try_into().unwrap_or(0),
+                    to: tx.t_to.clone(),
+                    value: tx.t_value,
+                    input: tx.data.clone(),
+                };
+
+                let signed_tx = alloy_consensus::Signed::new_unchecked(tx_legacy, signature, tx_hash);
+                let tx_envelope = alloy_consensus::TxEnvelope::Legacy(signed_tx);
+                let recovered_tx = alloy_consensus::transaction::Recovered::new_unchecked(tx_envelope, sender);
+
+                let rpc_tx = RPCTransaction {
+                    inner: recovered_tx,
+                    block_hash: Some(calculated_block_hash),
+                    block_number: Some(block_number),
+                    transaction_index: Some(i as u64),
+                    effective_gas_price: Some(tx.t_price.try_into().unwrap_or(0)),
+                    block_timestamp: Some(block.header.timestamp),
+                };
+                rpc_txs.push(rpc_tx);
+            }
+            BlockTransactions::Full(rpc_txs)
+        } else {
+            // フラグが false の場合はハッシュの配列だけを詰める
+            BlockTransactions::Hashes(tx_hashes)
+        };
+
+        // 5. alloy_rpc_types::Header の組み立て
+        let rpc_header = RpcHeader {
+            hash: calculated_block_hash,
+            inner: block.header,
+            total_difficulty: Some(alloy_primitives::U256::ZERO),
+            size: Some(alloy_primitives::U256::from(header_rlp.len())),
+        };
+
+        // 6. 最終的な RPC用フルブロックの返却
+        let rpc_block = RpcBlock {
+            header: rpc_header,
+            transactions,
+            uncles: vec![], // CometBFT/PoA運用のためアンクルブロックは常に空
+            withdrawals: None,
+        };
+
+        Ok(Some(rpc_block))
+    }
+
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {
