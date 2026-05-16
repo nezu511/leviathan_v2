@@ -7,7 +7,7 @@ use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
 use alloy_consensus::Header as BlockHeader;
-use alloy_primitives::{Log, TxKind, U256, hex, keccak256};
+use alloy_primitives::{Log, TxKind, U256, hex, keccak256, Address};
 use alloy_rlp::Encodable;
 use eth_trie::{EthTrie, Trie};
 use sha3::Digest;
@@ -17,7 +17,7 @@ pub struct LEVIATHAN {
     pub substate_backup: BackupSubstate,
     pub version: VersionId,
     pub return_data: Vec<u8>,
-    pub eth_call: bool,
+    pub eth_call: Option<Address>,
 }
 
 impl LEVIATHAN {
@@ -27,7 +27,7 @@ impl LEVIATHAN {
             substate_backup: BackupSubstate::new(),
             version,
             return_data: Vec::<u8>::new(),
-            eth_call: false,
+            eth_call: None,
         }
     }
 
@@ -94,36 +94,50 @@ impl TransactionExecution for LEVIATHAN {
         //【事前支払いコスト】
         let max_cost =
             transaction.t_gas_limit.saturating_mul(transaction.t_price) + transaction.t_value;
+
         //【トランザクションの事前検証】
-        let sender_address =
-            self.transaction_checks(state, &transaction, &all_gas, &max_cost, block_header);
-        if sender_address.is_err() {
-            tracing::warn!("{}", sender_address.unwrap_err());
-            return Err((U256::ZERO, Vec::new()));
-        }
-        let sender_address = sender_address.unwrap();
+        let (sender_address, mut gas, mut substate) = if self.eth_call.is_some() {
+            //【eth_call】
+            let sender_address = self.eth_call.unwrap();
+            //ここからロールバックの起点:ロールバックが起きたらこの状態にする
+            let mut substate = SubState::new();
+            //a_touchにトランザクションの基本要素（送信者，ブロックの受取人）を追加
+            substate.a_touch.push(sender_address);
+            substate.a_touch.push(block_header.beneficiary);
+            (sender_address, transaction.t_gas_limit, substate)
+        }else{
+            //【通常】
+            let sender_address = match self.transaction_checks(state, &transaction, &all_gas, &max_cost, block_header) {
+                Ok(addr) => addr,
+                Err(e) => {
+                    tracing::warn!("{}", e);
+                    return Err((U256::ZERO, Vec::new()));
+                }
+            };
+            //=======ステップ2===========
+            //【Nonceの加算】
+            if state.is_dead(self.version, &sender_address) {
+                return Err((U256::ZERO, Vec::new())); //sender_addressが見つからないのは異常
+            }
+            state.inc_nonce(&sender_address);
+            //【前払いガス代の徴収】
+            let gas = state.buy_gas(
+                &sender_address,
+                transaction.t_gas_limit,
+                transaction.t_price,
+                );
+            //ここからロールバックの起点:ロールバックが起きたらこの状態にする
+            let mut substate = SubState::new();
+            //a_touchにトランザクションの基本要素（送信者，ブロックの受取人）を追加
+            substate.a_touch.push(sender_address);
+            substate.a_touch.push(block_header.beneficiary);
 
-        //=======ステップ2===========
-        //【Nonceの加算】
-        if state.is_dead(self.version, &sender_address) {
-            return Err((U256::ZERO, Vec::new())); //sender_addressが見つからないのは異常
-        }
-        state.inc_nonce(&sender_address);
-        //【前払いガス代の徴収】
-        let gas = state.buy_gas(
-            &sender_address,
-            transaction.t_gas_limit,
-            transaction.t_price,
-        );
-        //ここからロールバックの起点:ロールバックが起きたらこの状態にする
-        let mut substate = SubState::new();
+            //gasから初期ガスを引く
+            let mut gas = gas.unwrap();
+            (sender_address, gas, substate)
 
-        //a_touchにトランザクションの基本要素（送信者，ブロックの受取人）を追加
-        substate.a_touch.push(sender_address);
-        substate.a_touch.push(block_header.beneficiary);
+        };
 
-        //gasから初期ガスを引く
-        let mut gas = gas.unwrap();
         gas = gas.saturating_sub(all_gas);
 
         //=======ステップ3===========
