@@ -39,7 +39,7 @@ async fn main() {
     let state_rpc = state.clone();
     info!("Leviathan RPC Serverを起動中...");
     tokio::spawn(async move {
-        run_rpc_server(Arc::clone(&state_rpc)).await;
+        run_rpc_server(Arc::clone(&state_rpc), VersionId::Constantinople).await;
     });
     info!("Leviathan RPC Serverを起動");
 

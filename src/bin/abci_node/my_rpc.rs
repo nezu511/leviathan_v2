@@ -4,7 +4,9 @@ use alloy_consensus::{
 };
 use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex};
 use alloy_rlp::{Decodable, Encodable, Header};
-use alloy_rpc_types::{Transaction as RPCTransaction, TransactionReceipt, BlockNumberOrTag, BlockTransactions, Block as RpcBlock, Header as RpcHeader};
+use alloy_rpc_types::{
+    Transaction as RPCTransaction, TransactionReceipt, BlockNumberOrTag, BlockTransactions, Block as RpcBlock, Header as RpcHeader, TransactionRequest
+};
 use bytes::BytesMut;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::ServerBuilder;
@@ -21,7 +23,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::utils::get_sender;
-use leviathan_v2::leviathan::structs::Transaction;
+use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::WorldState;
 
 #[rpc(server)]
@@ -67,15 +69,24 @@ pub trait EthApi {
         number: BlockNumberOrTag,
         full_transactions: bool
         ) -> jsonrpsee::core::RpcResult<Option<RpcBlock>>;
+    /*
+    #[method(name = "eth_call")]
+    async fn eth_call(
+        &self,
+        request: alloy_rpc_types::TransactionRequest,
+        block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
+        ) -> jsonrpsee::core::RpcResult<String>;
+    */
 }
 
 pub struct LeviathanRPC {
     state: Arc<RwLock<WorldState>>,
+    pub version: VersionId,
 }
 
 impl LeviathanRPC {
-    pub fn new(state: Arc<RwLock<WorldState>>) -> Self {
-        Self { state }
+    pub fn new(state: Arc<RwLock<WorldState>>, version: VersionId) -> Self {
+        Self { state , version}
     }
 }
 
@@ -445,10 +456,47 @@ impl EthApiServer for LeviathanRPC {
 
         Ok(Some(rpc_block))
     }
+    /*
+    async fn eth_call(
+        &self,
+        request: alloy_rpc_types::TransactionRequest,
+        block_number: Option<BlockNumberOrTag>,
+        ) -> jsonrpsee::core::RpcResult<String> {
+        
+        //WorldStaeからRocksDBWrapper, 
+        let (db_wrapper, state_root) = {
+            let state = self.state.read().unwrap(); // ロック取得
+
+            let block_number = match number {
+                BlockNumberOrTag::Latest | BlockNumberOrTag::Pending => state.current_block_number() as u64,
+                BlockNumberOrTag::Number(n) => n,
+                BlockNumberOrTag::Earliest => 0,
+                _ => return Ok(None), // 他のタグ（safe, finalized）は今のところNone
+            };
+            //Blockの取得
+            let Some(block) = state.get_full_block_from_index(block_number as i64) else {
+                return Ok(None);
+            };
+            //state_rootを取得
+            let target_root = block.header.state_root;
+            let Some(target_balance) = state.get_balance_state(&address, target_root) else {
+                return Ok(format!("0x{:x}", U256::ZERO));
+            };
+
+            (state.data.clone(), target_root)
+        };
+
+        let mut tmp_state = WorldState::new_for_call(db_wrapper, state_root);
+
+        //トランザクションを作成
+        return Ok(None);
+    }
+    */
+
 
 }
 
-pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {
+pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>, version: VersionId) {
     // 1. CORSの設定
     let cors = CorsLayer::permissive();
 
@@ -465,7 +513,7 @@ pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>) {
         .expect("RPCサーバーの起動に失敗しました");
 
     // 実装インスタンスの作成とRPCモジュール化
-    let rpc_impl = LeviathanRPC::new(state);
+    let rpc_impl = LeviathanRPC::new(state, version);
     let handle = server.start(rpc_impl.into_rpc());
 
     tracing::info!("JSON-RPCサーバーを 127.0.0.1:8545 で起動しました");
