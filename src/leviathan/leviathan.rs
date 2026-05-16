@@ -17,6 +17,7 @@ pub struct LEVIATHAN {
     pub substate_backup: BackupSubstate,
     pub version: VersionId,
     pub return_data: Vec<u8>,
+    pub eth_call: bool,
 }
 
 impl LEVIATHAN {
@@ -26,6 +27,7 @@ impl LEVIATHAN {
             substate_backup: BackupSubstate::new(),
             version,
             return_data: Vec::<u8>::new(),
+            eth_call: false,
         }
     }
 
