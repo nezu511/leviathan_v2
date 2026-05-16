@@ -100,6 +100,8 @@ impl EthApiServer for LeviathanRPC {
             ErrorObjectOwned::owned(-32602, format!("Hex decode error: {}", e), None::<()>)
         })?;
 
+        let eth_tx_hash = alloy_primitives::keccak256(&tx_data);
+
         // 2. CometBFTクライアント作成エラー（-32603: Internal error）
         let client = HttpClient::new("http://127.0.0.1:26657").map_err(|e| {
             ErrorObjectOwned::owned(-32603, format!("CometBFT Client error: {}", e), None::<()>)
@@ -110,7 +112,8 @@ impl EthApiServer for LeviathanRPC {
             ErrorObjectOwned::owned(-32603, format!("Broadcast error: {}", e), None::<()>)
         })?;
 
-        Ok(format!("0x{}", hex::encode(response.hash)))
+        //Ok(format!("0x{}", hex::encode(response.hash)))
+        Ok(format!("0x{:x}", eth_tx_hash))
     }
 
     async fn get_transaction_receipt(

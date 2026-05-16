@@ -60,11 +60,13 @@ impl RocksDBWrapper {
     }
 
     pub fn get_code(&self, code_hash: &[u8]) -> Option<Vec<u8>> {
-        let inner = self.inner.lock().unwrap();
-        // 1. Overlayキャッシュを確認
-        if let Some(cache_result) = inner.overlay.get(code_hash) {
-            // cache_result は Option<Vec<u8>> なので、そのまま clone して返す
-            return cache_result.clone();
+        {//ロックスコープでロックを厳密に制御
+            let inner = self.inner.lock().unwrap();
+            // 1. Overlayキャッシュを確認
+            if let Some(cache_result) = inner.overlay.get(code_hash) {
+                // cache_result は Option<Vec<u8>> なので、そのまま clone して返す
+                return cache_result.clone();
+            }
         }
         // 2. キャッシュに無ければSSDを探す
         let cf = self.db.cf_handle(CF_CODE).unwrap();
@@ -112,9 +114,11 @@ impl RocksDBWrapper {
             panic!("block_numberが限界");
         };
         let block_number = block_number.to_be_bytes();
-        let mut inner = self.inner.lock().unwrap();
-        if let Some(cache_result) = inner.overlay.get(block_number.as_slice()) {
-            return cache_result.clone();
+        {//ロックスコープでロックを厳密に制御
+            let mut inner = self.inner.lock().unwrap();
+            if let Some(cache_result) = inner.overlay.get(block_number.as_slice()) {
+                return cache_result.clone();
+            }
         }
         let cf = self.db.cf_handle(CF_BLOCK_NUMBER).unwrap();
         self.db.get_cf(&cf, block_number).unwrap_or(None)
@@ -130,9 +134,11 @@ impl RocksDBWrapper {
     }
 
     pub fn get_receipt(&self, receipt_hash: &[u8]) -> Option<Vec<u8>> {
-        let inner = self.inner.lock().unwrap();
-        if let Some(cache_result) = inner.overlay.get(receipt_hash) {
-            return cache_result.clone();
+        {//ロックスコープでロックを厳密に制御
+            let inner = self.inner.lock().unwrap();
+            if let Some(cache_result) = inner.overlay.get(receipt_hash) {
+                return cache_result.clone();
+            }
         }
         let cf = self.db.cf_handle(CF_RECEIPT).unwrap();
         self.db.get_cf(&cf, receipt_hash).unwrap_or(None)
@@ -148,9 +154,11 @@ impl RocksDBWrapper {
     }
 
     pub fn get_block(&self, block_hash: &[u8]) -> Option<Vec<u8>> {
-        let inner = self.inner.lock().unwrap();
-        if let Some(cache_result) = inner.overlay.get(block_hash) {
-            return cache_result.clone();
+        {//ロックスコープでロックを厳密に制御
+            let inner = self.inner.lock().unwrap();
+            if let Some(cache_result) = inner.overlay.get(block_hash) {
+                return cache_result.clone();
+            }
         }
         let cf = self.db.cf_handle(CF_BLOCK).unwrap();
         self.db.get_cf(&cf, block_hash).unwrap_or(None)
@@ -164,9 +172,11 @@ impl RocksDBWrapper {
     }
 
     pub fn get_txlookup(&self, key: &[u8]) -> Option<Vec<u8>> {
-        let inner = self.inner.lock().unwrap();
-        if let Some(cache_result) = inner.overlay.get(key) {
-            return cache_result.clone();
+        {//ロックスコープでロックを厳密に制御
+            let inner = self.inner.lock().unwrap();
+            if let Some(cache_result) = inner.overlay.get(key) {
+                return cache_result.clone();
+            }
         }
         let cf = self.db.cf_handle(CF_TX_LOOKUP).unwrap();
         self.db.get_cf(&cf, key).unwrap_or(None)
@@ -179,13 +189,14 @@ impl EthTrieDB for RocksDBWrapper {
     type Error = RocksError;
 
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, Self::Error> {
-        let inner = self.inner.lock().unwrap();
-
-        // 1. Overlayキャッシュを確認
-        if let Some(cache_result) = inner.overlay.get(key) {
-            // Some(Some(data)) -> 追加されたデータ
-            // Some(None) -> 削除されたデータ(Tombstone)
-            return Ok(cache_result.clone());
+        {//ロックスコープでロックを厳密に制御
+            let inner = self.inner.lock().unwrap();
+            // 1. Overlayキャッシュを確認
+            if let Some(cache_result) = inner.overlay.get(key) {
+                // Some(Some(data)) -> 追加されたデータ
+                // Some(None) -> 削除されたデータ(Tombstone)
+                return Ok(cache_result.clone());
+            }
         }
 
         // 2. キャッシュに無ければSSDを探す
