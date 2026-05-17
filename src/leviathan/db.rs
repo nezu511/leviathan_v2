@@ -60,7 +60,8 @@ impl RocksDBWrapper {
     }
 
     pub fn get_code(&self, code_hash: &[u8]) -> Option<Vec<u8>> {
-        {//ロックスコープでロックを厳密に制御
+        {
+            //ロックスコープでロックを厳密に制御
             let inner = self.inner.lock().unwrap();
             // 1. Overlayキャッシュを確認
             if let Some(cache_result) = inner.overlay.get(code_hash) {
@@ -114,7 +115,8 @@ impl RocksDBWrapper {
             panic!("block_numberが限界");
         };
         let block_number = block_number.to_be_bytes();
-        {//ロックスコープでロックを厳密に制御
+        {
+            //ロックスコープでロックを厳密に制御
             let mut inner = self.inner.lock().unwrap();
             if let Some(cache_result) = inner.overlay.get(block_number.as_slice()) {
                 return cache_result.clone();
@@ -134,7 +136,8 @@ impl RocksDBWrapper {
     }
 
     pub fn get_receipt(&self, receipt_hash: &[u8]) -> Option<Vec<u8>> {
-        {//ロックスコープでロックを厳密に制御
+        {
+            //ロックスコープでロックを厳密に制御
             let inner = self.inner.lock().unwrap();
             if let Some(cache_result) = inner.overlay.get(receipt_hash) {
                 return cache_result.clone();
@@ -154,7 +157,8 @@ impl RocksDBWrapper {
     }
 
     pub fn get_block(&self, block_hash: &[u8]) -> Option<Vec<u8>> {
-        {//ロックスコープでロックを厳密に制御
+        {
+            //ロックスコープでロックを厳密に制御
             let inner = self.inner.lock().unwrap();
             if let Some(cache_result) = inner.overlay.get(block_hash) {
                 return cache_result.clone();
@@ -172,7 +176,8 @@ impl RocksDBWrapper {
     }
 
     pub fn get_txlookup(&self, key: &[u8]) -> Option<Vec<u8>> {
-        {//ロックスコープでロックを厳密に制御
+        {
+            //ロックスコープでロックを厳密に制御
             let inner = self.inner.lock().unwrap();
             if let Some(cache_result) = inner.overlay.get(key) {
                 return cache_result.clone();
@@ -189,7 +194,8 @@ impl EthTrieDB for RocksDBWrapper {
     type Error = RocksError;
 
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, Self::Error> {
-        {//ロックスコープでロックを厳密に制御
+        {
+            //ロックスコープでロックを厳密に制御
             let inner = self.inner.lock().unwrap();
             // 1. Overlayキャッシュを確認
             if let Some(cache_result) = inner.overlay.get(key) {

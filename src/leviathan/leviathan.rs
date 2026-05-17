@@ -7,7 +7,7 @@ use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
 };
 use alloy_consensus::Header as BlockHeader;
-use alloy_primitives::{Log, TxKind, U256, hex, keccak256, Address};
+use alloy_primitives::{Address, Log, TxKind, U256, hex, keccak256};
 use alloy_rlp::Encodable;
 use eth_trie::{EthTrie, Trie};
 use sha3::Digest;
@@ -105,9 +105,15 @@ impl TransactionExecution for LEVIATHAN {
             substate.a_touch.push(sender_address);
             substate.a_touch.push(block_header.beneficiary);
             (sender_address, transaction.t_gas_limit, substate)
-        }else{
+        } else {
             //【通常】
-            let sender_address = match self.transaction_checks(state, &transaction, &all_gas, &max_cost, block_header) {
+            let sender_address = match self.transaction_checks(
+                state,
+                &transaction,
+                &all_gas,
+                &max_cost,
+                block_header,
+            ) {
                 Ok(addr) => addr,
                 Err(e) => {
                     tracing::warn!("{}", e);
@@ -125,7 +131,7 @@ impl TransactionExecution for LEVIATHAN {
                 &sender_address,
                 transaction.t_gas_limit,
                 transaction.t_price,
-                );
+            );
             //ここからロールバックの起点:ロールバックが起きたらこの状態にする
             let mut substate = SubState::new();
             //a_touchにトランザクションの基本要素（送信者，ブロックの受取人）を追加
@@ -135,7 +141,6 @@ impl TransactionExecution for LEVIATHAN {
             //gasから初期ガスを引く
             let mut gas = gas.unwrap();
             (sender_address, gas, substate)
-
         };
 
         gas = gas.saturating_sub(all_gas);

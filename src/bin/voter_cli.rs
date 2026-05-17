@@ -10,7 +10,11 @@ use std::process::Command;
 use leviathan_v2::zk_prover::ZkVotePayload;
 
 #[derive(Parser)]
-#[command(name = "voter_cli", version = "1.0", about = "無人市役所: オフチェーン暗号ペイロード生成ツール")]
+#[command(
+    name = "voter_cli",
+    version = "1.0",
+    about = "無人市役所: オフチェーン暗号ペイロード生成ツール"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -57,7 +61,7 @@ fn main() {
                 .arg(nullifier)
                 .output()
                 .expect("generate_commitment.js の実行に失敗しました");
-            
+
             let leaf_hex = String::from_utf8_lossy(&output.stdout).trim().to_string();
             let commitment: B256 = leaf_hex.parse().expect("Invalid commitment format");
 
@@ -83,7 +87,14 @@ fn main() {
                 modulus_hex, exponent_hex, signature_hex, commitment_hex
             );
         }
-        Commands::Vote { secret, nullifier, choice, root, index, all_commitments } => {
+        Commands::Vote {
+            secret,
+            nullifier,
+            choice,
+            root,
+            index,
+            all_commitments,
+        } => {
             println!("⚙️  ゼロ知識証明 (ZK-SNARKs) を生成中...\n");
 
             let root_hex = root.trim_start_matches("0x").to_string();
@@ -119,7 +130,8 @@ fn main() {
             assert!(snark_status.success(), "snarkjs fullprove failed");
 
             // 3. ZkVotePayload を読み込み
-            let payload = ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json");
+            let payload =
+                ZkVotePayload::load_from_snarkjs("circom/proof.json", "circom/public.json");
 
             let proof_hex = format!("0x{}", hex::encode(&payload.proof_bytes));
             let nullifier_hash_hex = format!("0x{}", hex::encode(payload.nullifier_hash));

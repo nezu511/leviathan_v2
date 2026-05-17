@@ -5,7 +5,8 @@ use alloy_consensus::{
 use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex};
 use alloy_rlp::{Decodable, Encodable, Header};
 use alloy_rpc_types::{
-    Transaction as RPCTransaction, TransactionReceipt, BlockNumberOrTag, BlockTransactions, Block as RpcBlock, Header as RpcHeader, TransactionRequest
+    Block as RpcBlock, BlockNumberOrTag, BlockTransactions, Header as RpcHeader,
+    Transaction as RPCTransaction, TransactionReceipt, TransactionRequest,
 };
 use bytes::BytesMut;
 use jsonrpsee::proc_macros::rpc;
@@ -23,9 +24,9 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::utils::get_sender;
+use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::WorldState;
-use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::my_trait::leviathan_trait::TransactionExecution;
 
 #[rpc(server)]
@@ -69,16 +70,15 @@ pub trait EthApi {
     async fn get_block_by_number(
         &self,
         number: BlockNumberOrTag,
-        full_transactions: bool
-        ) -> jsonrpsee::core::RpcResult<Option<RpcBlock>>;
+        full_transactions: bool,
+    ) -> jsonrpsee::core::RpcResult<Option<RpcBlock>>;
 
     #[method(name = "eth_call")]
     async fn eth_call(
         &self,
         request: alloy_rpc_types::TransactionRequest,
         block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
-        ) -> jsonrpsee::core::RpcResult<String>;
-
+    ) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -88,7 +88,7 @@ pub struct LeviathanRPC {
 
 impl LeviathanRPC {
     pub fn new(state: Arc<RwLock<WorldState>>, version: VersionId) -> Self {
-        Self { state , version}
+        Self { state, version }
     }
 }
 
@@ -364,13 +364,14 @@ impl EthApiServer for LeviathanRPC {
     async fn get_block_by_number(
         &self,
         number: BlockNumberOrTag,
-        full_transactions: bool
-        ) -> jsonrpsee::core::RpcResult<Option<RpcBlock>> {
-
+        full_transactions: bool,
+    ) -> jsonrpsee::core::RpcResult<Option<RpcBlock>> {
         let state = self.state.read().unwrap();
 
         let block_number = match number {
-            BlockNumberOrTag::Latest | BlockNumberOrTag::Pending => state.current_block_number() as u64,
+            BlockNumberOrTag::Latest | BlockNumberOrTag::Pending => {
+                state.current_block_number() as u64
+            }
             BlockNumberOrTag::Number(n) => n,
             BlockNumberOrTag::Earliest => 0,
             _ => return Ok(None), // 他のタグ（safe, finalized）は今のところNone
@@ -420,9 +421,11 @@ impl EthApiServer for LeviathanRPC {
                     input: tx.data.clone(),
                 };
 
-                let signed_tx = alloy_consensus::Signed::new_unchecked(tx_legacy, signature, tx_hash);
+                let signed_tx =
+                    alloy_consensus::Signed::new_unchecked(tx_legacy, signature, tx_hash);
                 let tx_envelope = alloy_consensus::TxEnvelope::Legacy(signed_tx);
-                let recovered_tx = alloy_consensus::transaction::Recovered::new_unchecked(tx_envelope, sender);
+                let recovered_tx =
+                    alloy_consensus::transaction::Recovered::new_unchecked(tx_envelope, sender);
 
                 let rpc_tx = RPCTransaction {
                     inner: recovered_tx,
@@ -459,28 +462,38 @@ impl EthApiServer for LeviathanRPC {
         Ok(Some(rpc_block))
     }
 
-
     async fn eth_call(
         &self,
         request: alloy_rpc_types::TransactionRequest,
         block_number: Option<BlockNumberOrTag>,
-        ) -> jsonrpsee::core::RpcResult<String> {
-
+    ) -> jsonrpsee::core::RpcResult<String> {
         tracing::info!("[eth_call]が使われた!!!");
 
-        //WorldStaeからRocksDBWrapper, 
+        //WorldStaeからRocksDBWrapper,
         let (db_wrapper, state_root) = {
             let state = self.state.read().unwrap(); // ロック取得
 
             let block_number = match block_number.unwrap_or(BlockNumberOrTag::Latest) {
-                BlockNumberOrTag::Latest | BlockNumberOrTag::Pending => state.current_block_number() as u64,
+                BlockNumberOrTag::Latest | BlockNumberOrTag::Pending => {
+                    state.current_block_number() as u64
+                }
                 BlockNumberOrTag::Number(n) => n,
                 BlockNumberOrTag::Earliest => 0,
-                _ => return Err(ErrorObjectOwned::owned(-32602, "Unsupported block tag", None::<()>))
+                _ => {
+                    return Err(ErrorObjectOwned::owned(
+                        -32602,
+                        "Unsupported block tag",
+                        None::<()>,
+                    ));
+                }
             };
             //Blockの取得
             let Some(block) = state.get_full_block_from_index(block_number as i64) else {
-                return Err(ErrorObjectOwned::owned(-32603, "Block not found", None::<()>));
+                return Err(ErrorObjectOwned::owned(
+                    -32603,
+                    "Block not found",
+                    None::<()>,
+                ));
             };
 
             (state.data.clone(), block.header.state_root)
@@ -503,7 +516,7 @@ impl EthApiServer for LeviathanRPC {
 
         // BlockHeaderを作成
         let mut header = BlockHeader::default();
-        
+
         // Transaction実行構造体LEVIATHANを作成
         let mut tmp_leviathan = LEVIATHAN::new(self.version);
         //LEVIATHAN構造体をeth_callモードに!!
@@ -516,10 +529,7 @@ impl EthApiServer for LeviathanRPC {
 
         tracing::info!("[eth_call]終了!!!");
         Ok(return_hex)
-
     }
-
-
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>, version: VersionId) {
