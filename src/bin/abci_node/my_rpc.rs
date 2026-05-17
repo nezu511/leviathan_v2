@@ -465,7 +465,9 @@ impl EthApiServer for LeviathanRPC {
         request: alloy_rpc_types::TransactionRequest,
         block_number: Option<BlockNumberOrTag>,
         ) -> jsonrpsee::core::RpcResult<String> {
-        
+
+        tracing::info!("[eth_call]が使われた!!!");
+
         //WorldStaeからRocksDBWrapper, 
         let (db_wrapper, state_root) = {
             let state = self.state.read().unwrap(); // ロック取得
@@ -512,6 +514,7 @@ impl EthApiServer for LeviathanRPC {
         // Transactionを実行
         let return_hex = format!("0x{}", hex::encode(&tmp_leviathan.return_data));
 
+        tracing::info!("[eth_call]終了!!!");
         Ok(return_hex)
 
     }

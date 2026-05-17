@@ -205,6 +205,7 @@ impl EthTrieDB for RocksDBWrapper {
     }
 
     fn insert(&self, key: &[u8], value: Vec<u8>) -> Result<(), Self::Error> {
+        tracing::info!("[緊急] 使われた insert");
         let mut inner = self.inner.lock().unwrap();
         let cf = self.db.cf_handle(CF_MPT).unwrap();
 
@@ -215,16 +216,20 @@ impl EthTrieDB for RocksDBWrapper {
     }
 
     fn remove(&self, key: &[u8]) -> Result<(), Self::Error> {
+        /*
+        tracing::info!("[緊急] 使われた remove");
         let mut inner = self.inner.lock().unwrap();
         let cf = self.db.cf_handle(CF_MPT).unwrap();
 
         // 🌟 バッチにDeleteし、キャッシュには None (Tombstone) として記録
         inner.batch.delete_cf(&cf, key);
         inner.overlay.insert(key.to_vec(), None);
+        */
         Ok(())
     }
 
     fn flush(&self) -> Result<(), Self::Error> {
+        tracing::info!("[緊急] 使われた flush");
         let mut inner = self.inner.lock().unwrap();
         let current_batch = std::mem::take(&mut inner.batch);
         let result = self.db.write(current_batch);
