@@ -293,6 +293,18 @@ impl WorldState {
         };
         return Some(mpt_account.balance);
     }
+
+    pub fn new_for_call(data: Arc<RocksDBWrapper>, state_root: B256) -> Self {
+        let cache = HashMap::<Address, Account>::new();
+        let eth_trie = EthTrie::from(data.clone(), state_root).unwrap();
+
+        Self {
+            cache,
+            data,
+            eth_trie,
+            parent_block: B256::ZERO,
+        }
+    }
 }
 
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
