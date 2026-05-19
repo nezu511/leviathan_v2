@@ -7,6 +7,7 @@ use alloy_rlp::{Decodable, Encodable, Header};
 use alloy_rpc_types::{
     Block as RpcBlock, BlockNumberOrTag, BlockTransactions, Header as RpcHeader,
     Transaction as RPCTransaction, TransactionReceipt, TransactionRequest,
+    Filter
 };
 use bytes::BytesMut;
 use jsonrpsee::proc_macros::rpc;
@@ -79,6 +80,9 @@ pub trait EthApi {
         request: alloy_rpc_types::TransactionRequest,
         block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
     ) -> jsonrpsee::core::RpcResult<String>;
+
+    #[method(name = "eth_getLogs")]
+    async fn get_logs(&self, filter: Filter) -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned>;
 }
 
 pub struct LeviathanRPC {
@@ -530,6 +534,57 @@ impl EthApiServer for LeviathanRPC {
         tracing::info!("[eth_call]終了!!!");
         Ok(return_hex)
     }
+
+    async fn get_logs(&self, filter: Filter) -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned> {
+
+        let block_vec = {
+            let state = self.state.read().unwrap(); // ロック取得
+            let latest_block_num = state.current_block_number() as u64;
+
+            // 2. 検索開始ブロック (from_block) の決定
+            let from_block = match filter.get_from_block() {
+                Some(BlockNumberOrTag::Number(n)) => n,
+                Some(BlockNumberOrTag::Latest) => latest_block_num,
+                Some(BlockNumberOrTag::Earliest) => 0,
+                _ => latest_block_num, // 指定がなければ最新ブロックのみ
+            };
+
+            // 3. 検索終了ブロック (to_block) の決定
+            let to_block = match filter.get_to_block() {
+                Some(BlockNumberOrTag::Number(n)) => n,
+                Some(BlockNumberOrTag::Latest) => latest_block_num,
+                _ => latest_block_num, // 指定がなければ最新ブロックまで
+            };
+
+            tracing::info!("[eth_getLogs] Block {} から {} まで検索します", from_block, to_block);
+
+            let mut block_vec = Vec::new();
+
+            // ブロックを取得
+            for block_num in from_block..=to_block {
+                if let Some(block) = state.get_full_block_from_index(block_num) {
+
+                    let bloom = block.header.logs_bloom;
+
+                    // ログに出力して確認してみる
+                    tracing::debug!("Block {}: Bloom = {:?}", block_num, bloom);
+
+                    // -----------------------------------------------------
+                    // 【V2 への布石】
+                    // ここで「bloomの中に探しているトピックが含まれているか？」を
+                    // チェックし、含まれていればDBからReceiptをロードする処理を今後書きます。
+                    // -----------------------------------------------------
+
+                } else {
+                    tracing::warn!("⚠️ Block {} がDBに見つかりませんでした", block_num);
+                }
+            }
+            block_vec
+
+        }
+    }
+
+
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>, version: VersionId) {
