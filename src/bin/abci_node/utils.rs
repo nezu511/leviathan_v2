@@ -1,5 +1,5 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, TxKind, U256, Bloom, B256, Log as PrimitiveLog, BloomInput};
+use alloy_primitives::{Address, B256, Bloom, BloomInput, Log as PrimitiveLog, TxKind, U256};
 use alloy_rlp::{Encodable, Header};
 use alloy_rpc_types::Filter;
 use bytes::BytesMut;
@@ -96,45 +96,8 @@ pub fn get_sender(transaction: &Transaction) -> Option<Address> {
     return Some(sender_address);
 }
 
-/*
-/// 第1関門: ブロックのBloom FilterとFilter条件を照らし合わせる
-pub fn is_bloom_match(bloom: &Bloom, filter: &Filter) -> bool {
-    // 1. アドレスのチェック
-    // フィルターにアドレスが指定されている場合、そのうちの「どれか1つ」でもBloomにあればOK
-    if let Some(addresses) = &filter.address {
-        let addrs = addresses.to_vec(); // 単一アドレスでも配列でもVecに変換
-        if !addrs.is_empty() {
-            // any: 条件を満たすものが1つでもあれば true
-            let has_addr = addrs.iter().any(|addr| bloom.contains_input(addr.as_slice()));
-            if !has_addr {
-                return false; // 指定されたアドレスが一つも無ければ、即スキップ
-            }
-        }
-    }
 
-    // 2. トピックのチェック
-    // トピックは最大4つ（イベントシグネチャ、引数1、引数2、引数3）指定される
-    for topic_opt in &filter.topics {
-        if let Some(topics) = topic_opt {
-            let topic_list = topics.to_vec();
-            if !topic_list.is_empty() {
-                // この位置(スロット)のトピック候補のうち、どれか1つでもBloomにあればOK
-                let has_topic = topic_list.iter().any(|topic| bloom.contains_input(topic.as_slice()));
-                if !has_topic {
-                    return false; // 必須のトピックが含まれていないので、即スキップ
-                }
-            }
-        }
-    }
-
-    // 全ての条件（アドレス、各トピック）をクリアした！
-    true
-}
-*/
-
-
-
-// 第1関門: ブロックのBloom FilterとFilter条件を照らし合わせる
+//ブロックのBloom FilterとFilter条件を照らし合わせる
 pub fn is_bloom_match(bloom: &Bloom, filter: &Filter) -> bool {
     // 1. アドレスのチェック (FilterSetはOptionではないので直接ループを回す)
     let mut addr_empty = true;
@@ -168,7 +131,7 @@ pub fn is_bloom_match(bloom: &Bloom, filter: &Filter) -> bool {
     true
 }
 
-/// 【第4関門】ログの厳密チェック (Exact Match)
+//ログの厳密チェック (Exact Match)
 pub fn is_exact_match(log: &PrimitiveLog, filter: &Filter) -> bool {
     // 1. アドレス照合
     let mut addr_empty = true;

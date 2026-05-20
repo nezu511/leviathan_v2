@@ -5,9 +5,8 @@ use alloy_consensus::{
 use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex, keccak256};
 use alloy_rlp::{Decodable, Encodable, Header};
 use alloy_rpc_types::{
-    Block as RpcBlock, BlockNumberOrTag, BlockTransactions, Header as RpcHeader,
+    Block as RpcBlock, BlockNumberOrTag, BlockTransactions, Filter, Header as RpcHeader,
     Transaction as RPCTransaction, TransactionReceipt, TransactionRequest,
-    Filter
 };
 use bytes::BytesMut;
 use jsonrpsee::proc_macros::rpc;
@@ -24,7 +23,7 @@ use tendermint_rpc::{Client, HttpClient};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
-use crate::utils::{get_sender, is_bloom_match, is_exact_match, format_to_rpc_log};
+use crate::utils::{format_to_rpc_log, get_sender, is_bloom_match, is_exact_match};
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::WorldState;
@@ -82,7 +81,8 @@ pub trait EthApi {
     ) -> jsonrpsee::core::RpcResult<String>;
 
     #[method(name = "eth_getLogs")]
-    async fn get_logs(&self, filter: Filter) -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned>;
+    async fn get_logs(&self, filter: Filter)
+    -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned>;
 }
 
 pub struct LeviathanRPC {
@@ -535,8 +535,10 @@ impl EthApiServer for LeviathanRPC {
         Ok(return_hex)
     }
 
-    async fn get_logs(&self, filter: Filter) -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned> {
-
+    async fn get_logs(
+        &self,
+        filter: Filter,
+    ) -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned> {
         let (block_vec, block_num_vec) = {
             let state = self.state.read().unwrap(); // ロック取得
             let latest_block_num = state.current_block_number() as u64;
@@ -547,7 +549,11 @@ impl EthApiServer for LeviathanRPC {
             // 3. 検索終了ブロック (to_block) の決定
             let to_block = filter.get_to_block().unwrap_or(latest_block_num);
 
-            tracing::info!("[eth_getLogs] Block {} から {} まで検索します", from_block, to_block);
+            tracing::info!(
+                "[eth_getLogs] Block {} から {} まで検索します",
+                from_block,
+                to_block
+            );
 
             let mut block_vec = Vec::new();
             let mut block_num_vec = Vec::new();
@@ -555,7 +561,6 @@ impl EthApiServer for LeviathanRPC {
             // ブロックを取得
             for block_num in from_block..=to_block {
                 if let Some(block) = state.get_full_block_from_index(block_num as i64) {
-
                     let bloom = block.header.logs_bloom;
                     // ログに出力して確認してみる
                     tracing::debug!("Block {}: Bloom = {:?}", block_num, bloom);
@@ -566,14 +571,11 @@ impl EthApiServer for LeviathanRPC {
                     }
                     block_vec.push(block);
                     block_num_vec.push(block_num);
-
-
                 } else {
                     tracing::warn!("Block {} がDBに見つかりませんでした", block_num);
                 }
             }
             (block_vec, block_num_vec)
-
         };
 
         let mut result_logs = Vec::new();
@@ -581,7 +583,6 @@ impl EthApiServer for LeviathanRPC {
         let state = self.state.read().unwrap(); // ロック取得
         // 該当したブロックをループ
         for (block, block_num) in block_vec.into_iter().zip(block_num_vec.into_iter()) {
-
             // ブロックの中の全トランザクションをループ
             for (tx_index, tx) in block.body.transactions.iter().enumerate() {
                 let mut tx_rlp = Vec::new();
@@ -590,15 +591,16 @@ impl EthApiServer for LeviathanRPC {
 
                 //レシートを取得
                 if let Some(mut receipt_with_bloom_rlp) = state.get_receipt(&tx_hash.as_slice()) {
-                    let Ok(receipt_with_bloom) = ReceiptWithBloom::<Receipt>::decode(&mut receipt_with_bloom_rlp.as_slice()) else {
+                    let Ok(receipt_with_bloom) =
+                        ReceiptWithBloom::<Receipt>::decode(&mut receipt_with_bloom_rlp.as_slice())
+                    else {
                         tracing::warn!("[eth_getLogs] レシートのデコードに失敗");
                         return Err(ErrorObjectOwned::owned(
-                                -32602,                 
-                                "無効なパラメータです", 
-                                None::<()>, 
-                                ));
+                            -32602,
+                            "無効なパラメータです",
+                            None::<()>,
+                        ));
                     };
-
 
                     //レシートレベルの Bloom チェック
                     if !is_bloom_match(&receipt_with_bloom.logs_bloom, &filter) {
@@ -609,7 +611,6 @@ impl EthApiServer for LeviathanRPC {
 
                     //ログの厳密チェック (Exact Match)
                     for (log_index, log) in receipt_with_bloom.receipt.logs.iter().enumerate() {
-
                         if is_exact_match(log, &filter) {
                             tracing::info!("ログが完全に一致しました！");
 
@@ -620,8 +621,8 @@ impl EthApiServer for LeviathanRPC {
                                 tx_hash,
                                 tx_index as u64,
                                 log_index as u64,
-                                log
-                                );
+                                log,
+                            );
                             result_logs.push(rpc_log);
                         }
                     }
@@ -631,10 +632,6 @@ impl EthApiServer for LeviathanRPC {
 
         Ok(result_logs)
     }
-
-
-
-
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>, version: VersionId) {
