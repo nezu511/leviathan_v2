@@ -24,7 +24,7 @@ use tendermint_rpc::{Client, HttpClient};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
-use crate::utils::get_sender;
+use crate::utils::{get_sender, is_bloom_match};
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::WorldState;
@@ -537,7 +537,7 @@ impl EthApiServer for LeviathanRPC {
 
     async fn get_logs(&self, filter: Filter) -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned> {
 
-        let block_vec = {
+        let (block_vec, block_num_vec) = {
             let state = self.state.read().unwrap(); // ロック取得
             let latest_block_num = state.current_block_number() as u64;
 
@@ -559,30 +559,78 @@ impl EthApiServer for LeviathanRPC {
             tracing::info!("[eth_getLogs] Block {} から {} まで検索します", from_block, to_block);
 
             let mut block_vec = Vec::new();
+            let mut block_num_vec = Vec::new();
 
             // ブロックを取得
             for block_num in from_block..=to_block {
                 if let Some(block) = state.get_full_block_from_index(block_num) {
 
                     let bloom = block.header.logs_bloom;
-
                     // ログに出力して確認してみる
                     tracing::debug!("Block {}: Bloom = {:?}", block_num, bloom);
 
-                    // -----------------------------------------------------
-                    // 【V2 への布石】
-                    // ここで「bloomの中に探しているトピックが含まれているか？」を
-                    // チェックし、含まれていればDBからReceiptをロードする処理を今後書きます。
-                    // -----------------------------------------------------
+                    if !is_bloom_match(&bloom, &filter) {
+                        tracing::debug!("Block {} は bloom判定でfalse", block_num);
+                        continue;
+                    }
+                    block_vec.push(block);
+                    block_num_vec.push(block_num);
+
 
                 } else {
-                    tracing::warn!("⚠️ Block {} がDBに見つかりませんでした", block_num);
+                    tracing::warn!("Block {} がDBに見つかりませんでした", block_num);
                 }
             }
-            block_vec
+            (block_vec, block_num_vec)
 
+        };
+
+        let mut result_logs = Vec::new();
+
+        let state = self.state.read().unwrap(); // ロック取得
+        // 該当したブロックをループ
+        for (block, block_num) in block_vec.into_iter().zip(block_num_vec.into_iter()) {
+
+            // ブロックの中の全トランザクションをループ
+            for (tx_index, tx) in block.body.transactions.iter().enumerate() {
+                let tx_hash = tx.hash();
+
+                //レシートを取得
+                if let Some(receipt_with_bloom) = state.get_receipt(&tx_hash) {
+
+                    //レシートレベルの Bloom チェック
+                    if !is_bloom_match(&receipt_with_bloom.logs_bloom, &filter) {
+                        continue;
+                    }
+
+                    tracing::debug!("TX {} が第3関門を突破", hex::encode(tx_hash));
+
+                    //ログの厳密チェック (Exact Match)
+                    for (log_index, log) in receipt_with_bloom.receipt.logs.iter().enumerate() {
+
+                        if is_exact_match(log, &filter) {
+                            tracing::info!("ログが完全に一致しました！");
+
+                            // RPCで返すための Log 型に変換する
+                            let rpc_log = format_to_rpc_log(
+                                block_num,
+                                block.header.hash_slow(), // ブロックハッシュ
+                                tx_hash,
+                                tx_index as u64,
+                                log_index as u64,
+                                log
+                                );
+                            result_logs.push(rpc_log);
+                        }
+                    }
+                }
+            }
         }
+
+        Ok(result_logs)
     }
+
+
 
 
 }

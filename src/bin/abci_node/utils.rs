@@ -1,6 +1,7 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, TxKind, U256};
+use alloy_primitives::{Address, TxKind, U256, Bloom};
 use alloy_rlp::{Encodable, Header};
+use alloy_rpc_types::Filter;
 use bytes::BytesMut;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::my_trait::leviathan_trait::State;
@@ -93,4 +94,39 @@ pub fn get_sender(transaction: &Transaction) -> Option<Address> {
     sender_address.copy_from_slice(&pubkey_hash[12..32]);
     let sender_address = Address::new(sender_address);
     return Some(sender_address);
+}
+
+
+/// 第1関門: ブロックのBloom FilterとFilter条件を照らし合わせる
+pub fn is_bloom_match(bloom: &Bloom, filter: &Filter) -> bool {
+    // 1. アドレスのチェック
+    // フィルターにアドレスが指定されている場合、そのうちの「どれか1つ」でもBloomにあればOK
+    if let Some(addresses) = &filter.address {
+        let addrs = addresses.to_vec(); // 単一アドレスでも配列でもVecに変換
+        if !addrs.is_empty() {
+            // any: 条件を満たすものが1つでもあれば true
+            let has_addr = addrs.iter().any(|addr| bloom.contains_input(addr.as_slice()));
+            if !has_addr {
+                return false; // 指定されたアドレスが一つも無ければ、即スキップ
+            }
+        }
+    }
+
+    // 2. トピックのチェック
+    // トピックは最大4つ（イベントシグネチャ、引数1、引数2、引数3）指定される
+    for topic_opt in &filter.topics {
+        if let Some(topics) = topic_opt {
+            let topic_list = topics.to_vec();
+            if !topic_list.is_empty() {
+                // この位置(スロット)のトピック候補のうち、どれか1つでもBloomにあればOK
+                let has_topic = topic_list.iter().any(|topic| bloom.contains_input(topic.as_slice()));
+                if !has_topic {
+                    return false; // 必須のトピックが含まれていないので、即スキップ
+                }
+            }
+        }
+    }
+
+    // 全ての条件（アドレス、各トピック）をクリアした！
+    true
 }
