@@ -2,7 +2,7 @@ use alloy_consensus::transaction::Recovered;
 use alloy_consensus::{
     Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom, Signed, TxEnvelope,
 };
-use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex};
+use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex, keccak256};
 use alloy_rlp::{Decodable, Encodable, Header};
 use alloy_rpc_types::{
     Block as RpcBlock, BlockNumberOrTag, BlockTransactions, Header as RpcHeader,
@@ -24,7 +24,7 @@ use tendermint_rpc::{Client, HttpClient};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
-use crate::utils::{get_sender, is_bloom_match};
+use crate::utils::{get_sender, is_bloom_match, is_exact_match, format_to_rpc_log};
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::WorldState;
@@ -542,19 +542,10 @@ impl EthApiServer for LeviathanRPC {
             let latest_block_num = state.current_block_number() as u64;
 
             // 2. 検索開始ブロック (from_block) の決定
-            let from_block = match filter.get_from_block() {
-                Some(BlockNumberOrTag::Number(n)) => n,
-                Some(BlockNumberOrTag::Latest) => latest_block_num,
-                Some(BlockNumberOrTag::Earliest) => 0,
-                _ => latest_block_num, // 指定がなければ最新ブロックのみ
-            };
+            let from_block = filter.get_from_block().unwrap_or(latest_block_num);
 
             // 3. 検索終了ブロック (to_block) の決定
-            let to_block = match filter.get_to_block() {
-                Some(BlockNumberOrTag::Number(n)) => n,
-                Some(BlockNumberOrTag::Latest) => latest_block_num,
-                _ => latest_block_num, // 指定がなければ最新ブロックまで
-            };
+            let to_block = filter.get_to_block().unwrap_or(latest_block_num);
 
             tracing::info!("[eth_getLogs] Block {} から {} まで検索します", from_block, to_block);
 
@@ -563,7 +554,7 @@ impl EthApiServer for LeviathanRPC {
 
             // ブロックを取得
             for block_num in from_block..=to_block {
-                if let Some(block) = state.get_full_block_from_index(block_num) {
+                if let Some(block) = state.get_full_block_from_index(block_num as i64) {
 
                     let bloom = block.header.logs_bloom;
                     // ログに出力して確認してみる
@@ -593,10 +584,21 @@ impl EthApiServer for LeviathanRPC {
 
             // ブロックの中の全トランザクションをループ
             for (tx_index, tx) in block.body.transactions.iter().enumerate() {
-                let tx_hash = tx.hash();
+                let mut tx_rlp = Vec::new();
+                tx.encode(&mut tx_rlp);
+                let tx_hash = keccak256(tx_rlp);
 
                 //レシートを取得
-                if let Some(receipt_with_bloom) = state.get_receipt(&tx_hash) {
+                if let Some(mut receipt_with_bloom_rlp) = state.get_receipt(&tx_hash.as_slice()) {
+                    let Ok(receipt_with_bloom) = ReceiptWithBloom::<Receipt>::decode(&mut receipt_with_bloom_rlp.as_slice()) else {
+                        tracing::warn!("[eth_getLogs] レシートのデコードに失敗");
+                        return Err(ErrorObjectOwned::owned(
+                                -32602,                 
+                                "無効なパラメータです", 
+                                None::<()>, 
+                                ));
+                    };
+
 
                     //レシートレベルの Bloom チェック
                     if !is_bloom_match(&receipt_with_bloom.logs_bloom, &filter) {
