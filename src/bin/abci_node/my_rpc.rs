@@ -83,6 +83,9 @@ pub trait EthApi {
     #[method(name = "eth_getLogs")]
     async fn get_logs(&self, filter: Filter)
     -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned>;
+
+    #[method(name = "web3_clientVersion")]
+    async fn client_version(&self) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -632,6 +635,11 @@ impl EthApiServer for LeviathanRPC {
 
         Ok(result_logs)
     }
+
+    async fn client_version(&self) -> jsonrpsee::core::RpcResult<String> {
+    Ok("Leviathan/v0.2.0-rust".to_string())
+    }
+
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>, version: VersionId) {
