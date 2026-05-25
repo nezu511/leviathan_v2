@@ -2,8 +2,8 @@ use alloy_primitives::{B256, hex};
 use clap::{Parser, Subcommand};
 use rand::rngs::OsRng;
 use rsa::{RsaPrivateKey, pkcs1v15::Pkcs1v15Sign, traits::PublicKeyParts};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use serde_json::{json, Value};
 use std::process::Command;
 
 // ※ lib.rs (leviathan_v2) で定義されている前提のモジュールを読み込みます
@@ -113,13 +113,16 @@ fn main() {
 
             // 2. Leviathan RPC にリクエスト送信 (同期通信)
             let client = reqwest::blocking::Client::new();
-            let res = client.post("http://127.0.0.1:8545")
+            let res = client
+                .post("http://127.0.0.1:8545")
                 .json(&request_body)
                 .send()
                 .expect("RPCサーバーとの通信に失敗しました");
 
             let json_res: Value = res.json().expect("JSONのパースに失敗しました");
-            let logs = json_res["result"].as_array().expect("ログが取得できませんでした");
+            let logs = json_res["result"]
+                .as_array()
+                .expect("ログが取得できませんでした");
 
             // 3. ログからコミットメント (topics[1]) を抽出
             let mut commitments = Vec::new();

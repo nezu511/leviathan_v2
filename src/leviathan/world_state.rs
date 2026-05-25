@@ -294,7 +294,6 @@ impl WorldState {
         return Some(mpt_account.balance);
     }
 
-
     pub fn get_code_state(&self, address: &Address, state_root: B256) -> Option<Vec<u8>> {
         let mut target_state = EthTrie::from(self.data.clone(), state_root).unwrap();
         let address_hash = keccak256(address);
@@ -309,7 +308,7 @@ impl WorldState {
         };
         match self.data.get_code(mpt_account.code_hash.as_slice()) {
             Some(code) => return Some(code),
-            None => return None, 
+            None => return None,
         }
     }
 

@@ -96,7 +96,6 @@ pub fn get_sender(transaction: &Transaction) -> Option<Address> {
     return Some(sender_address);
 }
 
-
 //ブロックのBloom FilterとFilter条件を照らし合わせる
 pub fn is_bloom_match(bloom: &Bloom, filter: &Filter) -> bool {
     // 1. アドレスのチェック (FilterSetはOptionではないので直接ループを回す)

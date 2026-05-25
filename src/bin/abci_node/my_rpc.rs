@@ -92,7 +92,7 @@ pub trait EthApi {
         &self,
         address: Address,
         block: Option<alloy_rpc_types::BlockNumberOrTag>,
-        ) -> jsonrpsee::core::RpcResult<String>;
+    ) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -644,14 +644,14 @@ impl EthApiServer for LeviathanRPC {
     }
 
     async fn client_version(&self) -> jsonrpsee::core::RpcResult<String> {
-    Ok("Leviathan/v0.2.0-rust".to_string())
+        Ok("Leviathan/v0.2.0-rust".to_string())
     }
 
     async fn get_code(
         &self,
         address: Address,
         block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
-        ) -> jsonrpsee::core::RpcResult<String> {
+    ) -> jsonrpsee::core::RpcResult<String> {
         //blockからstate_rootを取り出す
         let state = self.state.read().unwrap();
 
@@ -664,19 +664,19 @@ impl EthApiServer for LeviathanRPC {
             BlockNumberOrTag::Earliest => 0,
             _ => {
                 return Err(ErrorObjectOwned::owned(
-                        -32602,
-                        "Unsupported block tag",
-                        None::<()>,
-                        ));
+                    -32602,
+                    "Unsupported block tag",
+                    None::<()>,
+                ));
             }
         };
         //Blockの取得
         let Some(block) = state.get_full_block_from_index(block_number as i64) else {
             return Err(ErrorObjectOwned::owned(
-                    -32603,
-                    "Block not found",
-                    None::<()>,
-                    ));
+                -32603,
+                "Block not found",
+                None::<()>,
+            ));
         };
         //state_rootを取得
         let target_root = block.header.state_root;
@@ -685,7 +685,6 @@ impl EthApiServer for LeviathanRPC {
             None => return Ok("0x".to_string()),
         }
     }
-
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>, version: VersionId) {
