@@ -1,6 +1,7 @@
 use crate::LeviathanApp;
-use alloy_primitives::{Address, TxKind, U256};
+use alloy_primitives::{Address, B256, Bloom, BloomInput, Log as PrimitiveLog, TxKind, U256};
 use alloy_rlp::{Encodable, Header};
+use alloy_rpc_types::Filter;
 use bytes::BytesMut;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::my_trait::leviathan_trait::State;
@@ -93,4 +94,95 @@ pub fn get_sender(transaction: &Transaction) -> Option<Address> {
     sender_address.copy_from_slice(&pubkey_hash[12..32]);
     let sender_address = Address::new(sender_address);
     return Some(sender_address);
+}
+
+//ブロックのBloom FilterとFilter条件を照らし合わせる
+pub fn is_bloom_match(bloom: &Bloom, filter: &Filter) -> bool {
+    // 1. アドレスのチェック (FilterSetはOptionではないので直接ループを回す)
+    let mut addr_empty = true;
+    let mut addr_matched = false;
+    for addr in filter.address.clone().into_iter() {
+        addr_empty = false;
+        if bloom.contains_input(BloomInput::Raw(addr.as_slice())) {
+            addr_matched = true;
+        }
+    }
+    // フィルターが指定されているのに、一つもBloomに無ければスキップ
+    if !addr_empty && !addr_matched {
+        return false;
+    }
+
+    // 2. トピックのチェック
+    for topic_set in filter.topics.clone().into_iter() {
+        let mut topic_empty = true;
+        let mut topic_matched = false;
+        for topic in topic_set.into_iter() {
+            topic_empty = false;
+            if bloom.contains_input(BloomInput::Raw(topic.as_slice())) {
+                topic_matched = true;
+            }
+        }
+        if !topic_empty && !topic_matched {
+            return false;
+        }
+    }
+
+    true
+}
+
+//ログの厳密チェック (Exact Match)
+pub fn is_exact_match(log: &PrimitiveLog, filter: &Filter) -> bool {
+    // 1. アドレス照合
+    let mut addr_empty = true;
+    let mut addr_matched = false;
+    for addr in filter.address.clone().into_iter() {
+        addr_empty = false;
+        if log.address == addr {
+            addr_matched = true;
+        }
+    }
+    if !addr_empty && !addr_matched {
+        return false;
+    }
+
+    // 2. トピック照合 (AND / OR)
+    for (i, topic_set) in filter.topics.clone().into_iter().enumerate() {
+        let mut topic_empty = true;
+        let mut topic_matched = false;
+        for topic in topic_set.into_iter() {
+            topic_empty = false;
+            // ログの i 番目のトピックと比較
+            if let Some(log_topic) = log.topics().get(i) {
+                if topic == *log_topic {
+                    topic_matched = true;
+                }
+            }
+        }
+        if !topic_empty && !topic_matched {
+            return false;
+        }
+    }
+
+    true
+}
+
+// 内部用のログ(PrimitiveLog)を、RPCレスポンス用のログ構造体に変換する
+pub fn format_to_rpc_log(
+    block_number: u64,
+    block_hash: B256,
+    transaction_hash: B256,
+    transaction_index: u64,
+    log_index: u64,
+    log: &PrimitiveLog,
+) -> alloy_rpc_types::Log {
+    alloy_rpc_types::Log {
+        inner: log.clone(),
+        block_hash: Some(block_hash),
+        block_number: Some(block_number),
+        transaction_hash: Some(transaction_hash),
+        transaction_index: Some(transaction_index),
+        log_index: Some(log_index),
+        removed: false,
+        block_timestamp: None,
+    }
 }

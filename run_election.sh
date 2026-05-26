@@ -11,10 +11,13 @@ echo "====================================================="
 RPC_URL="http://127.0.0.1:8545"
 PRIVATE_KEY="0x80c58089c4343be9bd0ae0d2af81c615211d1e354a4c6073c9a1c32840f6274a"
 GAS_ARGS="--legacy --gas-limit 30000000 --gas-price 1"
-
 echo "Step 1: IdentityRegistry のデプロイ..."
+
+# 締め切りブロックを 1000000 に設定してエンコード
+REGISTRY_ARGS=$(cast abi-encode "constructor(uint256)" 1000000 | sed 's/^0x//')
+REGISTRY_BYTECODE=$(cat solidity/out/IdentityRegistry.bin | sed 's/^0x//' | tr -d '\n')
 IDENTITY_ADDR=$(cast send --rpc-url $RPC_URL --private-key $PRIVATE_KEY $GAS_ARGS \
-  --create "0x$(cat solidity/out/IdentityRegistry.bin | sed 's/^0x//')" \
+  --create "0x${REGISTRY_BYTECODE}${REGISTRY_ARGS}" \
   | grep 'contractAddress' | awk '{print $2}')
 echo "✅ IdentityRegistry デプロイ完了: ${IDENTITY_ADDR}"
 
@@ -26,7 +29,7 @@ VK_ADDR=$(cast send --rpc-url $RPC_URL --private-key $PRIVATE_KEY $GAS_ARGS \
 echo "✅ VK_Data デプロイ完了: ${VK_ADDR}"
 
 echo "Step 3: Voting のデプロイ..."
-# VKとIdentityのアドレスを使ってコンストラクタ引数をエンコード
+# 🌟 修正: IDENTITY_ADDR が新しくなっているので Voting のデプロイもそのまま実行
 ARGS=$(cast abi-encode "constructor(address,address)" $VK_ADDR $IDENTITY_ADDR | sed 's/^0x//')
 BYTECODE=$(cat solidity/out/Voting.bin | sed 's/^0x//' | tr -d '\n')
 VOTING_ADDR=$(cast send --rpc-url $RPC_URL --private-key $PRIVATE_KEY $GAS_ARGS \
@@ -45,6 +48,9 @@ cast send $IDENTITY_ADDR "register(bytes,bytes,bytes,bytes32)" \
   0x0d9bd617a15767818914c1f4cd17a015fa6369d9737093583476763b33472b74 \
   --rpc-url $RPC_URL --private-key $PRIVATE_KEY $GAS_ARGS > /dev/null
 echo "✅ 市民登録完了"
+
+# IdentityRegistry から出たログ（イベント）を検索する
+cast logs --address $IDENTITY_ADDR --rpc-url $RPC_URL
 
 echo "登録状態の確認 (isRegistered)..."
 # コミットメント(0x0d9b...)を渡して登録確認

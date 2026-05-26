@@ -5,11 +5,22 @@ contract IdentityRegistry {
     mapping(bytes32 => bool) public isRegistered;
     address constant RSA_PRECOMPILE = address(0x0a);
 
-    // 🌟 追加: Poseidon Merkle Tree の状態変数
+    // Poseidon Merkle Tree の状態変数
     uint256 public constant TREE_DEPTH = 20; // 最大 2^20 人まで登録可能
     bytes32[20] public filledSubtrees;
     uint256 public nextIndex = 0;
     bytes32 public currentRoot;
+
+    // 🌟 追加: 登録の締め切りブロック高
+    uint256 public registrationDeadlineBlock;
+
+    // 🌟 追加: オフチェーンでツリーを復元するためのイベントログ
+    event CitizenRegistered(bytes32 indexed commitment, uint256 index);
+
+    // 🌟 追加: コンストラクタで締め切りブロックを設定
+    constructor(uint256 _deadlineBlock) {
+        registrationDeadlineBlock = _deadlineBlock;
+    }
 
     function register(
         bytes memory modulus,
@@ -17,11 +28,14 @@ contract IdentityRegistry {
         bytes memory signature,
         bytes32  commitment
     ) public {
+        // 🌟 追加: 登録期間が終了していないかチェック (現在のブロック高が期限以下であること)
+        require(block.number <= registrationDeadlineBlock, "Registration period has ended");
+
         // 二重登録の防止
         require(!isRegistered[commitment], "Already registered");
 
         // 1. RSA検証
-	bytes32 hashedMessage = sha256(abi.encodePacked(commitment));
+        bytes32 hashedMessage = sha256(abi.encodePacked(commitment));
         bytes memory payload = abi.encodePacked(
             signature,
             modulus,
@@ -34,11 +48,11 @@ contract IdentityRegistry {
         
         isRegistered[commitment] = true;
 
-        // 🌟 2. 検証成功後、Poseidonツリーへ挿入
+        // 2. 検証成功後、Poseidonツリーへ挿入
         _insertToTree(commitment);
     }
 
-    // 🌟 追加: ツリー更新ロジック
+    // ツリー更新ロジック
     function _insertToTree(bytes32 leaf) internal {
         require(nextIndex < 2**TREE_DEPTH, "Tree is full");
 
@@ -58,6 +72,10 @@ contract IdentityRegistry {
         }
 
         currentRoot = currentNode; // これが ZK 投票の検証に使う「公式Root」になる
+        
+        // 🌟 追加: 挿入された Commitment とそのインデックスをログとして放出
+        emit CitizenRegistered(leaf, nextIndex);
+
         nextIndex += 1;
     }
 

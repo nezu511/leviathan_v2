@@ -2,6 +2,7 @@ use alloy_primitives::{B256, hex};
 use clap::{Parser, Subcommand};
 use rand::rngs::OsRng;
 use rsa::{RsaPrivateKey, pkcs1v15::Pkcs1v15Sign, traits::PublicKeyParts};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::process::Command;
 
@@ -41,8 +42,6 @@ enum Commands {
         root: String,
         #[arg(long, help = "自分が登録されたインデックス番号")]
         index: usize,
-        #[arg(long, help = "全登録者のコミットメント (カンマ区切り)")]
-        all_commitments: String,
     },
 }
 
@@ -83,7 +82,7 @@ fn main() {
 
             println!("✅ 生成完了！以下のコマンドをコピーして窓口に提出（送信）してください:\n");
             println!(
-                "cast send <REGISTRY_ADDRESS> \"register(bytes,bytes,bytes,bytes32)\" \\\n  {} \\\n  {} \\\n  {} \\\n  {} \\\n  --rpc-url http://127.0.0.1:8545 --private-key <YOUR_PK> --legacy\n",
+                "cast send $IDENTITY_ADDR \"register(bytes,bytes,bytes,bytes32)\" \\\n  {} \\\n  {} \\\n  {} \\\n  {} \\\n  --rpc-url $RPC_URL --private-key $PRIVATE_KEY --legacy --gas-limit 3000000 --gas-price 1\n",
                 modulus_hex, exponent_hex, signature_hex, commitment_hex
             );
         }
@@ -93,13 +92,57 @@ fn main() {
             choice,
             root,
             index,
-            all_commitments,
         } => {
+            println!("⚙️  ノードから登録者のコミットメント履歴を取得中...");
+
+            let registry_address = "0x450Dbb94A3F3714fC19cd3DD9638086765C4B092"; // デプロイしたIdentityRegistryのアドレス
+            let topic0 = "0xf6bfbb4373ae6abbfa8727a3af82792e3c7e91b72f5339a35b488357b402354d"; // CitizenRegistered(bytes32,uint256)
+
+            // 1. eth_getLogs の JSON-RPC ペイロードを作成
+            let request_body = json!({
+                "jsonrpc": "2.0",
+                "method": "eth_getLogs",
+                "params": [{
+                    "address": registry_address,
+                    "fromBlock": "0x0",
+                    "toBlock": "latest",
+                    "topics": [topic0]
+                }],
+                "id": 1
+            });
+
+            // 2. Leviathan RPC にリクエスト送信 (同期通信)
+            let client = reqwest::blocking::Client::new();
+            let res = client
+                .post("http://127.0.0.1:8545")
+                .json(&request_body)
+                .send()
+                .expect("RPCサーバーとの通信に失敗しました");
+
+            let json_res: Value = res.json().expect("JSONのパースに失敗しました");
+            let logs = json_res["result"]
+                .as_array()
+                .expect("ログが取得できませんでした");
+
+            // 3. ログからコミットメント (topics[1]) を抽出
+            let mut commitments = Vec::new();
+            for log in logs {
+                // topics[1] には indexed 指定された commitment が入っている
+                if let Some(topic1) = log["topics"][1].as_str() {
+                    commitments.push(topic1.to_string());
+                }
+            }
+
+            println!("✅ {} 人の登録データを取得しました！", commitments.len());
+
+            // JSの引数として渡すためにカンマ区切りの文字列にする
+            let all_commitments_str = commitments.join(",");
+
             println!("⚙️  ゼロ知識証明 (ZK-SNARKs) を生成中...\n");
 
             let root_hex = root.trim_start_matches("0x").to_string();
 
-            // 1. generate_input.js を実行
+            // 4. generate_input.js を実行 (取得したコミットメント履歴を渡す)
             let status = Command::new("node")
                 .current_dir("circom")
                 .arg("generate_input.js")
@@ -108,11 +151,11 @@ fn main() {
                 .arg(secret)
                 .arg(nullifier)
                 .arg(choice)
-                .arg(all_commitments)
+                .arg(&all_commitments_str) // ✨ ここで実データを渡す！
                 .status()
                 .expect("Failed to execute generate_input.js");
-            assert!(status.success(), "generate_input.js failed");
 
+            assert!(status.success(), "generate_input.js failed");
             // 2. snarkjs で proof を生成
             let snark_status = Command::new("snarkjs")
                 .current_dir("circom")
@@ -139,7 +182,7 @@ fn main() {
 
             println!("\n✅ 証明生成完了！以下のコマンドをコピーして投票箱に投函してください:\n");
             println!(
-                "cast send <VOTING_ADDRESS> \"castVote(bytes,bytes32,bytes32,uint256)\" \\\n  {} \\\n  {} \\\n  {} \\\n  {} \\\n  --rpc-url http://127.0.0.1:8545 --private-key <YOUR_PK> --legacy\n",
+                "cast send $VOTING_ADDR \"castVote(bytes,bytes32,bytes32,uint256)\" \\\n  {} \\\n  {} \\\n  {} \\\n  {} \\\n  --rpc-url $RPC_URL --private-key $PRIVATE_KEY --legacy ----gas-limit 3000000 --gas-price 1\n",
                 proof_hex, nullifier_hash_hex, root_hex_formatted, payload.vote_choice
             );
         }

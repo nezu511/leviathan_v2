@@ -61,7 +61,7 @@ impl PI for LeviathanApp {
 
                     let mut mpt_key = Vec::new();
                     i.encode(&mut mpt_key);
-                    //トランザクションををMPTに入れる
+                    //トランザクションをMPTに入れる
                     transaction_trie.insert(&mpt_key, transaction_rlp).unwrap();
                     let tx_hash = keccak256(transaction_rlp);
                     txs.push(tx_hash);

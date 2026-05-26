@@ -2,10 +2,10 @@ use alloy_consensus::transaction::Recovered;
 use alloy_consensus::{
     Block, BlockBody, Header as BlockHeader, Receipt, ReceiptWithBloom, Signed, TxEnvelope,
 };
-use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex};
+use alloy_primitives::{Address, B256, Signature, TxKind, U256, hex, keccak256};
 use alloy_rlp::{Decodable, Encodable, Header};
 use alloy_rpc_types::{
-    Block as RpcBlock, BlockNumberOrTag, BlockTransactions, Header as RpcHeader,
+    Block as RpcBlock, BlockNumberOrTag, BlockTransactions, Filter, Header as RpcHeader,
     Transaction as RPCTransaction, TransactionReceipt, TransactionRequest,
 };
 use bytes::BytesMut;
@@ -23,7 +23,7 @@ use tendermint_rpc::{Client, HttpClient};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
-use crate::utils::get_sender;
+use crate::utils::{format_to_rpc_log, get_sender, is_bloom_match, is_exact_match};
 use leviathan_v2::leviathan::leviathan::LEVIATHAN;
 use leviathan_v2::leviathan::structs::{Transaction, VersionId};
 use leviathan_v2::leviathan::world_state::WorldState;
@@ -75,6 +75,27 @@ pub trait EthApi {
 
     #[method(name = "eth_call")]
     async fn eth_call(
+        &self,
+        request: alloy_rpc_types::TransactionRequest,
+        block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
+    ) -> jsonrpsee::core::RpcResult<String>;
+
+    #[method(name = "eth_getLogs")]
+    async fn get_logs(&self, filter: Filter)
+    -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned>;
+
+    #[method(name = "web3_clientVersion")]
+    async fn client_version(&self) -> jsonrpsee::core::RpcResult<String>;
+
+    #[method(name = "eth_getCode")]
+    async fn get_code(
+        &self,
+        address: Address,
+        block: Option<alloy_rpc_types::BlockNumberOrTag>,
+    ) -> jsonrpsee::core::RpcResult<String>;
+
+    #[method(name = "eth_estimateGas")]
+    async fn estimate_gas(
         &self,
         request: alloy_rpc_types::TransactionRequest,
         block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
@@ -529,6 +550,215 @@ impl EthApiServer for LeviathanRPC {
 
         tracing::info!("[eth_call]終了!!!");
         Ok(return_hex)
+    }
+
+    async fn get_logs(
+        &self,
+        filter: Filter,
+    ) -> Result<Vec<alloy_rpc_types::Log>, ErrorObjectOwned> {
+        let (block_vec, block_num_vec) = {
+            let state = self.state.read().unwrap(); // ロック取得
+            let latest_block_num = state.current_block_number() as u64;
+
+            // 2. 検索開始ブロック (from_block) の決定
+            let from_block = filter.get_from_block().unwrap_or(latest_block_num);
+
+            // 3. 検索終了ブロック (to_block) の決定
+            let to_block = filter.get_to_block().unwrap_or(latest_block_num);
+
+            tracing::info!(
+                "[eth_getLogs] Block {} から {} まで検索します",
+                from_block,
+                to_block
+            );
+
+            let mut block_vec = Vec::new();
+            let mut block_num_vec = Vec::new();
+
+            // ブロックを取得
+            for block_num in from_block..=to_block {
+                if let Some(block) = state.get_full_block_from_index(block_num as i64) {
+                    let bloom = block.header.logs_bloom;
+                    // ログに出力して確認してみる
+                    tracing::debug!("Block {}: Bloom = {:?}", block_num, bloom);
+
+                    if !is_bloom_match(&bloom, &filter) {
+                        tracing::debug!("Block {} は bloom判定でfalse", block_num);
+                        continue;
+                    }
+                    block_vec.push(block);
+                    block_num_vec.push(block_num);
+                } else {
+                    tracing::warn!("Block {} がDBに見つかりませんでした", block_num);
+                }
+            }
+            (block_vec, block_num_vec)
+        };
+
+        let mut result_logs = Vec::new();
+
+        let state = self.state.read().unwrap(); // ロック取得
+        // 該当したブロックをループ
+        for (block, block_num) in block_vec.into_iter().zip(block_num_vec.into_iter()) {
+            // ブロックの中の全トランザクションをループ
+            for (tx_index, tx) in block.body.transactions.iter().enumerate() {
+                let mut tx_rlp = Vec::new();
+                tx.encode(&mut tx_rlp);
+                let tx_hash = keccak256(tx_rlp);
+
+                //レシートを取得
+                let receipt_key = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
+                if let Some(mut receipt_with_bloom_rlp) = state.get_receipt(&receipt_key.as_slice())
+                {
+                    let Ok(receipt_with_bloom) =
+                        ReceiptWithBloom::<Receipt>::decode(&mut receipt_with_bloom_rlp.as_slice())
+                    else {
+                        tracing::warn!("[eth_getLogs] レシートのデコードに失敗");
+                        return Err(ErrorObjectOwned::owned(
+                            -32602,
+                            "無効なパラメータです",
+                            None::<()>,
+                        ));
+                    };
+
+                    //レシートレベルの Bloom チェック
+                    if !is_bloom_match(&receipt_with_bloom.logs_bloom, &filter) {
+                        continue;
+                    }
+
+                    tracing::debug!("TX {} が第3関門を突破", hex::encode(tx_hash));
+
+                    //ログの厳密チェック (Exact Match)
+                    for (log_index, log) in receipt_with_bloom.receipt.logs.iter().enumerate() {
+                        if is_exact_match(log, &filter) {
+                            tracing::info!("ログが完全に一致しました！");
+
+                            // RPCで返すための Log 型に変換する
+                            let rpc_log = format_to_rpc_log(
+                                block_num,
+                                block.header.hash_slow(), // ブロックハッシュ
+                                tx_hash,
+                                tx_index as u64,
+                                log_index as u64,
+                                log,
+                            );
+                            result_logs.push(rpc_log);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(result_logs)
+    }
+
+    async fn client_version(&self) -> jsonrpsee::core::RpcResult<String> {
+        Ok("Leviathan/v0.2.0-rust".to_string())
+    }
+
+    async fn get_code(
+        &self,
+        address: Address,
+        block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
+    ) -> jsonrpsee::core::RpcResult<String> {
+        //blockからstate_rootを取り出す
+        let state = self.state.read().unwrap();
+
+        //ブロックnumberを取得
+        let block_number = match block_number.unwrap_or(BlockNumberOrTag::Latest) {
+            BlockNumberOrTag::Latest | BlockNumberOrTag::Pending => {
+                state.current_block_number() as u64
+            }
+            BlockNumberOrTag::Number(n) => n,
+            BlockNumberOrTag::Earliest => 0,
+            _ => {
+                return Err(ErrorObjectOwned::owned(
+                    -32602,
+                    "Unsupported block tag",
+                    None::<()>,
+                ));
+            }
+        };
+        //Blockの取得
+        let Some(block) = state.get_full_block_from_index(block_number as i64) else {
+            return Err(ErrorObjectOwned::owned(
+                -32603,
+                "Block not found",
+                None::<()>,
+            ));
+        };
+        //state_rootを取得
+        let target_root = block.header.state_root;
+        match state.get_code_state(&address, target_root) {
+            Some(code) => return Ok(format!("0x{}", hex::encode(code))),
+            None => return Ok("0x".to_string()),
+        }
+    }
+
+    async fn estimate_gas(
+        &self,
+        request: alloy_rpc_types::TransactionRequest,
+        block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
+    ) -> jsonrpsee::core::RpcResult<String> {
+        //WorldStaeからRocksDBWrapper,
+        let (db_wrapper, state_root) = {
+            let state = self.state.read().unwrap(); // ロック取得
+
+            let block_number = match block_number.unwrap_or(BlockNumberOrTag::Latest) {
+                BlockNumberOrTag::Latest | BlockNumberOrTag::Pending => {
+                    state.current_block_number() as u64
+                }
+                BlockNumberOrTag::Number(n) => n,
+                BlockNumberOrTag::Earliest => 0,
+                _ => {
+                    return Err(ErrorObjectOwned::owned(
+                        -32602,
+                        "Unsupported block tag",
+                        None::<()>,
+                    ));
+                }
+            };
+            //Blockの取得
+            let Some(block) = state.get_full_block_from_index(block_number as i64) else {
+                return Err(ErrorObjectOwned::owned(
+                    -32603,
+                    "Block not found",
+                    None::<()>,
+                ));
+            };
+
+            (state.data.clone(), block.header.state_root)
+        };
+
+        let mut tmp_state = WorldState::new_for_call(db_wrapper, state_root);
+
+        // TransactionRequestからTransactionを作成
+        let tx = Transaction {
+            t_nonce: request.nonce.unwrap_or(0) as usize,
+            t_price: U256::from(request.gas_price.unwrap_or(0)),
+            t_gas_limit: U256::from(request.gas.unwrap_or(30_000_000)),
+            t_to: request.to.unwrap_or(TxKind::Create),
+            t_value: request.value.unwrap_or(U256::ZERO),
+            data: request.input.into_input().unwrap_or_default(),
+            t_w: U256::ZERO,
+            t_r: U256::ZERO,
+            t_s: U256::ZERO,
+        };
+
+        // BlockHeaderを作成
+        let mut header = BlockHeader::default();
+
+        // Transaction実行構造体LEVIATHANを作成
+        let mut tmp_leviathan = LEVIATHAN::new(self.version);
+        //LEVIATHAN構造体をeth_callモードに!!
+        tmp_leviathan.eth_call = Some(request.from.unwrap_or_default());
+
+        let result = tmp_leviathan.execution(&mut tmp_state, tx, &header);
+
+        match result {
+            Ok((used_gas, _)) => return Ok(format!("0x{:x}", used_gas)),
+            Err((used_gas, _)) => return Ok(format!("0x{:x}", used_gas)),
+        }
     }
 }
 
