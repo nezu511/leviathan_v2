@@ -82,7 +82,7 @@ fn main() {
 
             println!("✅ 生成完了！以下のコマンドをコピーして窓口に提出（送信）してください:\n");
             println!(
-                "cast send <REGISTRY_ADDRESS> \"register(bytes,bytes,bytes,bytes32)\" \\\n  {} \\\n  {} \\\n  {} \\\n  {} \\\n  --rpc-url http://127.0.0.1:8545 --private-key <YOUR_PK> --legacy\n",
+                "cast send $IDENTITY_ADDR \"register(bytes,bytes,bytes,bytes32)\" \\\n  {} \\\n  {} \\\n  {} \\\n  {} \\\n  --rpc-url $RPC_URL --private-key $PRIVATE_KEY --legacy\n",
                 modulus_hex, exponent_hex, signature_hex, commitment_hex
             );
         }
@@ -182,7 +182,7 @@ fn main() {
 
             println!("\n✅ 証明生成完了！以下のコマンドをコピーして投票箱に投函してください:\n");
             println!(
-                "cast send <VOTING_ADDRESS> \"castVote(bytes,bytes32,bytes32,uint256)\" \\\n  {} \\\n  {} \\\n  {} \\\n  {} \\\n  --rpc-url http://127.0.0.1:8545 --private-key <YOUR_PK> --legacy\n",
+                "cast send $VOTING_ADDR \"castVote(bytes,bytes32,bytes32,uint256)\" \\\n  {} \\\n  {} \\\n  {} \\\n  {} \\\n  --rpc-url $RPC_URL --private-key $PRIVATE_KEY --legacy\n",
                 proof_hex, nullifier_hash_hex, root_hex_formatted, payload.vote_choice
             );
         }
