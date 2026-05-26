@@ -96,7 +96,7 @@ fn main() {
             println!("⚙️  ノードから登録者のコミットメント履歴を取得中...");
 
             let registry_address = "0x450Dbb94A3F3714fC19cd3DD9638086765C4B092"; // デプロイしたIdentityRegistryのアドレス
-            let topic0 = "0x40bc97edde35ef454cbfb7b252df6e537ba51c143ee6273467651a9bf19d690a"; // CitizenRegistered(bytes32,uint256)
+            let topic0 = "0xf6bfbb4373ae6abbfa8727a3af82792e3c7e91b72f5339a35b488357b402354d"; // CitizenRegistered(bytes32,uint256)
 
             // 1. eth_getLogs の JSON-RPC ペイロードを作成
             let request_body = json!({

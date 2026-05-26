@@ -608,7 +608,8 @@ impl EthApiServer for LeviathanRPC {
                 let tx_hash = keccak256(tx_rlp);
 
                 //レシートを取得
-                if let Some(mut receipt_with_bloom_rlp) = state.get_receipt(&tx_hash.as_slice()) {
+                let receipt_key = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
+                if let Some(mut receipt_with_bloom_rlp) = state.get_receipt(&receipt_key.as_slice()) {
                     let Ok(receipt_with_bloom) =
                         ReceiptWithBloom::<Receipt>::decode(&mut receipt_with_bloom_rlp.as_slice())
                     else {
