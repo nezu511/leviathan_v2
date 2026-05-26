@@ -99,8 +99,7 @@ pub trait EthApi {
         &self,
         request: alloy_rpc_types::TransactionRequest,
         block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
-        ) -> jsonrpsee::core::RpcResult<String>;
-
+    ) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -609,7 +608,8 @@ impl EthApiServer for LeviathanRPC {
 
                 //レシートを取得
                 let receipt_key = [b"receipt:".as_slice(), tx_hash.as_slice()].concat();
-                if let Some(mut receipt_with_bloom_rlp) = state.get_receipt(&receipt_key.as_slice()) {
+                if let Some(mut receipt_with_bloom_rlp) = state.get_receipt(&receipt_key.as_slice())
+                {
                     let Ok(receipt_with_bloom) =
                         ReceiptWithBloom::<Receipt>::decode(&mut receipt_with_bloom_rlp.as_slice())
                     else {
@@ -699,7 +699,7 @@ impl EthApiServer for LeviathanRPC {
         &self,
         request: alloy_rpc_types::TransactionRequest,
         block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
-        ) -> jsonrpsee::core::RpcResult<String> {
+    ) -> jsonrpsee::core::RpcResult<String> {
         //WorldStaeからRocksDBWrapper,
         let (db_wrapper, state_root) = {
             let state = self.state.read().unwrap(); // ロック取得
