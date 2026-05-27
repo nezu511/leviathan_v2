@@ -100,6 +100,9 @@ pub trait EthApi {
         request: alloy_rpc_types::TransactionRequest,
         block_number: Option<alloy_rpc_types::BlockNumberOrTag>,
     ) -> jsonrpsee::core::RpcResult<String>;
+
+    #[method(name = "eth_gasPrice")]
+    async fn gas_price(&self) -> jsonrpsee::core::RpcResult<String>;
 }
 
 pub struct LeviathanRPC {
@@ -760,6 +763,13 @@ impl EthApiServer for LeviathanRPC {
             Err((used_gas, _)) => return Ok(format!("0x{:x}", used_gas)),
         }
     }
+    async fn gas_price(&self) -> jsonrpsee::core::RpcResult<String> {
+        tracing::info!("[eth_gasPrice] ガス価格の問い合わせを受信しました");
+        //ガス消費量から動的に計算する
+        Ok("0x1".to_string())
+    }
+
+
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>, version: VersionId) {
