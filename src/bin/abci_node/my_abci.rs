@@ -9,6 +9,7 @@ use tendermint_abci::Application;
 use tendermint_proto::abci::{
     RequestCheckTx, RequestFinalizeBlock, RequestInfo, RequestInitChain, ResponseCheckTx,
     ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain,
+    RequestPrepareProposal, ResponsePrepareProposal
 };
 use tracing::info;
 
@@ -168,4 +169,18 @@ impl Application for LeviathanApp {
             ..Default::default()
         }
     }
+
+    fn prepare_proposal(&self, req: RequestPrepareProposal) -> ResponsePrepareProposal {
+        tracing::info!(
+            "[PREPARE_PROPOSAL] ブロック提案の準備を開始します。候補TX数: {}, 最大許容サイズ: {} bytes",
+            req.txs.len(),
+            req.max_tx_bytes
+            );
+
+        // ※トランザクションの選別や並び替えのロジックを組み込む
+        ResponsePrepareProposal {
+            txs: req.txs,
+        }
+}
+
 }
