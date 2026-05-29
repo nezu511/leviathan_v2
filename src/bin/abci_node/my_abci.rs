@@ -7,9 +7,9 @@ use std::sync::Arc;
 use std::sync::{Mutex, RwLock};
 use tendermint_abci::Application;
 use tendermint_proto::abci::{
-    RequestCheckTx, RequestFinalizeBlock, RequestInfo, RequestInitChain, ResponseCheckTx,
-    ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain,
-    RequestPrepareProposal, ResponsePrepareProposal
+    RequestCheckTx, RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestPrepareProposal,
+    ResponseCheckTx, ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain,
+    ResponsePrepareProposal,
 };
 use tracing::info;
 
@@ -175,12 +175,9 @@ impl Application for LeviathanApp {
             "[PREPARE_PROPOSAL] ブロック提案の準備を開始します。候補TX数: {}, 最大許容サイズ: {} bytes",
             req.txs.len(),
             req.max_tx_bytes
-            );
+        );
 
         // ※トランザクションの選別や並び替えのロジックを組み込む
-        ResponsePrepareProposal {
-            txs: req.txs,
-        }
-}
-
+        ResponsePrepareProposal { txs: req.txs }
+    }
 }

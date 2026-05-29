@@ -768,8 +768,6 @@ impl EthApiServer for LeviathanRPC {
         //ガス消費量から動的に計算する
         Ok("0x1".to_string())
     }
-
-
 }
 
 pub async fn run_rpc_server(state: Arc<RwLock<WorldState>>, version: VersionId) {
