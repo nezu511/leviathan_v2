@@ -23,18 +23,6 @@ pub enum VersionId {
     Latest,
 }
 
-#[derive(Debug, Clone, RlpDecodable, RlpEncodable)]
-pub struct Transaction {
-    pub t_nonce: usize,
-    pub t_price: U256,
-    pub t_gas_limit: U256,
-    pub t_to: TxKind,
-    pub t_value: U256,
-    pub data: Bytes,
-    pub t_w: U256,
-    pub t_r: U256,
-    pub t_s: U256,
-}
 
 #[derive(Debug, Clone)]
 pub struct BackupSubstate {
@@ -182,4 +170,37 @@ impl<'a> ExecutionEnvironment<'a> {
             i_permission,
         }
     }
+}
+
+
+
+#[derive(Debug, Clone, RlpDecodable, RlpEncodable)]
+pub struct Transaction {
+    pub t_nonce: usize,
+    pub t_price: U256,
+    pub t_gas_limit: U256,
+    pub t_to: TxKind,
+    pub t_value: U256,
+    pub data: Bytes,
+    pub t_w: U256,
+    pub t_r: U256,
+    pub t_s: U256,
+}
+
+
+#[derive(Debug, Clone, RlpDecodable, RlpEncodable)]
+pub struct BlsTransaction {
+    pub t_nonce: usize,
+    pub t_price: U256,
+    pub t_gas_limit: U256,
+    pub t_to: TxKind,
+    pub t_value: U256,
+    pub data: Bytes,
+    pub bls_signature: Bytes, // 48バイト or 96バイトの単一署名
+}
+
+#[derive(Debug, Clone)]
+pub enum TransactionEnvelope {
+    Legacy(LegacyTransaction),
+    Bls(BlsTransaction),
 }
