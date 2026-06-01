@@ -541,6 +541,28 @@ cast send 0x0000000000000000000000000000000000001337   --value 1ether   --privat
 RPCサーバーがトランザクションを受け取り、CometBFTのネットワークへブロードキャストし、次のブロックでEVMによって実行・永続化されます。
 
 ---
+## Run Multi-User Election Simulation (Shell Script)
+
+Leviathan上に「無人の市役所」を構築し、RSA署名による市民登録からZK-SNARKsを用いた4人同時の完全匿名投票までを全自動でシミュレートする本番環境想定のE2Eテストスクリプトです。
+
+ノード（Leviathan）とコンセンサスエンジン（CometBFT）が稼働している状態（Terminal 1 & 2）で、新しいターミナルを開いて実行します。
+
+**Terminal 3: Run the Election Script**
+```bash
+# スクリプトに実行権限を付与
+chmod +x run_election.sh
+
+# シミュレーションの実行
+./run_election.sh
+```
+
+このスクリプトでは、以下の高度な暗号プロトコルとEVMの機能が自動実行されます：
+
+1. Contract Deployment: 市役所 (IdentityRegistry) と投票箱 (Voting), ZK検証キーコントラクトの自動デプロイ
+2. Citizen Registration: voter_cli を用いた4人の市民のマイナンバー（コミットメント）とRSA署名の生成、およびオンチェーンでの認証・登録
+3. ZK-Proof Generation: ノードのRPC (eth_getLogs) から最新のイベントログを抽出し、クライアントサイドで動的にMerkle Treeを復元して Groth16 の証明（ZKP）を生成
+4. Anonymous Voting & Tally: 誰が投票したかを完全に隠蔽した状態でのトランザクション実行と、自動開票による結果の検証（アサーション）
+
 
 ## Testing
 
