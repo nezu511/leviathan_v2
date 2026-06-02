@@ -5,7 +5,7 @@ use alloy_rlp::{Decodable, Encodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
 use std::sync::Arc;
 
-use leviathan_v2::leviathan::structs::Transaction;
+use leviathan_v2::leviathan::structs::{Transaction, TransactionEnvelope};
 use leviathan_v2::my_trait::leviathan_trait::TransactionExecution;
 use tendermint_proto::abci::{Event, EventAttribute, ExecTxResult, RequestFinalizeBlock};
 
@@ -41,7 +41,7 @@ impl PI for LeviathanApp {
         let mut tx_results = Vec::new();
         let mut cumulative_gas: u64 = 0;
         let mut block_bloom = Bloom::default();
-        let mut decoded_txs: Vec<Transaction> = Vec::new();
+        let mut decoded_txs: Vec<TransactionEnvelope> = Vec::new();
         let mut txs = Vec::new();
 
         //トランザクション・レシートのルートハッシュ算出用のMPTを準備
@@ -55,7 +55,7 @@ impl PI for LeviathanApp {
             let mut raw_tx_slice = tx.as_ref();
             let transaction_rlp = raw_tx_slice;
 
-            match Transaction::decode(&mut raw_tx_slice) {
+            match TransactionEnvelope::decode(&mut raw_tx_slice) {
                 Ok(transaction) => {
                     decoded_txs.push(transaction.clone());
 
