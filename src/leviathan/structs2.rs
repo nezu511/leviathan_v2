@@ -1,6 +1,5 @@
-use crate::leviathan::structs::{Transaction, BlsTransaction};
+use crate::leviathan::structs::{BlsTransaction, Transaction};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
-
 
 #[derive(Debug, Clone)]
 pub enum TransactionEnvelope {
@@ -10,7 +9,10 @@ pub enum TransactionEnvelope {
 
 impl alloy_rlp::Decodable for TransactionEnvelope {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let first_byte = buf.first().copied().ok_or(alloy_rlp::Error::InputTooShort)?;
+        let first_byte = buf
+            .first()
+            .copied()
+            .ok_or(alloy_rlp::Error::InputTooShort)?;
 
         if first_byte >= 0xc0 {
             // 先頭がリスト開始バイトなら、従来のEthereum互換トランザクション
@@ -34,4 +36,74 @@ impl alloy_rlp::Decodable for TransactionEnvelope {
 
 impl TransactionEnvelope {
     fn get_nonce(&self) -> usize {
-        
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (transaction.t_nonce),
+            TransactionEnvelope::Bls(transaction) => return(transaction.t_nonce),
+        }
+    }
+
+    fn get_price(&self) -> U256 {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (transaction.t_price),
+            TransactionEnvelope::Bls(transaction) => return(transaction.t_price),
+        }
+    }
+
+    fn get_gas_limit(&self) -> U256 {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (transaction.t_gas_limit),
+            TransactionEnvelope::Bls(transaction) => return(transaction.t_gas_limit),
+        }
+    }
+
+    fn get_t_to(&self) -> TxKind {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (transaction.t_to),
+            TransactionEnvelope::Bls(transaction) => return(transaction.t_to),
+        }
+    }
+
+    fn get_value(&self) -> U256 {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (transaction.t_value),
+            TransactionEnvelope::Bls(transaction) => return(transaction.t_value),
+        }
+    }
+
+    fn get_data(&self) -> Bytes {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (transaction.data),
+            TransactionEnvelope::Bls(transaction) => return(transaction.data),
+        }
+    }
+
+    fn get_t_w(&self) -> Option<U256> {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (Some(transaction.t_w)),
+            TransactionEnvelope::Bls(transaction) => return(None),
+        }
+    }
+
+    fn get_t_r(&self) -> Option<U256> {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (Some(transaction.t_r)),
+            TransactionEnvelope::Bls(transaction) => return(None),
+        }
+    }
+
+    fn get_t_s(&self) -> Option<U256> {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (Some(transaction.t_s)),
+            TransactionEnvelope::Bls(transaction) => return(None),
+        }
+    }
+
+    fn get_bls_signature(&self) -> Option<Bytes> {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => return (None),
+            TransactionEnvelope::Bls(transaction) => return(Some(transaction.bls_signature)),
+        }
+    }
+
+
+}
