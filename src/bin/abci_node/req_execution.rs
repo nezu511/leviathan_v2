@@ -5,7 +5,8 @@ use alloy_rlp::{Decodable, Encodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
 use std::sync::Arc;
 
-use leviathan_v2::leviathan::structs::{Transaction, TransactionEnvelope};
+use leviathan_v2::leviathan::structs::{Transaction};
+use leviathan_v2::leviathan::structs2::{TransactionEnvelope};
 use leviathan_v2::my_trait::leviathan_trait::TransactionExecution;
 use tendermint_proto::abci::{Event, EventAttribute, ExecTxResult, RequestFinalizeBlock};
 
@@ -68,13 +69,13 @@ impl PI for LeviathanApp {
 
                     tracing::info!(
                         "[CHECK_TX] デコード成功: Nonce={}, GasLimit={}",
-                        transaction.t_nonce,
-                        transaction.t_gas_limit
+                        transaction.get_nonce(),
+                        transaction.get_gas_limit()
                     );
 
                     //実行
                     let gas_wanted =
-                        u64::try_from(transaction.t_gas_limit).unwrap_or(u64::MAX) as i64;
+                        u64::try_from(transaction.get_gas_limit()).unwrap_or(u64::MAX) as i64;
                     let result = leviathan.execution(&mut state, transaction, &block_header);
                     match result {
                         Ok((final_bill_gas, logs)) => {

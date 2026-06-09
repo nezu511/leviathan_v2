@@ -1,5 +1,6 @@
 use crate::leviathan::structs::{BlsTransaction, Transaction};
 use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
+use alloy_primitives::{B256, Bytes, TxKind, U256};
 
 #[derive(Debug, Clone)]
 pub enum TransactionEnvelope {
@@ -35,73 +36,73 @@ impl alloy_rlp::Decodable for TransactionEnvelope {
 }
 
 impl TransactionEnvelope {
-    fn get_nonce(&self) -> usize {
+    pub fn get_nonce(&self) -> usize {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (transaction.t_nonce),
-            TransactionEnvelope::Bls(transaction) => return(transaction.t_nonce),
+            TransactionEnvelope::Legacy(transaction) => return transaction.t_nonce,
+            TransactionEnvelope::Bls(transaction) => return transaction.t_nonce,
         }
     }
 
-    fn get_price(&self) -> U256 {
+    pub fn get_price(&self) -> U256 {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (transaction.t_price),
-            TransactionEnvelope::Bls(transaction) => return(transaction.t_price),
+            TransactionEnvelope::Legacy(transaction) => return transaction.t_price,
+            TransactionEnvelope::Bls(transaction) => return transaction.t_price,
         }
     }
 
-    fn get_gas_limit(&self) -> U256 {
+    pub fn get_gas_limit(&self) -> U256 {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (transaction.t_gas_limit),
-            TransactionEnvelope::Bls(transaction) => return(transaction.t_gas_limit),
+            TransactionEnvelope::Legacy(transaction) => return transaction.t_gas_limit,
+            TransactionEnvelope::Bls(transaction) => return transaction.t_gas_limit,
         }
     }
 
-    fn get_t_to(&self) -> TxKind {
+    pub fn get_t_to(&self) -> TxKind {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (transaction.t_to),
-            TransactionEnvelope::Bls(transaction) => return(transaction.t_to),
+            TransactionEnvelope::Legacy(transaction) => return transaction.t_to,
+            TransactionEnvelope::Bls(transaction) => return transaction.t_to,
         }
     }
 
-    fn get_value(&self) -> U256 {
+    pub fn get_value(&self) -> U256 {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (transaction.t_value),
-            TransactionEnvelope::Bls(transaction) => return(transaction.t_value),
+            TransactionEnvelope::Legacy(transaction) => return transaction.t_value,
+            TransactionEnvelope::Bls(transaction) => return transaction.t_value,
         }
     }
 
-    fn get_data(&self) -> Bytes {
+    pub fn get_data(&self) -> Bytes {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (transaction.data),
-            TransactionEnvelope::Bls(transaction) => return(transaction.data),
+            TransactionEnvelope::Legacy(transaction) => return transaction.data.clone(),
+            TransactionEnvelope::Bls(transaction) => return transaction.data.clone(),
         }
     }
 
-    fn get_t_w(&self) -> Option<U256> {
+    pub fn get_t_w(&self) -> Option<U256> {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (Some(transaction.t_w)),
-            TransactionEnvelope::Bls(transaction) => return(None),
+            TransactionEnvelope::Legacy(transaction) => return Some(transaction.t_w),
+            TransactionEnvelope::Bls(transaction) => return None,
         }
     }
 
-    fn get_t_r(&self) -> Option<U256> {
+    pub fn get_t_r(&self) -> Option<U256> {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (Some(transaction.t_r)),
-            TransactionEnvelope::Bls(transaction) => return(None),
+            TransactionEnvelope::Legacy(transaction) => return Some(transaction.t_r),
+            TransactionEnvelope::Bls(transaction) => return None,
         }
     }
 
-    fn get_t_s(&self) -> Option<U256> {
+    pub fn get_t_s(&self) -> Option<U256> {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (Some(transaction.t_s)),
-            TransactionEnvelope::Bls(transaction) => return(None),
+            TransactionEnvelope::Legacy(transaction) => return Some(transaction.t_s),
+            TransactionEnvelope::Bls(transaction) => return None,
         }
     }
 
-    fn get_bls_signature(&self) -> Option<Bytes> {
+    pub fn get_bls_signature(&self) -> Option<Bytes> {
         match self {
-            TransactionEnvelope::Legacy(transaction) => return (None),
-            TransactionEnvelope::Bls(transaction) => return(Some(transaction.bls_signature)),
+            TransactionEnvelope::Legacy(transaction) => return None,
+            TransactionEnvelope::Bls(transaction) => return Some(transaction.bls_signature.clone()),
         }
     }
 

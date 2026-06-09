@@ -7,5 +7,6 @@ pub mod my_precompiled;
 pub mod precompile;
 pub mod roleback;
 pub mod structs;
+pub mod structs2;
 pub mod transaction_check;
 pub mod world_state;
