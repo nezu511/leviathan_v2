@@ -1,5 +1,6 @@
 use crate::leviathan::structs::{BlsTransaction, Transaction};
-use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
+use alloy_consensus::transaction;
+use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable, BufMut};
 use alloy_primitives::{B256, Bytes, TxKind, U256};
 
 #[derive(Debug, Clone)]
@@ -32,6 +33,22 @@ impl alloy_rlp::Decodable for TransactionEnvelope {
                 _ => Err(alloy_rlp::Error::Custom("Unknown transaction type")),
             }
         }
+    }
+}
+
+impl alloy_rlp::Encodable for TransactionEnvelope {
+    fn encode(&self, buf: &mut dyn BufMut) {
+        match self {
+            TransactionEnvelope::Legacy(transaction) => {
+                transaction.encode(buf);
+            },
+
+            TransactionEnvelope::Bls(transaction) => {
+                transaction.encode(buf);
+
+            }
+        }
+
     }
 }
 
