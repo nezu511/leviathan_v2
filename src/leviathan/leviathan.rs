@@ -2,6 +2,7 @@
 
 use crate::leviathan::roleback::Action;
 use crate::leviathan::structs::{BackupSubstate, SubState, Transaction, VersionId};
+use crate::leviathan::structs2::TransactionEnvelope;
 use crate::leviathan::world_state::{Account, MptAccount, WorldState};
 use crate::my_trait::leviathan_trait::{
     ContractCreation, MessageCall, State, TransactionChecks, TransactionExecution,
@@ -40,7 +41,7 @@ impl TransactionExecution for LEVIATHAN {
     fn execution(
         &mut self,
         state: &mut WorldState,
-        transaction: Transaction,
+        transaction: TransactionEnvelope,
         block_header: &BlockHeader,
     ) -> Result<(U256, Vec<Log>), (U256, Vec<Log>)> {
         tracing::info!("version: {:?}", self.version);
@@ -50,12 +51,13 @@ impl TransactionExecution for LEVIATHAN {
         let base_gas = U256::from(21000); //基本料金
         let mut data_gas = U256::ZERO;
         let mut index = 0;
+        let transaction_data = transaction.get_data();
 
         //データに関するガス
         if self.version < VersionId::Istanbul {
             //Istanbul以前
-            while index < transaction.data.len() {
-                if transaction.data[index] == 0 {
+            while index < transaction_data.len() {
+                if transaction_data[index] == 0 {
                     data_gas = data_gas.saturating_add(U256::from(4));
                 } else {
                     data_gas = data_gas.saturating_add(U256::from(68));
@@ -63,8 +65,8 @@ impl TransactionExecution for LEVIATHAN {
                 index += 1;
             }
         } else {
-            while index < transaction.data.len() {
-                if transaction.data[index] == 0 {
+            while index < transaction_data.len() {
+                if transaction_data[index] == 0 {
                     data_gas = data_gas.saturating_add(U256::from(4));
                 } else {
                     data_gas = data_gas.saturating_add(U256::from(16));
@@ -74,7 +76,7 @@ impl TransactionExecution for LEVIATHAN {
         }
 
         let mut contract_gas = U256::ZERO;
-        if let TxKind::Create = transaction.t_to {
+        if let TxKind::Create = transaction.get_t_to() {
             //コントラクト作成追加費
             if self.version >= VersionId::Homestead {
                 //Homestead以降
@@ -83,7 +85,7 @@ impl TransactionExecution for LEVIATHAN {
                 if self.version >= VersionId::Shanghai {
                     //Shanghai以降
                     //Initcodeのサイズに対する従量課金
-                    let words = U256::from(transaction.data.len()).saturating_add(U256::from(31))
+                    let words = U256::from(transaction_data.len()).saturating_add(U256::from(31))
                         / U256::from(32);
                     let word_gas = words.saturating_mul(U256::from(2));
                     contract_gas = contract_gas.saturating_add(word_gas);
@@ -93,7 +95,7 @@ impl TransactionExecution for LEVIATHAN {
         let all_gas = base_gas + data_gas + contract_gas;
         //【事前支払いコスト】
         let max_cost =
-            transaction.t_gas_limit.saturating_mul(transaction.t_price) + transaction.t_value;
+            transaction.get_gas_limit().saturating_mul(transaction.get_price()) + transaction.get_value();
 
         //【トランザクションの事前検証】
         let (sender_address, mut gas, mut substate) = if self.eth_call.is_some() {
@@ -104,7 +106,7 @@ impl TransactionExecution for LEVIATHAN {
             //a_touchにトランザクションの基本要素（送信者，ブロックの受取人）を追加
             substate.a_touch.push(sender_address);
             substate.a_touch.push(block_header.beneficiary);
-            (sender_address, transaction.t_gas_limit, substate)
+            (sender_address, transaction.get_gas_limit(), substate)
         } else {
             //【通常】
             let sender_address = match self.transaction_checks(
