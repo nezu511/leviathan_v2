@@ -2,6 +2,7 @@
 
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::{Transaction, VersionId};
+use crate::leviathan::structs2::TransactionEnvelope;
 use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionChecks};
 use alloy_consensus::Header as BlockHeader;
@@ -18,7 +19,7 @@ impl TransactionChecks for LEVIATHAN {
     fn transaction_checks(
         &self,
         state: &mut WorldState,
-        transaction: &Transaction,
+        transaction: &TransactionEnvelope,
         inti_gas: &U256,
         pre_cost: &U256,
         block_header: &BlockHeader,
