@@ -94,8 +94,10 @@ impl TransactionExecution for LEVIATHAN {
         }
         let all_gas = base_gas + data_gas + contract_gas;
         //【事前支払いコスト】
-        let max_cost =
-            transaction.get_gas_limit().saturating_mul(transaction.get_price()) + transaction.get_value();
+        let max_cost = transaction
+            .get_gas_limit()
+            .saturating_mul(transaction.get_price())
+            + transaction.get_value();
 
         //【トランザクションの事前検証】
         let (sender_address, mut gas, mut substate) = if self.eth_call.is_some() {
@@ -131,8 +133,8 @@ impl TransactionExecution for LEVIATHAN {
             //【前払いガス代の徴収】
             let gas = state.buy_gas(
                 &sender_address,
-                transaction.t_gas_limit,
-                transaction.t_price,
+                transaction.get_gas_limit(),
+                transaction.get_price(),
             );
             //ここからロールバックの起点:ロールバックが起きたらこの状態にする
             let mut substate = SubState::new();
@@ -148,15 +150,15 @@ impl TransactionExecution for LEVIATHAN {
         gas = gas.saturating_sub(all_gas);
 
         //=======ステップ3===========
-        let result = match transaction.t_to {
+        let result = match transaction.get_t_to() {
             TxKind::Create => {
                 //デバック出力
                 tracing::info!(
                 sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
-                data = %hex::encode(&transaction.data),
+                data = %hex::encode(&transaction.get_data()),
                 gas = %gas,
-                gas_price = %transaction.t_price,
-                send_eth = %transaction.t_value,
+                gas_price = %transaction.get_price(),
+                send_eth = %&transaction.get_value(),
                 "Transaction [CREATE]"
                 );
                 self.contract_creation(
@@ -165,9 +167,9 @@ impl TransactionExecution for LEVIATHAN {
                     sender_address,
                     sender_address,
                     gas,
-                    transaction.t_price,
-                    transaction.t_value,
-                    transaction.data.to_vec(),
+                    transaction.get_price(),
+                    transaction.get_value(),
+                    transaction.get_data().to_vec(),
                     0,
                     None,
                     true,
@@ -182,10 +184,10 @@ impl TransactionExecution for LEVIATHAN {
                 tracing::info!(
                 sender_address =  format_args!("0x{}", hex::encode(sender_address.0)),
                 to_address =  format_args!("0x{}", hex::encode(to_address.0)),
-                data = %hex::encode(&transaction.data),
+                data = %hex::encode(&transaction.get_data()),
                 gas = %gas,
-                gas_price = %transaction.t_price,
-                send_eth = %transaction.t_value,
+                gas_price = %transaction.get_price(),
+                send_eth = %&transaction.get_value(),
                 "Transaction [CALL]"
                 );
                 self.message_call(
@@ -196,10 +198,10 @@ impl TransactionExecution for LEVIATHAN {
                     to_address,
                     to_address,
                     gas,
-                    transaction.t_price,
-                    transaction.t_value,
-                    transaction.t_value,
-                    transaction.data.to_vec(),
+                    transaction.get_price(),
+                    transaction.get_value(),
+                    transaction.get_value(),
+                    transaction.get_data().to_vec(),
                     0,
                     true,
                     block_header,
@@ -211,7 +213,7 @@ impl TransactionExecution for LEVIATHAN {
             return match result {
                 Ok((gas, return_data, _)) => {
                     self.return_data = return_data;
-                    let used_gas = transaction.t_gas_limit.saturating_sub(gas);
+                    let used_gas = transaction.get_gas_limit().saturating_sub(gas);
                     Ok((used_gas, substate.a_log.clone()))
                 }
                 Err((gas, return_data, _)) => {
@@ -219,7 +221,7 @@ impl TransactionExecution for LEVIATHAN {
                         Some(return_data) => self.return_data = return_data,
                         None => self.return_data = Vec::<u8>::new(),
                     }
-                    let used_gas = transaction.t_gas_limit.saturating_sub(gas);
+                    let used_gas = transaction.get_gas_limit().saturating_sub(gas);
                     Err((used_gas, Vec::new()))
                 }
             };
@@ -230,7 +232,7 @@ impl TransactionExecution for LEVIATHAN {
             Ok((gas, return_data, _)) => {
                 //leviathanのreturn_dataを更新
                 self.return_data = return_data;
-                let used_gas = transaction.t_gas_limit.saturating_sub(gas);
+                let used_gas = transaction.get_gas_limit().saturating_sub(gas);
                 let max_refund = if self.version < VersionId::London {
                     //返金の上限がフォークで異なる
                     used_gas / U256::from(2)
@@ -241,7 +243,7 @@ impl TransactionExecution for LEVIATHAN {
                 let reimburse = std::cmp::min(max_refund, reimburse_u256);
                 let return_gas = gas.saturating_add(reimburse);
                 //送信者への返金
-                let reimburse = return_gas.saturating_mul(transaction.t_price);
+                let reimburse = return_gas.saturating_mul(transaction.get_price());
                 if state.is_dead(self.version, &sender_address) {
                     //add_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
@@ -250,13 +252,13 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.add_balance(&sender_address, reimburse);
                 //マイナーへの支払い
-                let final_billed_gas = transaction.t_gas_limit.saturating_sub(return_gas);
+                let final_billed_gas = transaction.get_gas_limit().saturating_sub(return_gas);
                 let f = if self.version < VersionId::London {
-                    transaction.t_price
+                    transaction.get_price()
                 } else {
                     match block_header.base_fee_per_gas {
-                        Some(basefee) => transaction.t_price - U256::from(basefee),
-                        None => transaction.t_price,
+                        Some(basefee) => transaction.get_price() - U256::from(basefee),
+                        None => transaction.get_price(),
                     }
                 };
                 let reward = final_billed_gas.saturating_mul(f);
@@ -393,7 +395,7 @@ impl TransactionExecution for LEVIATHAN {
                     None => self.return_data = Vec::<u8>::new(),
                 }
                 //送信者への返金
-                let reimburse = gas.saturating_mul(transaction.t_price);
+                let reimburse = gas.saturating_mul(transaction.get_price());
                 if state.is_dead(self.version, &sender_address) {
                     //add_balance前の確認
                     if !state.is_physically_exist(&sender_address) {
@@ -402,13 +404,13 @@ impl TransactionExecution for LEVIATHAN {
                 }
                 state.add_balance(&sender_address, reimburse);
                 //マイナーへの支払い
-                let final_billed_gas = transaction.t_gas_limit.saturating_sub(gas);
+                let final_billed_gas = transaction.get_gas_limit().saturating_sub(gas);
                 let f = if self.version < VersionId::London {
-                    transaction.t_price
+                    transaction.get_price()
                 } else {
                     match block_header.base_fee_per_gas {
-                        Some(basefee) => transaction.t_price - U256::from(basefee),
-                        None => transaction.t_price,
+                        Some(basefee) => transaction.get_price() - U256::from(basefee),
+                        None => transaction.get_price(),
                     }
                 };
                 let reward = final_billed_gas.saturating_mul(f);
