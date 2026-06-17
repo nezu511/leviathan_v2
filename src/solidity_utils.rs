@@ -1,5 +1,6 @@
 use crate::leviathan::leviathan::LEVIATHAN;
 use crate::leviathan::structs::Transaction;
+use crate::leviathan::structs2::TransactionEnvelope;
 use crate::leviathan::world_state::WorldState;
 use crate::my_trait::leviathan_trait::{State, TransactionExecution};
 
@@ -127,7 +128,7 @@ pub fn deploy_contract(
     };
 
     //実行
-    let Ok((gas, _log_list)) = leviathan.execution(state, transaction, &block) else {
+    let Ok((gas, _log_list)) = leviathan.execution(state, TransactionEnvelope::Legacy(transaction), &block) else {
         println!(" Contract Creation Failed. ");
         return Err(());
     };
@@ -215,7 +216,7 @@ pub fn call_contract(
     };
 
     // 4. 実行
-    match leviathan.execution(state, transaction, &block) {
+    match leviathan.execution(state, TransactionEnvelope::Legacy(transaction), &block) {
         Ok((remaining_gas, output)) => {
             println!(" Call Success! Remaining Gas: {}", remaining_gas);
             Ok(output) // コントラクトからの戻り値を返す
@@ -277,7 +278,7 @@ pub fn deploy_contract_raw(
 
     // 4. Leviathan で実行
     //実行
-    let Ok((gas, _log_list)) = leviathan.execution(state, transaction, &block) else {
+    let Ok((gas, _log_list)) = leviathan.execution(state, TransactionEnvelope::Legacy(transaction), &block) else {
         println!(" Contract Creation Failed. ");
         return Err(());
     };
