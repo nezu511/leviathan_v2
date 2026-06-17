@@ -25,132 +25,140 @@ impl TransactionChecks for LEVIATHAN {
         block_header: &BlockHeader,
     ) -> Result<Address, &'static str> {
         //vの値からリカバリIDとChain IDを抽出
-        let t_w_u64: u64 = transaction
-            .t_w
-            .try_into()
-            .map_err(|_| "t_w is too large for u64")?;
+        match transaction {
+            TransactionEnvelope::Legacy(transaction) => {
+                let t_w_u64: u64 = transaction.t_w
+                    .try_into()
+                    .map_err(|_| "t_w is too large for u64")?;
 
-        let (recovery_id_u8, chain_id) = if t_w_u64 == 27 || t_w_u64 == 28 {
-            ((t_w_u64 - 27) as u8, None)
-        } else if t_w_u64 >= 35 {
-            (((t_w_u64 - 35) % 2) as u8, Some((t_w_u64 - 35) / 2))
-        } else {
-            return Err("Invalid v value");
-        };
+                let (recovery_id_u8, chain_id) = if t_w_u64 == 27 || t_w_u64 == 28 {
+                    ((t_w_u64 - 27) as u8, None)
+                } else if t_w_u64 >= 35 {
+                    (((t_w_u64 - 35) % 2) as u8, Some((t_w_u64 - 35) / 2))
+                } else {
+                    return Err("Invalid v value");
+                };
 
-        let recovery_id =
-            RecoveryId::try_from(recovery_id_u8 as i32).map_err(|_| "Invalid recovery id")?;
+                let recovery_id =
+                    RecoveryId::try_from(recovery_id_u8 as i32).map_err(|_| "Invalid recovery id")?;
 
-        // 1. 各要素のRLPペイロード長を事前計算する (alloy-rlpの特徴)
-        let mut payload_length = 0;
-        payload_length += transaction.t_nonce.length();
-        payload_length += transaction.t_price.length();
-        payload_length += transaction.t_gas_limit.length();
+                // 1. 各要素のRLPペイロード長を事前計算する (alloy-rlpの特徴)
+                let mut payload_length = 0;
+                payload_length += transaction.t_nonce.length();
+                payload_length += transaction.t_price.length();
+                payload_length += transaction.t_gas_limit.length();
 
-        let to_slice = match &transaction.t_to {
-            TxKind::Call(address) => address.0.as_slice(),
-            TxKind::Create => &[], // 空のバイト列
-        };
-        payload_length += to_slice.length();
-        payload_length += transaction.t_value.length();
-        payload_length += transaction.data.length();
+                let to_slice = match &transaction.t_to {
+                    TxKind::Call(address) => address.0.as_slice(),
+                    TxKind::Create => &[], // 空のバイト列
+                };
+                payload_length += to_slice.length();
+                payload_length += transaction.t_value.length();
+                payload_length += transaction.data.length();
 
-        //EIP-155用に3フィールドを準備
-        if let Some(cid) = chain_id {
-            payload_length += cid.length();
-            payload_length += 0u64.length();
-            payload_length += 0u64.length();
+                //EIP-155用に3フィールドを準備
+                if let Some(cid) = chain_id {
+                    payload_length += cid.length();
+                    payload_length += 0u64.length();
+                    payload_length += 0u64.length();
+                }
+
+                // 2. バッファを確保し、リストのヘッダーを書き込む
+                let mut out = BytesMut::with_capacity(payload_length + 10); // ヘッダー分少し余分に確保
+                Header {
+                    list: true,
+                    payload_length,
+                }
+                .encode(&mut out);
+                transaction.t_nonce.encode(&mut out);
+                transaction.t_price.encode(&mut out);
+                transaction.t_gas_limit.encode(&mut out);
+                to_slice.encode(&mut out);
+                transaction.t_value.encode(&mut out);
+                transaction.data.encode(&mut out);
+
+                if let Some(cid) = chain_id {
+                    cid.encode(&mut out);
+                    0u64.encode(&mut out);
+                    0u64.encode(&mut out);
+                }
+                let rlp_encoded = out.freeze();
+                //4. Keccak256でハッシュ化して32バイトのh(T)を得る
+                let mut hasher = Keccak256::new();
+                hasher.update(&rlp_encoded);
+                let tx_hash_bytes: [u8; 32] = hasher.finalize().into();
+                // --- 公開鍵のリカバリ部分 ---
+                let message = Message::from_digest(tx_hash_bytes);
+                // 【解決策6】 `to_big_endian` の代わりに `to_be_bytes::<32>()` を使う
+                let mut sig_bytes = [0u8; 64];
+                sig_bytes[0..32].copy_from_slice(&transaction.t_r.to_be_bytes::<32>());
+                sig_bytes[32..64].copy_from_slice(&transaction.t_s.to_be_bytes::<32>());
+                let signature = RecoverableSignature::from_compact(&sig_bytes, recovery_id)
+                    .map_err(|_| "Invalid signature")?;
+                let secp = Secp256k1::verification_only();
+                // 【解決策7】 最新版では `&message` ではなく `message` (値渡し) にする
+                let public_key = secp
+                    .recover_ecdsa(message, &signature)
+                    .map_err(|_| "Failed to recover public key")?;
+                // あとは前回のコードと同じようにアドレスを抽出！
+                let uncompressed_pubkey = public_key.serialize_uncompressed();
+                let pubkey_hash = Keccak256::digest(&uncompressed_pubkey[1..65]);
+                let mut sender_address = [0u8; 20];
+                sender_address.copy_from_slice(&pubkey_hash[12..32]);
+                let sender_address = Address::new(sender_address);
+
+                //Nonceの整合性
+                let sender_nonce = state
+                    .get_nonce(&sender_address)
+                    .ok_or("送信者のアカウントが見つからない")?;
+                if sender_nonce as usize != transaction.t_nonce {
+                    return Err("nonceの整合性が不一致");
+                }
+
+                //Codeの不在
+                let sender_code = state.get_code(&sender_address).unwrap();
+                if !sender_code.is_empty() {
+                    return Err("送信者のアカウントにコントラクトコードがデプロイされている");
+                }
+
+                //ガスリミットの妥当性
+                let gas_limit = transaction.t_gas_limit;
+                if gas_limit < *inti_gas {
+                    return Err("初期ガスが指定されたガスリミットを超えている");
+                }
+
+                //残高の妥当性
+                let sender_balance = state.get_balance(&sender_address).unwrap();
+                if sender_balance < *pre_cost {
+                    return Err("送信者の残高が事前支払いコストを満たしていない");
+                }
+
+                //Initコードが49152バイト以下
+                if self.version >= VersionId::Shanghai {
+                    //Shanghai以降
+                    if transaction.t_to.is_create() && transaction.data.len() > 49152 {
+                        return Err("Initコードが49152バイトを超えている");
+                    }
+                }
+
+                //トランザクションの実行ガス価格が，ブロックのベースフィー以上
+                let basefee = match block_header.base_fee_per_gas {
+                    Some(fee) => U256::from(fee),
+                    None => U256::ZERO,
+                };
+                if transaction.t_price < basefee {
+                    return Err("トランザクションの実行ガス価格がブロックのベースフィーを下回っている");
+                }
+
+                //トランザクションのガスリミットが，ブロック全体のガスリミットからブロックの累積消費ガスを引いた値以下か
+
+                Ok(sender_address)
+            },
+
+            TransactionEnvelope::Bls(transaction_checks) => {
+                //実装予定
+                return Err("未実装")
+            },
         }
-
-        // 2. バッファを確保し、リストのヘッダーを書き込む
-        let mut out = BytesMut::with_capacity(payload_length + 10); // ヘッダー分少し余分に確保
-        Header {
-            list: true,
-            payload_length,
-        }
-        .encode(&mut out);
-        transaction.t_nonce.encode(&mut out);
-        transaction.t_price.encode(&mut out);
-        transaction.t_gas_limit.encode(&mut out);
-        to_slice.encode(&mut out);
-        transaction.t_value.encode(&mut out);
-        transaction.data.encode(&mut out);
-
-        if let Some(cid) = chain_id {
-            cid.encode(&mut out);
-            0u64.encode(&mut out);
-            0u64.encode(&mut out);
-        }
-        let rlp_encoded = out.freeze();
-        //4. Keccak256でハッシュ化して32バイトのh(T)を得る
-        let mut hasher = Keccak256::new();
-        hasher.update(&rlp_encoded);
-        let tx_hash_bytes: [u8; 32] = hasher.finalize().into();
-        // --- 公開鍵のリカバリ部分 ---
-        let message = Message::from_digest(tx_hash_bytes);
-        // 【解決策6】 `to_big_endian` の代わりに `to_be_bytes::<32>()` を使う
-        let mut sig_bytes = [0u8; 64];
-        sig_bytes[0..32].copy_from_slice(&transaction.t_r.to_be_bytes::<32>());
-        sig_bytes[32..64].copy_from_slice(&transaction.t_s.to_be_bytes::<32>());
-        let signature = RecoverableSignature::from_compact(&sig_bytes, recovery_id)
-            .map_err(|_| "Invalid signature")?;
-        let secp = Secp256k1::verification_only();
-        // 【解決策7】 最新版では `&message` ではなく `message` (値渡し) にする
-        let public_key = secp
-            .recover_ecdsa(message, &signature)
-            .map_err(|_| "Failed to recover public key")?;
-        // あとは前回のコードと同じようにアドレスを抽出！
-        let uncompressed_pubkey = public_key.serialize_uncompressed();
-        let pubkey_hash = Keccak256::digest(&uncompressed_pubkey[1..65]);
-        let mut sender_address = [0u8; 20];
-        sender_address.copy_from_slice(&pubkey_hash[12..32]);
-        let sender_address = Address::new(sender_address);
-
-        //Nonceの整合性
-        let sender_nonce = state
-            .get_nonce(&sender_address)
-            .ok_or("送信者のアカウントが見つからない")?;
-        if sender_nonce as usize != transaction.t_nonce {
-            return Err("nonceの整合性が不一致");
-        }
-
-        //Codeの不在
-        let sender_code = state.get_code(&sender_address).unwrap();
-        if !sender_code.is_empty() {
-            return Err("送信者のアカウントにコントラクトコードがデプロイされている");
-        }
-
-        //ガスリミットの妥当性
-        let gas_limit = transaction.t_gas_limit;
-        if gas_limit < *inti_gas {
-            return Err("初期ガスが指定されたガスリミットを超えている");
-        }
-
-        //残高の妥当性
-        let sender_balance = state.get_balance(&sender_address).unwrap();
-        if sender_balance < *pre_cost {
-            return Err("送信者の残高が事前支払いコストを満たしていない");
-        }
-
-        //Initコードが49152バイト以下
-        if self.version >= VersionId::Shanghai {
-            //Shanghai以降
-            if transaction.t_to.is_create() && transaction.data.len() > 49152 {
-                return Err("Initコードが49152バイトを超えている");
-            }
-        }
-
-        //トランザクションの実行ガス価格が，ブロックのベースフィー以上
-        let basefee = match block_header.base_fee_per_gas {
-            Some(fee) => U256::from(fee),
-            None => U256::ZERO,
-        };
-        if transaction.t_price < basefee {
-            return Err("トランザクションの実行ガス価格がブロックのベースフィーを下回っている");
-        }
-
-        //トランザクションのガスリミットが，ブロック全体のガスリミットからブロックの累積消費ガスを引いた値以下か
-
-        Ok(sender_address)
     }
 }

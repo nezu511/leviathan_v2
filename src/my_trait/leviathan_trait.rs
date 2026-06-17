@@ -1,4 +1,5 @@
 use crate::leviathan::structs::{SubState, Transaction, VersionId};
+use crate::leviathan::structs2::TransactionEnvelope;
 use crate::leviathan::world_state::{Account, WorldState};
 use alloy_consensus::Header as BlockHeader;
 use alloy_primitives::{Address, Log, U256};
@@ -55,7 +56,7 @@ pub trait TransactionChecks {
     fn transaction_checks(
         &self,
         state: &mut WorldState,
-        transaction: &Transaction,
+        transaction: &TransactionEnvelope,
         inti_gas: &U256,
         pre_cost: &U256,
         block_header: &BlockHeader,
@@ -66,7 +67,7 @@ pub trait TransactionExecution {
     fn execution(
         &mut self,
         state: &mut WorldState,
-        transaction: Transaction,
+        transaction: TransactionEnvelope,
         block_header: &BlockHeader,
     ) -> Result<(U256, Vec<Log>), (U256, Vec<Log>)>;
 }

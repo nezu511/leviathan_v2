@@ -5,8 +5,8 @@ use alloy_rlp::{Decodable, Encodable};
 use eth_trie::{EthTrie, MemoryDB, Trie};
 use std::sync::Arc;
 
-use leviathan_v2::leviathan::structs::{Transaction};
-use leviathan_v2::leviathan::structs2::{TransactionEnvelope};
+use leviathan_v2::leviathan::structs::Transaction;
+use leviathan_v2::leviathan::structs2::TransactionEnvelope;
 use leviathan_v2::my_trait::leviathan_trait::TransactionExecution;
 use tendermint_proto::abci::{Event, EventAttribute, ExecTxResult, RequestFinalizeBlock};
 
